@@ -36,7 +36,109 @@
     "image1Alt": "Modern Dubai property",
     "image2Alt": "Real estate team",
     "stat1": "Properties successfully sold this year",
-    "stat2": "Years of expertise in Dubai real estate market"
+    "stat2": "Years of expertise in Dubai real estate market",
+    "heroTitle1": "ForYou the",
+    "heroTitle2": "Real Estate story.",
+    "heroDescription": "We believe that real estate is more than just creating buildings it's about shaping experiences, fostering connections & enhancing communities.",
+    "heroSubDescription": "Here's what we're all about",
+    "heroImageAlt": "Modern real estate buildings",
+    "stat1Number": "840+",
+    "stat1Label": "SUCCESSFUL PROJECT",
+    "stat2Number": "12+",
+    "stat2Label": "YEARS OF EXPERIENCE",
+    "stat3Number": "98%",
+    "stat3Label": "CLIENTS SATISFACTION",
+    "stat4Number": "04",
+    "stat4Label": "AWARDS ACHIEVEMENTS",
+    "milestonesTitle": "Our Historical Milestones",
+    "milestonesDescription": "At ForYou, our journey reflects vision, growth, and a steadfast commitment to excellence.",
+    "milestone2022": {
+      "year": "2022",
+      "shortTitle": "First Major Project",
+      "boldTitle": "A Milestone Achievement",
+      "description": "By 2022, ForYou had completed its first major project. This project was a testament to our innovative approach and commitment to quality, earning us early recognition in the industry."
+    },
+    "milestone2023": {
+      "year": "2023",
+      "shortTitle": "Team Growth",
+      "boldTitle": "Building A Strong Team",
+      "description": "In 2023, we significantly expanded our team, bringing in diverse talents and expertise. Our team's growth has been crucial in continuing to deliver high-quality, innovative solutions."
+    },
+    "milestone2024": {
+      "year": "2024",
+      "shortTitle": "Market Expansion",
+      "boldTitle": "Reaching New Heights",
+      "description": "In 2024, we expanded our presence in the Dubai real estate market, establishing key partnerships and launching multiple successful projects that set new industry standards."
+    },
+    "milestone2025": {
+      "year": "2025",
+      "shortTitle": "Looking Ahead",
+      "boldTitle": "The Future Of Real Estate",
+      "description": "As we look to the future, ForYou remains committed to innovation, excellence, and sustainability. We are excited about upcoming projects and opportunities to further our impact in the world of real estate."
+    },
+    "partnersTitle": "We Partner With",
+    "teamTitle": "Our Team",
+    "teamDescription": "Meet the talented individuals who drive our company's success with their dedication, expertise, and passion for innovation.",
+    "officeTitle": "Our Office",
+    "officeDescription": "Visit us at our office in Dubai. Schedule a meeting to discuss your real estate needs with our expert team.",
+    "officeForm": {
+      "title": "Schedule a Meeting",
+      "dateLabel": "Select Date",
+      "timeLabel": "Select Time",
+      "specialistLabel": "Preferred Specialist (Optional)",
+      "specialistPlaceholder": "Choose a specialist",
+      "nameLabel": "Your Name",
+      "namePlaceholder": "Enter your name",
+      "phoneLabel": "Phone Number",
+      "phonePlaceholder": "Enter your phone",
+      "emailLabel": "Email",
+      "emailPlaceholder": "Enter your email",
+      "messageLabel": "Additional Notes",
+      "messagePlaceholder": "Any additional information...",
+      "submitButton": "Book Meeting"
+    },
+    "leadersTitle": "About The Leadership Team",
+    "leaders": {
+      "artem": {
+        "name": "Artem Gerasimov",
+        "description": "15 years of experience in Russian and international companies within the financial and banking sectors. Extensive background in working with high-net-worth individuals (HNWIs), including asset management, investment advisory, and business development. Proven track record of building trusted client relationships, growing portfolios, and delivering tailored financial solutions in a highly competitive environment."
+      },
+      "nikita": {
+        "name": "Nikita Dyakov",
+        "description": "Over 10 years of experience in the financial sector. Gained experience working in both Russian and international companies such as Citibank and Alfa-Bank, where he worked with high-net-worth clients, and Alfa Asset Management Europe (Luxembourg), where he held the position of Business Development Director."
+      },
+      "antony": {
+        "name": "Antony",
+        "description": "7+ years of experience in organizing events for international audiences in Russia and the UAE. Planned and executed a wide range of corporate, cultural, and lifestyle events tailored to expatriate communities, with a strong emphasis on cross-cultural communication, partnership development, and brand visibility. Over 4 years of experience in business and real estate across Russia and Dubai. Actively involved in property transactions, market analysis, and investment consulting. Built and managed relationships with clients and partners in both regions, contributing to business growth and successful deal closures in dynamic and competitive markets."
+      },
+      "gulnoza": {
+        "name": "Gulnoza",
+        "description": "3.5+ years of experience in the Dubai real estate market, with a strong focus on client relations and strategic partnerships. Successfully worked with high-net-worth individuals, international investors, and key business partners to facilitate property transactions, provide tailored investment solutions, and build long-term trust-based relationships."
+      }
+    },
+    "faqTitle": "Frequently Asked Questions",
+    "faq": [
+      {
+        "question": "What types of properties do you offer?",
+        "answer": "We offer a wide range of properties including off-plan developments, secondary market properties, apartments, villas, penthouses, and townhouses across Dubai."
+      },
+      {
+        "question": "How can I schedule a viewing?",
+        "answer": "You can schedule a viewing by filling out the contact form on our website, calling us directly, or visiting our office. Our team will be happy to arrange a convenient time for you."
+      },
+      {
+        "question": "Do you assist with property financing?",
+        "answer": "Yes, we work with trusted financial partners to help our clients find the best financing options. We can assist with mortgage applications and connect you with reputable banks in the UAE."
+      },
+      {
+        "question": "What areas in Dubai do you cover?",
+        "answer": "We cover all major areas in Dubai including Downtown Dubai, Dubai Marina, Business Bay, JVC, Palm Jumeirah, and many other premium locations. Visit our Areas page to see all available locations."
+      },
+      {
+        "question": "Can I buy property as a foreigner?",
+        "answer": "Yes, Dubai allows foreigners to own freehold properties in designated areas. Our team can guide you through the entire process and help you understand all legal requirements."
+      }
+    ]
   },
   "services": {
     "financialServices": {
@@ -175,5 +277,22 @@
     "reset": "Reset",
     "showFilters": "Show More Filters",
     "hideFilters": "Hide Filters"
+  },
+  "propertyDetail": {
+    "loading": "Loading...",
+    "notFound": "Property not found",
+    "developer": "Developer",
+    "description": "Description",
+    "facilities": "Facilities",
+    "availableUnits": "Available Units",
+    "location": "Location",
+    "priceOnRequest": "Price on request",
+    "sizeOnRequest": "Size on request",
+    "from": "From",
+    "sqm": "sqm",
+    "sqft": "sq.ft",
+    "beds": "beds",
+    "baths": "baths",
+    "balcony": "balcony"
   }
 }

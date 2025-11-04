@@ -43,7 +43,10 @@ export default function PropertyCard({ property }: PropertyCardProps) {
   const t = useTranslations('propertyCard');
   const locale = useLocale();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const [direction, setDirection] = useState<'left' | 'right'>('right');
+  const [prevImageIndex, setPrevImageIndex] = useState(0);
+  const [direction, setDirection] = useState<'left' | 'right' | null>(null);
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const [isFavorite, setIsFavorite] = useState(false);
 
   const getLocalizedPath = (path: string) => {
     return locale === 'en' ? path : `/${locale}${path}`;
@@ -67,32 +70,58 @@ export default function PropertyCard({ property }: PropertyCardProps) {
     return new Intl.NumberFormat('en-US').format(price);
   };
 
+  const getPricePerSqm = () => {
+    const pricePerSqm = property.price.aed / property.size.sqm;
+    return formatPrice(Math.round(pricePerSqm));
+  };
+
   const handleImageChange = (dir: 'prev' | 'next') => {
-    if (property.images.length <= 1) return;
+    if (property.images.length <= 1 || isTransitioning) return;
     
+    setIsTransitioning(true);
+    setPrevImageIndex(currentImageIndex);
     setDirection(dir === 'next' ? 'right' : 'left');
-    setCurrentImageIndex((prev) => {
-      if (dir === 'next') {
-        return (prev + 1) % property.images.length;
-      } else {
-        return prev === 0 ? property.images.length - 1 : prev - 1;
-      }
-    });
+    
+    const newIndex = dir === 'next'
+      ? (currentImageIndex + 1) % property.images.length
+      : currentImageIndex === 0 ? property.images.length - 1 : currentImageIndex - 1;
+    
+    setCurrentImageIndex(newIndex);
+    
+    setTimeout(() => {
+      setIsTransitioning(false);
+      setDirection(null);
+    }, 500);
   };
 
   return (
     <Link href={getLocalizedPath(`/properties/${property.id}`)} className={styles.card}>
       <div className={styles.imageContainer}>
+        <div className={styles.imageGradientTop}></div>
+        <div className={styles.imageGradientBottom}></div>
         {property.images.length > 0 && (
           <div className={styles.imageWrapper}>
+            {/* Previous image - sliding out */}
+            {isTransitioning && prevImageIndex !== currentImageIndex && (
+              <Image
+                key={`prev-${prevImageIndex}`}
+                src={property.images[prevImageIndex]}
+                alt={getName()}
+                fill
+                style={{ objectFit: 'cover' }}
+                sizes="(max-width: 1200px) 50vw, (max-width: 900px) 100vw, 33vw"
+                className={`${styles.cardImage} ${styles.prevImage} ${direction === 'right' ? styles.slideOutLeft : styles.slideOutRight}`}
+              />
+            )}
+            {/* Current image - sliding in */}
             <Image
-              key={currentImageIndex}
+              key={`current-${currentImageIndex}`}
               src={property.images[currentImageIndex]}
               alt={getName()}
               fill
               style={{ objectFit: 'cover' }}
               sizes="(max-width: 1200px) 50vw, (max-width: 900px) 100vw, 33vw"
-              className={`${styles.cardImage} ${direction === 'right' ? styles.slideInRight : styles.slideInLeft}`}
+              className={`${styles.cardImage} ${styles.currentImage} ${isTransitioning && direction === 'right' ? styles.slideInRight : isTransitioning && direction === 'left' ? styles.slideInLeft : ''}`}
             />
           </div>
         )}
@@ -127,8 +156,34 @@ export default function PropertyCard({ property }: PropertyCardProps) {
             </div>
           </>
         )}
-        <div className={styles.typeBadge}>
-          {property.type === 'new' ? t('type.new') : t('type.secondary')}
+        <div className={styles.badgesContainer}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div className={styles.typeBadge}>
+              {property.type === 'new' ? (t('type.new').charAt(0).toUpperCase() + t('type.new').slice(1).toLowerCase()) : (t('type.secondary').charAt(0).toUpperCase() + t('type.secondary').slice(1).toLowerCase())}
+            </div>
+            <div className={styles.developerBadge}>
+              <span className={styles.developerName}>{getDeveloper()}</span>
+            </div>
+          </div>
+          <button
+            className={styles.favoriteButton}
+            onClick={(e) => {
+              e.preventDefault();
+              setIsFavorite(!isFavorite);
+            }}
+            aria-label="Add to favorites"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path
+                d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                fill={isFavorite ? 'currentColor' : 'none'}
+              />
+            </svg>
+          </button>
         </div>
       </div>
 
@@ -175,11 +230,11 @@ export default function PropertyCard({ property }: PropertyCardProps) {
         <div className={styles.footer}>
           <div className={styles.price}>
             <span className={styles.priceAmount}>
-              ${formatPrice(property.price.usd)}
+              {formatPrice(property.price.aed)} AED
             </span>
           </div>
-          <div className={styles.developer}>
-            <span className={styles.developerName}>{getDeveloper()}</span>
+          <div className={styles.pricePerSqm}>
+            {getPricePerSqm()} AED/sq.m
           </div>
         </div>
       </div>
