@@ -47,9 +47,11 @@
   gap: 20px;
 }
 
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300..700;1,300..700&display=swap');
+
 .sectionTitle {
-  font-family: 'Inter', sans-serif;
-  font-size: 16px;
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 20px;
   font-weight: 500;
   color: #000000;
   margin: 0;
