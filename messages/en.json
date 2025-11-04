@@ -4,7 +4,7 @@
     "register": "Register",
     "nav": {
       "home": "Home",
-      "property": "Property",
+      "properties": "Properties",
       "map": "Map",
       "areas": "Areas",
       "developers": "Developers",
@@ -20,6 +20,77 @@
       "bedrooms": "Bedrooms",
       "bedroomsAll": "All",
       "searchButton": "Search"
+    }
+  },
+  "areas": {
+    "title": "These are popular locations to live in Dubai",
+    "description": "Discover the most attractive neighborhoods in Dubai, each offering a unique lifestyle, convenient amenities, and excellent investment potential.",
+    "projects": "PROPERTIES"
+  },
+  "aboutUs": {
+    "header": "ABOUT US",
+    "title": "Discover Our Journey to Real Estate Excellence",
+    "description1": "ForYou Real Estate has evolved from a small local agency into a leading real estate firm known for its innovative approach and exceptional service in Dubai's luxury property market.",
+    "description2": "Our team combines extensive market experience with a passion for excellence, aiming to exceed expectations while maintaining a strong commitment to our clients' success and satisfaction.",
+    "cta": "ABOUT US",
+    "image1Alt": "Modern Dubai property",
+    "image2Alt": "Real estate team",
+    "stat1": "Properties successfully sold this year",
+    "stat2": "Years of expertise in Dubai real estate market"
+  },
+  "services": {
+    "financialServices": {
+      "title": "Financial Services",
+      "description": "Personalized support for asset structuring, investment strategy, and wealth protection."
+    },
+    "uaeBank": {
+      "title": "UAE Bank Account",
+      "description": "Full assistance in opening personal or corporate accounts in the UAE."
+    },
+    "georgiaBank": {
+      "title": "Georgia Bank Account",
+      "description": "Hassle-free account opening in Georgian banks with full documentation support."
+    },
+    "buySell": {
+      "title": "Buy/Sell Real Estate",
+      "description": "Premium real estate selection and full transaction management in multiple countries."
+    }
+  },
+  "projectImage": {
+    "title": "Golf Edge by Emaar",
+    "description": "Golf Edge, located in Emaar South, is a luxurious residential project that offers a peaceful retreat amidst picturesque surroundings. Nestled among green hills, lush fairways, and golf courses, the homes at Golf Edge seamlessly blend in with the serene environment, creating an exclusive sanctuary for its residents.",
+    "features": {
+      "bedrooms": "2 Bedrooms",
+      "bathrooms": "2 Bathrooms",
+      "park": "Park & Garden"
+    },
+    "readMore": "Read More",
+    "contactUs": "Contact Us",
+    "form": {
+      "title": "Get in Touch",
+      "description": "Contact us to learn more about this exclusive project and schedule a viewing.",
+      "name": "Name",
+      "phone": "Phone",
+      "send": "Send",
+      "note": "By submitting this form, you agree to our privacy policy and consent to being contacted by our team."
+    }
+  },
+  "statistics": {
+    "yearsExperience": {
+      "title": "Years experience",
+      "description": "Providing expert real estate services in Dubai's luxury property market"
+    },
+    "propertiesSold": {
+      "title": "Properties sold",
+      "description": "Successfully completed sales transactions across Dubai's premium neighborhoods"
+    },
+    "happyClients": {
+      "title": "Happy clients",
+      "description": "Trusted by clients seeking their dream properties in Dubai"
+    },
+    "clientSatisfaction": {
+      "title": "Client satisfaction",
+      "description": "Dedicated to ensuring exceptional service and results for every client"
     }
   },
   "footer": {
@@ -48,5 +119,61 @@
     },
     "followUs": "Follow Us",
     "login": "Login"
+  },
+  "properties": {
+    "title": "Properties",
+    "resultsCount": "{count, plural, =0 {No properties found} one {# property found} other {# properties found}}",
+    "pagination": {
+      "previous": "Previous",
+      "next": "Next",
+      "page": "Page {current} of {total}"
+    }
+  },
+  "propertyCard": {
+    "type": {
+      "new": "New Building",
+      "secondary": "Secondary"
+    },
+    "developer": "Developer"
+  },
+  "filters": {
+    "type": {
+      "offPlan": "Off Plan",
+      "secondary": "Secondary"
+    },
+    "search": {
+      "placeholder": "Find by project name"
+    },
+    "location": {
+      "placeholder": "Location",
+      "selected": "selected"
+    },
+    "bedrooms": {
+      "placeholder": "Bedrooms",
+      "bedroom": "bedroom",
+      "selected": "selected"
+    },
+    "size": {
+      "placeholder": "Size",
+      "from": "From",
+      "to": "To"
+    },
+    "price": {
+      "placeholder": "Price",
+      "from": "From",
+      "to": "To"
+    },
+    "sort": {
+      "placeholder": "Sort",
+      "priceHigher": "Price Higher",
+      "priceLower": "Price Lower",
+      "sizeHigher": "Size Higher",
+      "sizeLower": "Size Lower",
+      "newest": "Newest First"
+    },
+    "apply": "Apply Filters",
+    "reset": "Reset",
+    "showFilters": "Show More Filters",
+    "hideFilters": "Hide Filters"
   }
 }

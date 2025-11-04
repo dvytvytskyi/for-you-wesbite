@@ -9,6 +9,48 @@
   transition: all 0.3s ease;
 }
 
+.header.alwaysWhite {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  padding: 15px 0;
+}
+
+.header.alwaysWhite .navLink {
+  color: var(--accent-color, #003077);
+}
+
+.header.alwaysWhite .navLink::after {
+  background-color: var(--accent-color, #003077);
+}
+
+.header.alwaysWhite .glassButton {
+  background: transparent;
+  border: 1px solid rgba(0, 48, 119, 0.2);
+  color: var(--accent-color, #003077);
+}
+
+.header.alwaysWhite .glassButton:hover {
+  background: transparent;
+  border-color: rgba(0, 48, 119, 0.3);
+}
+
+.header.alwaysWhite .glassButton.register {
+  background: #003077;
+  border: 1px solid #003077;
+  color: #ffffff;
+}
+
+.header.alwaysWhite .glassButton.register:hover {
+  background: #003f94;
+  border-color: #003f94;
+}
+
+.header.alwaysWhite .logo img {
+  height: 24px;
+}
+
 .header.scrolled {
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(10px);
@@ -32,13 +74,13 @@
 }
 
 .logo img {
-  height: 32px;
+  height: 28px;
   width: auto;
   transition: height 0.3s ease;
 }
 
 .header.scrolled .logo img {
-  height: 28px;
+  height: 24px;
 }
 
 .mainNav {
@@ -133,13 +175,13 @@
 }
 
 .header.scrolled .glassButton {
-  background: rgba(0, 48, 119, 0.1);
+  background: transparent;
   border: 1px solid rgba(0, 48, 119, 0.2);
   color: var(--accent-color, #003077);
 }
 
 .header.scrolled .glassButton:hover {
-  background: rgba(0, 48, 119, 0.15);
+  background: transparent;
   border-color: rgba(0, 48, 119, 0.3);
 }
 

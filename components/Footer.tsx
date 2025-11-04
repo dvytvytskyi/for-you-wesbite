@@ -29,7 +29,7 @@ export default function Footer() {
         <div className={styles.mainContent}>
           <div className={styles.logoSection}>
             <Link href={getLocalizedPath('/')}>
-              <img src="/new logo.png" alt="Logo" />
+              <img src="/new logo blue.png" alt="Logo" />
             </Link>
             <p className={styles.tagline}>
               Finding Spaces That Inspire Modern World in Dubai

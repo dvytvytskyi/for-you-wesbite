@@ -3,8 +3,8 @@
 ## 📋 Інформація про існуючий API
 
 ### Базові деталі
-- [ ] **URL базового API** (наприклад: `http://localhost:4000/api` або production URL)
-- [ ] **API Key** та **API Secret** для автентифікації
+- [ https://admin.foryou-realestate.com/api ] **URL базового API** (наприклад: `http://localhost:4000/api` або production URL)
+- [ api key: fyr_7af8658259b4663cdf953bb4d0dd0653493b0161eba325fa97c0e2f1b4f32c05 ; api secret: 11619acf961b30770814157357f0a566032fc15bf414d35fdf1eff072f4be5982f1300a2d3794f54674d0f1994f0497e7b0e269f0012daf5e6216699fdf348c0 ;] **API Key** та **API Secret** для автентифікації
 - [ ] **Технологія бекенду** (Node.js/Express, Python/Django, PHP/Laravel, інше?)
 - [ ] **Версія API** (якщо використовується versioning)
 
