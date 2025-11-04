@@ -1,0 +1,52 @@
+{
+  "header": {
+    "signIn": "Sign In",
+    "register": "Register",
+    "nav": {
+      "home": "Home",
+      "property": "Property",
+      "map": "Map",
+      "areas": "Areas",
+      "developers": "Developers",
+      "aboutUs": "About Us",
+      "news": "News"
+    }
+  },
+  "hero": {
+    "title": "Finding Spaces That Inspire Modern World in Dubai",
+    "subtitle": "With years of experience in the market, we specialize in helping clients sell their properties quickly and at the best possible price, ensuring a smooth and successful transaction from start to finish",
+    "search": {
+      "placeholder": "Search properties...",
+      "bedrooms": "Bedrooms",
+      "bedroomsAll": "All",
+      "searchButton": "Search"
+    }
+  },
+  "footer": {
+    "copyright": "© 2024 ForYou Real Estate. All rights reserved.",
+    "language": "Language",
+    "navigation": {
+      "title": "Navigation",
+      "home": "Home",
+      "properties": "Properties",
+      "map": "Map",
+      "areas": "Areas",
+      "developers": "Developers",
+      "about": "About Us",
+      "news": "News"
+    },
+    "legal": {
+      "title": "Legal",
+      "privacy": "Privacy Policy",
+      "terms": "Terms of Service",
+      "store": "Store"
+    },
+    "download": {
+      "title": "Download App",
+      "appStore": "Download on the App Store",
+      "googlePlay": "Get it on Google Play"
+    },
+    "followUs": "Follow Us",
+    "login": "Login"
+  }
+}
