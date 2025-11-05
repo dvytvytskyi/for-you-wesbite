@@ -1,0 +1,516 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300..700;1,300..700&display=swap');
+
+.areaDetail {
+  padding: 120px 0 100px 0;
+  background: #ffffff;
+  min-height: calc(100vh - 200px);
+}
+
+.container {
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 30px 40px 40px 40px;
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 60px;
+}
+
+.title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 64px;
+  font-weight: 400;
+  color: #003077;
+  margin: 0;
+}
+
+.loading,
+.notFound {
+  text-align: center;
+  padding: 100px 20px;
+  font-family: 'Inter', sans-serif;
+  font-size: 18px;
+  color: #003077;
+}
+
+.notFound h1 {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 48px;
+  font-weight: 400;
+  color: #003077;
+  margin: 0;
+}
+
+/* Галерея зображень - слайд-шоу */
+.imagesSection {
+  margin-bottom: 80px;
+  max-width: 1200px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.sliderContainer {
+  position: relative;
+  width: 100%;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #000;
+}
+
+.sliderWrapper {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 21 / 9;
+  overflow: hidden;
+}
+
+.sliderTrack {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.slide {
+  position: relative;
+  flex: 0 0 100%;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+  transition: opacity 0.3s ease;
+}
+
+.slide:hover {
+  opacity: 0.9;
+}
+
+.sliderButton {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 48px;
+  height: 48px;
+  background: rgba(255, 255, 255, 0.9);
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  transition: all 0.3s ease;
+  color: #003077;
+}
+
+.sliderButton:hover {
+  background: #ffffff;
+  transform: translateY(-50%) scale(1.1);
+}
+
+.sliderButton:active {
+  transform: translateY(-50%) scale(0.95);
+}
+
+.prevButton {
+  left: 20px;
+}
+
+.nextButton {
+  right: 20px;
+}
+
+.sliderIndicators {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 8px;
+  z-index: 10;
+}
+
+.indicator {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 2px solid #ffffff;
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  padding: 0;
+}
+
+.indicator:hover {
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.indicator.active {
+  background: #ffffff;
+  width: 30px;
+  border-radius: 5px;
+}
+
+.sliderCounter {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: rgba(0, 0, 0, 0.6);
+  color: #ffffff;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  z-index: 10;
+  backdrop-filter: blur(10px);
+}
+
+/* Секції опису та інфраструктури */
+.descriptionSection,
+.infrastructureSection {
+  margin-bottom: 60px;
+  max-width: 1200px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Список проектів */
+.propertiesSection {
+  margin-bottom: 60px;
+  max-width: 1200px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.propertiesHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 40px;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+.propertiesTitle {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 40px;
+  font-weight: 400;
+  color: #003077;
+  margin: 0;
+}
+
+.propertiesGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 32px;
+}
+
+/* Кнопка для secondary properties */
+.secondaryButtonSection {
+  display: flex;
+  align-items: center;
+}
+
+.secondaryButton {
+  display: inline-block;
+  font-family: 'Inter', sans-serif;
+  font-size: 16px;
+  font-weight: 400;
+  color: #003077;
+  background: transparent;
+  border: 2px solid #003077;
+  border-radius: 8px;
+  padding: 14px 32px;
+  text-decoration: none;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.secondaryButton:hover {
+  background: #003077;
+  color: #ffffff;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 48, 119, 0.2);
+}
+
+.sectionTitle {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 40px;
+  font-weight: 400;
+  color: #003077;
+  margin: 0 0 24px 0;
+}
+
+.descriptionText {
+  font-family: 'Inter', sans-serif;
+  font-size: 18px;
+  font-weight: 300;
+  color: #003077;
+  line-height: 1.8;
+  margin: 0;
+}
+
+/* Модальне вікно для зображення */
+.imageModal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.9);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  cursor: pointer;
+}
+
+.imageModalContent {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  max-width: 90vw;
+  max-height: 90vh;
+}
+
+.imageModalClose {
+  position: absolute;
+  top: -50px;
+  right: 0;
+  background: transparent;
+  border: none;
+  color: #ffffff;
+  font-size: 48px;
+  font-weight: 300;
+  cursor: pointer;
+  width: 50px;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1001;
+  transition: transform 0.3s ease;
+}
+
+.imageModalClose:hover {
+  transform: scale(1.2);
+}
+
+@media (max-width: 1200px) {
+  .title {
+    font-size: 56px;
+  }
+
+  .sectionTitle {
+    font-size: 36px;
+  }
+
+  .sliderButton {
+    width: 40px;
+    height: 40px;
+  }
+
+  .prevButton {
+    left: 10px;
+  }
+
+  .nextButton {
+    right: 10px;
+  }
+}
+
+@media (max-width: 900px) {
+  .areaDetail {
+    padding: 80px 0 60px 0;
+  }
+
+  .container {
+    padding: 30px 20px 20px 20px;
+  }
+
+  .propertiesHeader {
+    flex-direction: column;
+    align-items: flex-start;
+    margin-bottom: 30px;
+  }
+
+  .propertiesGrid {
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 24px;
+  }
+
+  .propertiesTitle {
+    font-size: 32px;
+    margin-bottom: 0;
+  }
+
+  .secondaryButtonSection {
+    width: 100%;
+  }
+
+  .header {
+    margin-bottom: 40px;
+  }
+
+  .title {
+    font-size: 48px;
+  }
+
+  .imagesSection {
+    margin-bottom: 60px;
+  }
+
+  .sliderButton {
+    width: 36px;
+    height: 36px;
+  }
+
+  .sliderButton svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .prevButton {
+    left: 10px;
+  }
+
+  .nextButton {
+    right: 10px;
+  }
+
+  .sliderIndicators {
+    bottom: 15px;
+  }
+
+  .indicator {
+    width: 8px;
+    height: 8px;
+  }
+
+  .indicator.active {
+    width: 24px;
+  }
+
+  .sliderCounter {
+    top: 15px;
+    right: 15px;
+    font-size: 12px;
+    padding: 6px 12px;
+  }
+
+  .descriptionSection,
+  .infrastructureSection {
+    margin-bottom: 40px;
+  }
+
+  .sectionTitle {
+    font-size: 32px;
+  }
+
+  .descriptionText {
+    font-size: 16px;
+  }
+}
+
+@media (max-width: 600px) {
+  .areaDetail {
+    padding: 60px 0 40px 0;
+  }
+
+  .container {
+    padding: 30px 20px 20px 20px;
+  }
+
+  .title {
+    font-size: 36px;
+  }
+
+  .propertiesHeader {
+    flex-direction: column;
+    align-items: flex-start;
+    margin-bottom: 24px;
+  }
+
+  .propertiesGrid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+
+  .propertiesTitle {
+    font-size: 28px;
+    margin-bottom: 16px;
+  }
+
+  .secondaryButtonSection {
+    width: 100%;
+  }
+
+  .secondaryButton {
+    width: 100%;
+    text-align: center;
+    font-size: 14px;
+    padding: 12px 24px;
+  }
+
+  .sliderButton {
+    width: 32px;
+    height: 32px;
+  }
+
+  .sliderButton svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .prevButton {
+    left: 5px;
+  }
+
+  .nextButton {
+    right: 5px;
+  }
+
+  .sliderIndicators {
+    bottom: 10px;
+    gap: 6px;
+  }
+
+  .indicator {
+    width: 6px;
+    height: 6px;
+  }
+
+  .indicator.active {
+    width: 20px;
+  }
+
+  .sliderCounter {
+    top: 10px;
+    right: 10px;
+    font-size: 11px;
+    padding: 4px 10px;
+  }
+
+  .sectionTitle {
+    font-size: 28px;
+  }
+
+  .descriptionText {
+    font-size: 15px;
+    line-height: 1.6;
+  }
+
+  .imageModal {
+    padding: 20px;
+  }
+
+  .imageModalClose {
+    top: -40px;
+    font-size: 40px;
+    width: 40px;
+    height: 40px;
+  }
+}
+

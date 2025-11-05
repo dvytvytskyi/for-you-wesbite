@@ -38,7 +38,7 @@ export default function Header() {
     { key: 'areas', path: '/areas' },
     { key: 'developers', path: '/developers' },
     { key: 'aboutUs', path: '/about' },
-    { key: 'news', path: '/blog' },
+    { key: 'news', path: '/news' },
   ];
 
   const getLocalizedPath = (path: string) => {
@@ -67,8 +67,8 @@ export default function Header() {
         </nav>
         
         <nav className={styles.authNav}>
-          <button className={styles.glassButton}>{t('signIn')}</button>
-          <button className={`${styles.glassButton} ${styles.register}`}>{t('register')}</button>
+          <Link href={getLocalizedPath('/login')} className={styles.glassButton}>{t('signIn')}</Link>
+          <Link href={getLocalizedPath('/register')} className={`${styles.glassButton} ${styles.register}`}>{t('register')}</Link>
         </nav>
       </div>
     </header>

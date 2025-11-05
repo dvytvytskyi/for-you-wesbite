@@ -25,7 +25,10 @@
   "areas": {
     "title": "Это популярные места для жизни в Дубае",
     "description": "Откройте для себя самые привлекательные районы Дубая, каждый из которых предлагает уникальный образ жизни, удобные удобства и отличный инвестиционный потенциал.",
-    "projects": "ОБЪЕКТОВ"
+    "projects": "ОБЪЕКТОВ",
+    "pageTitle": "Районы",
+    "pageDescription": "Исследуйте все удивительные районы Дубая. Каждый район предлагает уникальные возможности для жизни и инвестиций.",
+    "loading": "Загрузка районов..."
   },
   "aboutUs": {
     "header": "О НАС",
@@ -225,6 +228,13 @@
   "properties": {
     "title": "Недвижимость",
     "resultsCount": "{count, plural, =0 {Объектов не найдено} one {Найден # объект} few {Найдено # объекта} other {Найдено # объектов}}",
+    "showing": "Показано {count} объектов",
+    "loading": "Загрузка недвижимости...",
+    "errorLoading": "Ошибка загрузки недвижимости",
+    "retry": "Повторить",
+    "noProperties": "Недвижимость не найдена",
+    "previous": "Назад",
+    "next": "Вперед",
     "pagination": {
       "previous": "Назад",
       "next": "Вперед",
@@ -234,11 +244,20 @@
   "propertyCard": {
     "type": {
       "new": "Новостройка",
+      "offPlan": "Офф план",
       "secondary": "Вторичка"
     },
     "developer": "Застройщик"
   },
   "filters": {
+    "city": {
+      "placeholder": "Город",
+      "all": "Все города"
+    },
+    "developer": {
+      "placeholder": "Девелопер",
+      "all": "Все девелоперы"
+    },
     "type": {
       "offPlan": "Офф план",
       "secondary": "Вторичка"
@@ -281,6 +300,7 @@
   "propertyDetail": {
     "loading": "Загрузка...",
     "notFound": "Объект не найден",
+    "goBack": "Назад",
     "developer": "Застройщик",
     "description": "Описание",
     "facilities": "Удобства",
@@ -294,5 +314,123 @@
     "beds": "спален",
     "baths": "ванных",
     "balcony": "балкон"
+  },
+  "investment": {
+    "title": "Подать заявку на инвестицию",
+    "description": "Заполните форму ниже, чтобы подать заявку на инвестицию.",
+    "firstName": "Имя",
+    "firstNamePlaceholder": "Введите ваше имя",
+    "lastName": "Фамилия",
+    "lastNamePlaceholder": "Введите вашу фамилию",
+    "email": "Email",
+    "emailPlaceholder": "ваш.email@example.com",
+    "phone": "Телефон",
+    "phonePlaceholder": "+971501234567",
+    "amount": "Сумма инвестиции",
+    "date": "Дата инвестиции",
+    "notes": "Примечания",
+    "notesPlaceholder": "Любая дополнительная информация...",
+    "optional": "Необязательно",
+    "submit": "Подать заявку",
+    "submitting": "Отправка...",
+    "submitError": "Не удалось отправить заявку",
+    "successTitle": "Заявка отправлена!",
+    "successMessage": "Ваша заявка на инвестицию успешно отправлена. Мы свяжемся с вами в ближайшее время.",
+    "agreeTerms": "Я согласен с",
+    "privacyPolicy": "Политикой конфиденциальности"
+  },
+  "developers": {
+    "pageTitle": "Застройщики",
+    "loading": "Загрузка застройщиков...",
+    "viewButton": "Посмотреть",
+    "images": "Изображения",
+    "createdAt": "Основан",
+    "noSelection": "Выберите застройщика для просмотра деталей"
+  },
+  "areaDetail": {
+    "loading": "Загрузка деталей района...",
+    "notFound": "Район не найден",
+    "offPlanProperties": "Проекты на стадии строительства",
+    "viewAllSecondary": "Посмотреть все вторичные объекты"
+  },
+  "news": {
+    "pageTitle": "Новости",
+    "loading": "Загрузка новостей..."
+  },
+  "newsDetail": {
+    "loading": "Загрузка статьи...",
+    "notFound": "Статья не найдена"
+  },
+  "auth": {
+    "loginTitle": "Вход",
+    "loginSubtitle": "Добро пожаловать! Войдите в свой аккаунт",
+    "registerTitle": "Создать аккаунт",
+    "registerSubtitle": "Присоединяйтесь к нам и начните свой путь в недвижимости",
+    "forgotPasswordTitle": "Восстановление пароля",
+    "forgotPasswordSubtitle": "Введите ваш email адрес, и мы отправим вам код подтверждения",
+    "verifyCodeSubtitle": "Введите 6-значный код, отправленный на ваш email",
+    "resetPasswordSubtitle": "Введите ваш новый пароль",
+    "email": "Email",
+    "emailPlaceholder": "ваш.email@example.com",
+    "password": "Пароль",
+    "passwordPlaceholder": "Введите ваш пароль",
+    "confirmPassword": "Подтвердите пароль",
+    "confirmPasswordPlaceholder": "Подтвердите ваш пароль",
+    "newPassword": "Новый пароль",
+    "newPasswordPlaceholder": "Введите ваш новый пароль",
+    "firstName": "Имя",
+    "firstNamePlaceholder": "Иван",
+    "lastName": "Фамилия",
+    "lastNamePlaceholder": "Иванов",
+    "phone": "Телефон",
+    "phonePlaceholder": "+1234567890",
+    "role": "Роль",
+    "roleClient": "Клиент",
+    "roleBroker": "Брокер",
+    "roleInvestor": "Инвестор",
+    "licenseNumber": "Номер лицензии",
+    "licenseNumberPlaceholder": "Введите номер лицензии",
+    "verificationCode": "Код подтверждения",
+    "forgotPassword": "Забыли пароль?",
+    "loginButton": "Войти",
+    "registerButton": "Создать аккаунт",
+    "sendCode": "Отправить код",
+    "verifyCode": "Подтвердить код",
+    "resetPasswordButton": "Сбросить пароль",
+    "loading": "Загрузка...",
+    "or": "или",
+    "noAccount": "Нет аккаунта?",
+    "registerLink": "Зарегистрироваться",
+    "haveAccount": "Уже есть аккаунт?",
+    "loginLink": "Войти",
+    "backToLogin": "Вернуться к входу",
+    "changeEmail": "Изменить email",
+    "codeSentTo": "Код отправлен на",
+    "loginError": "Неверный email или пароль",
+    "registerError": "Регистрация не удалась. Попробуйте снова",
+    "forgotPasswordError": "Не удалось отправить код. Попробуйте снова",
+    "verifyCodeError": "Неверный или истекший код",
+    "resetPasswordError": "Не удалось сбросить пароль. Попробуйте снова",
+    "registrationSuccess": "Аккаунт успешно создан!",
+    "registrationSuccessText": "Ваш аккаунт создан. Теперь вы можете войти.",
+    "pendingApprovalTitle": "Ожидание подтверждения",
+    "pendingApprovalText": "Ваш аккаунт создан и ожидает подтверждения. Вы получите уведомление, когда ваш аккаунт будет активирован.",
+    "resetPasswordSuccess": "Пароль успешно сброшен!",
+    "resetPasswordSuccessText": "Ваш пароль успешно сброшен. Теперь вы можете войти с новым паролем."
+  },
+  "broker": {
+    "dashboardTitle": "Кабинет брокера",
+    "knowledgeBase": "База знаний",
+    "totalCourses": "Всего курсов",
+    "completedCourses": "Завершено",
+    "inProgressCourses": "В процессе",
+    "completionRate": "Процент завершения",
+    "sections": "разделов",
+    "links": "ссылок",
+    "loading": "Загрузка...",
+    "backToCourses": "Назад к курсам",
+    "externalLinks": "Внешние ссылки",
+    "courseNotFound": "Курс не найден",
+    "logout": "Выйти"
   }
 }

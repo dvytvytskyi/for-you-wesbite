@@ -2,18 +2,21 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
+import { getPublicData } from '@/lib/api';
 import styles from './PropertyFilters.module.css';
 
 interface Filters {
   type: 'new' | 'secondary';
   search: string;
-  location: string[];
+  location: string[]; // areaId[]
   bedrooms: number[];
   sizeFrom: string;
   sizeTo: string;
   priceFrom: string;
   priceTo: string;
   sort: string;
+  developerId?: string;
+  cityId?: string;
 }
 
 interface PropertyFiltersProps {
@@ -21,15 +24,26 @@ interface PropertyFiltersProps {
   onFilterChange: (filters: Filters) => void;
 }
 
-// Mock locations - замінити на реальні дані з API
-const locations = [
-  { id: 'downtown', name: 'Downtown Dubai', nameRu: 'Даунтаун Дубай' },
-  { id: 'palm', name: 'Palm Jumeirah', nameRu: 'Пальм Джумейра' },
-  { id: 'business-bay', name: 'Business Bay', nameRu: 'Бізнес Бей' },
-  { id: 'dubai-marina', name: 'Dubai Marina', nameRu: 'Дубай Марина' },
-  { id: 'dubai-hills', name: 'Dubai Hills', nameRu: 'Дубай Хіллз' },
-  { id: 'jbr', name: 'JBR', nameRu: 'JBR' },
-];
+interface Area {
+  id: string;
+  nameEn: string;
+  nameRu: string;
+  nameAr: string;
+  cityId: string;
+}
+
+interface City {
+  id: string;
+  nameEn: string;
+  nameRu: string;
+  nameAr: string;
+}
+
+interface Developer {
+  id: string;
+  name: string;
+  logo: string | null;
+}
 
 const sortOptions = [
   { value: 'price-desc', label: 'Price Higher', labelRu: 'Цена выше' },
@@ -48,11 +62,36 @@ export default function PropertyFilters({ filters, onFilterChange }: PropertyFil
   const [isSizeOpen, setIsSizeOpen] = useState(false);
   const [isPriceOpen, setIsPriceOpen] = useState(false);
   const [isSortOpen, setIsSortOpen] = useState(false);
+  const [isCityOpen, setIsCityOpen] = useState(false);
+  const [isDeveloperOpen, setIsDeveloperOpen] = useState(false);
+  const [areas, setAreas] = useState<Area[]>([]);
+  const [cities, setCities] = useState<City[]>([]);
+  const [developers, setDevelopers] = useState<Developer[]>([]);
+  const [loadingData, setLoadingData] = useState(true);
   const locationRef = useRef<HTMLDivElement>(null);
   const bedroomsRef = useRef<HTMLDivElement>(null);
   const sizeRef = useRef<HTMLDivElement>(null);
   const priceRef = useRef<HTMLDivElement>(null);
   const sortRef = useRef<HTMLDivElement>(null);
+  const cityRef = useRef<HTMLDivElement>(null);
+  const developerRef = useRef<HTMLDivElement>(null);
+
+  // Load public data from API
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const data = await getPublicData();
+        setAreas(data.areas);
+        setCities(data.cities);
+        setDevelopers(data.developers);
+        setLoadingData(false);
+      } catch (error) {
+        console.error('Error loading public data:', error);
+        setLoadingData(false);
+      }
+    };
+    loadData();
+  }, []);
 
   // Функція для форматування числа з розділювачами тисяч
   const formatNumber = (value: string): string => {
@@ -86,6 +125,12 @@ export default function PropertyFilters({ filters, onFilterChange }: PropertyFil
       if (sortRef.current && !sortRef.current.contains(event.target as Node)) {
         setIsSortOpen(false);
       }
+      if (cityRef.current && !cityRef.current.contains(event.target as Node)) {
+        setIsCityOpen(false);
+      }
+      if (developerRef.current && !developerRef.current.contains(event.target as Node)) {
+        setIsDeveloperOpen(false);
+      }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
@@ -98,11 +143,19 @@ export default function PropertyFilters({ filters, onFilterChange }: PropertyFil
     onFilterChange(newFilters);
   };
 
-  const handleLocationToggle = (locationId: string) => {
-    const newLocations = localFilters.location.includes(locationId)
-      ? localFilters.location.filter((l) => l !== locationId)
-      : [...localFilters.location, locationId];
+  const handleLocationToggle = (areaId: string) => {
+    const newLocations = localFilters.location.includes(areaId)
+      ? localFilters.location.filter((l) => l !== areaId)
+      : [...localFilters.location, areaId];
     handleChange('location', newLocations);
+  };
+
+  const handleCityToggle = (cityId: string) => {
+    handleChange('cityId', localFilters.cityId === cityId ? undefined : cityId);
+  };
+
+  const handleDeveloperToggle = (developerId: string) => {
+    handleChange('developerId', localFilters.developerId === developerId ? undefined : developerId);
   };
 
   const handleBedroomToggle = (bedrooms: number) => {
@@ -115,10 +168,22 @@ export default function PropertyFilters({ filters, onFilterChange }: PropertyFil
   const getLocationLabel = () => {
     if (localFilters.location.length === 0) return t('location.placeholder');
     if (localFilters.location.length === 1) {
-      const loc = locations.find((l) => l.id === localFilters.location[0]);
-      return locale === 'ru' ? loc?.nameRu || loc?.name : loc?.name;
+      const area = areas.find((a) => a.id === localFilters.location[0]);
+      return locale === 'ru' ? area?.nameRu || area?.nameEn : area?.nameEn || '';
     }
     return `${localFilters.location.length} ${t('location.selected')}`;
+  };
+
+  const getCityLabel = () => {
+    if (!localFilters.cityId) return t('city.placeholder') || 'City';
+    const city = cities.find((c) => c.id === localFilters.cityId);
+    return locale === 'ru' ? city?.nameRu || city?.nameEn : city?.nameEn || '';
+  };
+
+  const getDeveloperLabel = () => {
+    if (!localFilters.developerId) return t('developer.placeholder') || 'Developer';
+    const developer = developers.find((d) => d.id === localFilters.developerId);
+    return developer?.name || '';
   };
 
   const getBedroomsLabel = () => {
@@ -193,28 +258,109 @@ export default function PropertyFilters({ filters, onFilterChange }: PropertyFil
           />
         </div>
 
+        {/* City Dropdown */}
+        <div className={`${styles.dropdownWrapper} ${styles.locationDropdown}`} ref={cityRef}>
+          <button
+            className={styles.dropdownButton}
+            onClick={() => setIsCityOpen(!isCityOpen)}
+            disabled={loadingData}
+          >
+            <span>{getCityLabel()}</span>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" className={isCityOpen ? styles.rotated : ''}>
+              <path d="M6 9L12 15L18 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </button>
+          {isCityOpen && !loadingData && (
+            <div className={styles.dropdownMenu}>
+              <button
+                className={`${styles.dropdownItem} ${!localFilters.cityId ? styles.active : ''}`}
+                onClick={() => {
+                  handleCityToggle('');
+                  setIsCityOpen(false);
+                }}
+              >
+                {t('city.all') || 'All Cities'}
+              </button>
+              {cities.map((city) => (
+                <button
+                  key={city.id}
+                  className={`${styles.dropdownItem} ${localFilters.cityId === city.id ? styles.active : ''}`}
+                  onClick={() => {
+                    handleCityToggle(city.id);
+                    setIsCityOpen(false);
+                  }}
+                >
+                  {locale === 'ru' ? city.nameRu : city.nameEn}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
         {/* Location Dropdown */}
         <div className={`${styles.dropdownWrapper} ${styles.locationDropdown}`} ref={locationRef}>
           <button
             className={styles.dropdownButton}
             onClick={() => setIsLocationOpen(!isLocationOpen)}
+            disabled={loadingData}
           >
             <span>{getLocationLabel()}</span>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" className={isLocationOpen ? styles.rotated : ''}>
               <path d="M6 9L12 15L18 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
           </button>
-          {isLocationOpen && (
+          {isLocationOpen && !loadingData && (
             <div className={styles.dropdownMenu}>
-              {locations.map((location) => (
-                <label key={location.id} className={styles.checkboxItem}>
-                  <input
-                    type="checkbox"
-                    checked={localFilters.location.includes(location.id)}
-                    onChange={() => handleLocationToggle(location.id)}
-                  />
-                  <span>{locale === 'ru' ? location.nameRu : location.name}</span>
-                </label>
+              {areas
+                .filter((area) => !localFilters.cityId || area.cityId === localFilters.cityId)
+                .map((area) => (
+                  <label key={area.id} className={styles.checkboxItem}>
+                    <input
+                      type="checkbox"
+                      checked={localFilters.location.includes(area.id)}
+                      onChange={() => handleLocationToggle(area.id)}
+                    />
+                    <span>{locale === 'ru' ? area.nameRu : area.nameEn}</span>
+                  </label>
+                ))}
+            </div>
+          )}
+        </div>
+
+        {/* Developer Dropdown */}
+        <div className={`${styles.dropdownWrapper} ${styles.locationDropdown}`} ref={developerRef}>
+          <button
+            className={styles.dropdownButton}
+            onClick={() => setIsDeveloperOpen(!isDeveloperOpen)}
+            disabled={loadingData}
+          >
+            <span>{getDeveloperLabel()}</span>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" className={isDeveloperOpen ? styles.rotated : ''}>
+              <path d="M6 9L12 15L18 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </button>
+          {isDeveloperOpen && !loadingData && (
+            <div className={styles.dropdownMenu}>
+              <button
+                className={`${styles.dropdownItem} ${!localFilters.developerId ? styles.active : ''}`}
+                onClick={() => {
+                  handleDeveloperToggle('');
+                  setIsDeveloperOpen(false);
+                }}
+              >
+                {t('developer.all') || 'All Developers'}
+              </button>
+              {developers.map((developer) => (
+                <button
+                  key={developer.id}
+                  className={`${styles.dropdownItem} ${localFilters.developerId === developer.id ? styles.active : ''}`}
+                  onClick={() => {
+                    handleDeveloperToggle(developer.id);
+                    setIsDeveloperOpen(false);
+                  }}
+                >
+                  {developer.name}
+                </button>
               ))}
             </div>
           )}

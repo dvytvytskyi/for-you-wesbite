@@ -9,15 +9,6 @@
   max-width: 1600px;
   margin: 0 auto;
   padding: 0 40px;
-  opacity: 0;
-  transform: translateY(60px);
-  transition: opacity 1.2s ease, transform 1.2s cubic-bezier(0.34, 1.56, 0.64, 1);
-  will-change: transform, opacity;
-}
-
-.container.visible {
-  opacity: 1;
-  transform: translateY(0);
 }
 
 .title {
@@ -129,6 +120,14 @@
   border-color: #003077;
 }
 
+.paginationEllipsis {
+  padding: 0 8px;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  color: #003077;
+  opacity: 0.5;
+}
+
 @media (max-width: 1200px) {
   .grid {
     grid-template-columns: repeat(3, 1fr);
@@ -164,5 +163,41 @@
   .grid {
     grid-template-columns: 1fr;
   }
+}
+
+.loading,
+.empty,
+.error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  font-family: 'Inter', sans-serif;
+  color: #003077;
+}
+
+.loading p,
+.empty p,
+.error p {
+  font-size: 16px;
+  margin-bottom: 16px;
+}
+
+.error button {
+  padding: 10px 24px;
+  background: #003077;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+
+.error button:hover {
+  background: #002366;
 }
 

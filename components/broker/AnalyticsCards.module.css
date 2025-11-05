@@ -1,0 +1,79 @@
+.analyticsCards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 24px;
+  margin-bottom: 40px;
+}
+
+.loading {
+  text-align: center;
+  padding: 40px;
+  font-family: 'Inter', sans-serif;
+  font-size: 16px;
+  color: #666666;
+}
+
+.card {
+  background: #ffffff;
+  border: 1px solid rgba(0, 48, 119, 0.1);
+  border-radius: 12px;
+  padding: 24px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  transition: all 0.3s ease;
+}
+
+.card:hover {
+  box-shadow: 0 4px 12px rgba(0, 48, 119, 0.1);
+  transform: translateY(-2px);
+}
+
+.cardIcon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: rgba(0, 48, 119, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #003077;
+  flex-shrink: 0;
+}
+
+.cardContent {
+  flex: 1;
+}
+
+.cardTitle {
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  color: #666666;
+  margin: 0 0 8px 0;
+}
+
+.cardValue {
+  font-family: 'Inter', sans-serif;
+  font-size: 32px;
+  font-weight: 600;
+  color: #003077;
+  margin: 0;
+}
+
+@media (max-width: 900px) {
+  .analyticsCards {
+    grid-template-columns: 1fr;
+    gap: 16px;
+    margin-bottom: 32px;
+  }
+
+  .card {
+    padding: 20px;
+  }
+
+  .cardValue {
+    font-size: 28px;
+  }
+}
+

@@ -4,36 +4,9 @@ import { useState } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
 import Link from 'next/link';
 import Image from 'next/image';
+import { Property } from '@/lib/api';
+import { formatNumber } from '@/lib/utils';
 import styles from './PropertyCard.module.css';
-
-interface Property {
-  id: string;
-  name: string;
-  nameRu: string;
-  location: {
-    area: string;
-    areaRu: string;
-    city: string;
-    cityRu: string;
-  };
-  price: {
-    usd: number;
-    aed: number;
-    eur: number;
-  };
-  developer: {
-    name: string;
-    nameRu: string;
-  };
-  bedrooms: number;
-  bathrooms: number;
-  size: {
-    sqm: number;
-    sqft: number;
-  };
-  images: string[];
-  type: 'new' | 'secondary';
-}
 
 interface PropertyCardProps {
   property: Property;
@@ -53,38 +26,87 @@ export default function PropertyCard({ property }: PropertyCardProps) {
   };
 
   const getName = () => {
-    return locale === 'ru' ? property.nameRu : property.name;
+    return property.name; // API повертає name (без окремих nameRu)
   };
 
   const getLocation = () => {
-    const area = locale === 'ru' ? property.location.areaRu : property.location.area;
-    const city = locale === 'ru' ? property.location.cityRu : property.location.city;
+    const area = locale === 'ru' ? property.area.nameRu : property.area.nameEn;
+    const city = locale === 'ru' ? property.city.nameRu : property.city.nameEn;
     return `${area}, ${city}`;
   };
 
   const getDeveloper = () => {
-    return locale === 'ru' ? property.developer.nameRu : property.developer.name;
+    return property.developer.name;
   };
 
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('en-US').format(price);
+  const getPrice = () => {
+    if (property.propertyType === 'off-plan') {
+      return property.priceFromAED || 0;
+    } else {
+      return property.priceAED || 0;
+    }
+  };
+
+  const getBedrooms = () => {
+    if (property.propertyType === 'off-plan') {
+      return property.bedroomsFrom && property.bedroomsTo
+        ? `${property.bedroomsFrom}-${property.bedroomsTo}`
+        : property.bedroomsFrom || '';
+    } else {
+      return property.bedrooms || '';
+    }
+  };
+
+  const getBathrooms = () => {
+    if (property.propertyType === 'off-plan') {
+      return property.bathroomsFrom && property.bathroomsTo
+        ? `${property.bathroomsFrom}-${property.bathroomsTo}`
+        : property.bathroomsFrom || '';
+    } else {
+      return property.bathrooms || '';
+    }
+  };
+
+  const getSize = () => {
+    if (property.propertyType === 'off-plan') {
+      if (property.sizeFrom && property.sizeTo) {
+        const from = locale === 'ru' ? formatNumber(property.sizeFrom) : formatNumber(property.sizeFromSqft || 0);
+        const to = locale === 'ru' ? formatNumber(property.sizeTo) : formatNumber(property.sizeToSqft || 0);
+        const unit = locale === 'ru' ? 'м²' : 'sq.ft';
+        return `${from} - ${to} ${unit}`;
+      }
+      const size = locale === 'ru' ? (property.sizeFrom || 0) : (property.sizeFromSqft || 0);
+      const unit = locale === 'ru' ? 'м²' : 'sq.ft';
+      return `${formatNumber(size)} ${unit}`;
+    } else {
+      const size = locale === 'ru' ? (property.size || 0) : (property.sizeSqft || 0);
+      const unit = locale === 'ru' ? 'м²' : 'sq.ft';
+      return `${formatNumber(size)} ${unit}`;
+    }
   };
 
   const getPricePerSqm = () => {
-    const pricePerSqm = property.price.aed / property.size.sqm;
-    return formatPrice(Math.round(pricePerSqm));
+    const price = getPrice();
+    let size: number;
+    if (property.propertyType === 'off-plan') {
+      size = property.sizeFrom || 1;
+    } else {
+      size = property.size || 1;
+    }
+    const pricePerSqm = price / size;
+    return formatNumber(Math.round(pricePerSqm));
   };
 
   const handleImageChange = (dir: 'prev' | 'next') => {
-    if (property.images.length <= 1 || isTransitioning) return;
+    if (!property.photos || property.photos.length <= 1 || isTransitioning) return;
     
     setIsTransitioning(true);
     setPrevImageIndex(currentImageIndex);
     setDirection(dir === 'next' ? 'right' : 'left');
     
     const newIndex = dir === 'next'
-      ? (currentImageIndex + 1) % property.images.length
-      : currentImageIndex === 0 ? property.images.length - 1 : currentImageIndex - 1;
+      ? (currentImageIndex + 1) % property.photos.length
+      : currentImageIndex === 0 ? property.photos.length - 1 : currentImageIndex - 1;
     
     setCurrentImageIndex(newIndex);
     
@@ -99,13 +121,13 @@ export default function PropertyCard({ property }: PropertyCardProps) {
       <div className={styles.imageContainer}>
         <div className={styles.imageGradientTop}></div>
         <div className={styles.imageGradientBottom}></div>
-        {property.images.length > 0 && (
+        {property.photos && property.photos.length > 0 && (
           <div className={styles.imageWrapper}>
             {/* Previous image - sliding out */}
             {isTransitioning && prevImageIndex !== currentImageIndex && (
               <Image
                 key={`prev-${prevImageIndex}`}
-                src={property.images[prevImageIndex]}
+                src={property.photos[prevImageIndex]}
                 alt={getName()}
                 fill
                 style={{ objectFit: 'cover' }}
@@ -116,7 +138,7 @@ export default function PropertyCard({ property }: PropertyCardProps) {
             {/* Current image - sliding in */}
             <Image
               key={`current-${currentImageIndex}`}
-              src={property.images[currentImageIndex]}
+              src={property.photos[currentImageIndex]}
               alt={getName()}
               fill
               style={{ objectFit: 'cover' }}
@@ -125,7 +147,7 @@ export default function PropertyCard({ property }: PropertyCardProps) {
             />
           </div>
         )}
-        {property.images.length > 1 && (
+        {property.photos && property.photos.length > 1 && (
           <>
             <button
               className={`${styles.imageNav} ${styles.prev}`}
@@ -152,16 +174,19 @@ export default function PropertyCard({ property }: PropertyCardProps) {
               </svg>
             </button>
             <div className={styles.imageIndicator}>
-              {currentImageIndex + 1} / {property.images.length}
+              {currentImageIndex + 1} / {property.photos?.length || 0}
             </div>
           </>
         )}
         <div className={styles.badgesContainer}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <div className={styles.typeBadge}>
-              {property.type === 'new' ? (t('type.new').charAt(0).toUpperCase() + t('type.new').slice(1).toLowerCase()) : (t('type.secondary').charAt(0).toUpperCase() + t('type.secondary').slice(1).toLowerCase())}
+              {property.propertyType === 'off-plan' ? (t('type.offPlan') || 'Off Plan') : (t('type.secondary') || 'Secondary')}
             </div>
             <div className={styles.developerBadge}>
+              {property.developer.logo && (
+                <img src={property.developer.logo} alt={getDeveloper()} className={styles.developerLogo} />
+              )}
               <span className={styles.developerName}>{getDeveloper()}</span>
             </div>
           </div>
@@ -206,7 +231,7 @@ export default function PropertyCard({ property }: PropertyCardProps) {
               <path d="M6 10H14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
               <path d="M6 13H14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
-            <span>{property.bedrooms} {locale === 'ru' ? 'спалень' : 'beds'}</span>
+            <span>{getBedrooms()} {locale === 'ru' ? 'спалень' : 'beds'}</span>
           </div>
           <div className={styles.detailItem}>
             <svg width="16" height="16" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -216,21 +241,23 @@ export default function PropertyCard({ property }: PropertyCardProps) {
               <circle cx="12.5" cy="11" r="0.8" fill="currentColor"/>
               <path d="M10 8V11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
-            <span>{property.bathrooms} {locale === 'ru' ? 'ванн' : 'baths'}</span>
+            <span>{getBathrooms()} {locale === 'ru' ? 'ванн' : 'baths'}</span>
           </div>
           <div className={styles.detailItem}>
             <svg width="16" height="16" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
               <rect x="3" y="5" width="14" height="12" rx="1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
               <path d="M3 9H17" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
-            <span>{locale === 'ru' ? `${formatPrice(property.size.sqm)} м²` : `${formatPrice(property.size.sqft)} sq.ft`}</span>
+            <span>{getSize()}</span>
           </div>
         </div>
 
         <div className={styles.footer}>
           <div className={styles.price}>
             <span className={styles.priceAmount}>
-              {formatPrice(property.price.aed)} AED
+              {property.propertyType === 'off-plan' && property.priceFromAED
+                ? `From ${formatNumber(property.priceFromAED)} AED`
+                : `${formatNumber(getPrice())} AED`}
             </span>
           </div>
           <div className={styles.pricePerSqm}>

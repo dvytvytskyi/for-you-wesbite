@@ -7,75 +7,10 @@ import Link from 'next/link';
 import Image from 'next/image';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
+import { getProperty, Property } from '@/lib/api';
+import { formatNumber } from '@/lib/utils';
+import InvestmentForm from '@/components/investment/InvestmentForm';
 import styles from './PropertyDetail.module.css';
-
-interface PropertyData {
-  id: string;
-  propertyType: 'off-plan' | 'secondary';
-  name: string;
-  description: string;
-  photos: string[];
-  country: {
-    id: string;
-    nameEn: string;
-    nameRu: string;
-    nameAr: string;
-    code: string;
-  };
-  city: {
-    id: string;
-    nameEn: string;
-    nameRu: string;
-    nameAr: string;
-  };
-  area: {
-    id: string;
-    nameEn: string;
-    nameRu: string;
-    nameAr: string;
-  };
-  developer: {
-    id: string;
-    name: string;
-  };
-  facilities: Array<{
-    id: string;
-    nameEn: string;
-    nameRu: string;
-    nameAr: string;
-    iconName: string;
-  }>;
-  units: Array<{
-    id: string;
-    unitId: string;
-    type: 'apartment' | 'villa' | 'penthouse' | 'townhouse' | 'office';
-    price: number;
-    totalSize: number;
-    balconySize: number;
-    planImage: string;
-  }>;
-  paymentPlan?: string;
-  price?: number;
-  priceFrom?: number;
-  priceAED?: number;
-  priceFromAED?: number;
-  size?: number;
-  sizeFrom?: number;
-  sizeTo?: number;
-  sizeSqft?: number;
-  sizeFromSqft?: number;
-  sizeToSqft?: number;
-  bedrooms?: number;
-  bedroomsFrom?: number;
-  bedroomsTo?: number;
-  bathrooms?: number;
-  bathroomsFrom?: number;
-  bathroomsTo?: number;
-  latitude: number;
-  longitude: number;
-  createdAt: string;
-  updatedAt: string;
-}
 
 interface PropertyDetailProps {
   propertyId: string;
@@ -87,8 +22,9 @@ export default function PropertyDetail({ propertyId }: PropertyDetailProps) {
   const tHeader = useTranslations('header.nav');
   const locale = useLocale();
   const router = useRouter();
-  const [property, setProperty] = useState<PropertyData | null>(null);
+  const [property, setProperty] = useState<Property | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [prevImageIndex, setPrevImageIndex] = useState(0);
   const [direction, setDirection] = useState<'left' | 'right' | null>(null);
@@ -100,105 +36,22 @@ export default function PropertyDetail({ propertyId }: PropertyDetailProps) {
   const markerRef = useRef<mapboxgl.Marker | null>(null);
 
   useEffect(() => {
-    // TODO: Replace with actual API call
-    // const fetchProperty = async () => {
-    //   try {
-    //     const response = await fetch(`/api/properties/${propertyId}`);
-    //     const data = await response.json();
-    //     if (data.success && data.data[0]) {
-    //       setProperty(data.data[0]);
-    //     }
-    //   } catch (error) {
-    //     console.error('Error fetching property:', error);
-    //   } finally {
-    //     setLoading(false);
-    //   }
-    // };
-    // fetchProperty();
-
-    // Mock data for now
-    const mockProperty: PropertyData = {
-      id: propertyId,
-      propertyType: 'off-plan',
-      name: 'Ultra Premium Luxury Residential Complex with World-Class Amenities',
-      description: 'Beautiful property description with stunning views and modern amenities. This exceptional property offers spacious living areas with floor-to-ceiling windows providing panoramic views of the city skyline.',
-      photos: [
-        '/golf.jpg',
-        'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=800&h=600&fit=crop',
-        'https://images.unsplash.com/photo-1480714378408-67cf0d13bc1b?w=800&h=600&fit=crop',
-        'https://images.unsplash.com/photo-1518684079-3c830dcef090?w=800&h=600&fit=crop',
-      ],
-      country: {
-        id: '1',
-        nameEn: 'United Arab Emirates',
-        nameRu: 'Объединенные Арабские Эмираты',
-        nameAr: 'الإمارات العربية المتحدة',
-        code: 'UAE',
-      },
-      city: {
-        id: '1',
-        nameEn: 'Dubai',
-        nameRu: 'Дубай',
-        nameAr: 'دبي',
-      },
-      area: {
-        id: '1',
-        nameEn: 'Downtown Dubai',
-        nameRu: 'Даунтаун Дубай',
-        nameAr: 'دبي مارينا',
-      },
-      developer: {
-        id: '1',
-        name: 'Emaar Properties',
-      },
-      facilities: [
-        { id: '1', nameEn: 'Swimming Pool', nameRu: 'Бассейн', nameAr: 'مسبح', iconName: 'pool' },
-        { id: '2', nameEn: 'Gym', nameRu: 'Спортзал', nameAr: 'صالة رياضية', iconName: 'gym' },
-        { id: '3', nameEn: 'Parking', nameRu: 'Парковка', nameAr: 'موقف سيارات', iconName: 'parking' },
-        { id: '4', nameEn: 'Security', nameRu: 'Охорона', nameAr: 'أمن', iconName: 'security' },
-      ],
-      units: [
-        {
-          id: '1',
-          unitId: 'APT-101',
-          type: 'apartment',
-          price: 500000,
-          totalSize: 120.5,
-          balconySize: 15.2,
-          planImage: 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=800&h=600&fit=crop',
-        },
-        {
-          id: '2',
-          unitId: 'APT-102',
-          type: 'apartment',
-          price: 600000,
-          totalSize: 150.0,
-          balconySize: 20.0,
-          planImage: 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=800&h=600&fit=crop',
-        },
-      ],
-      paymentPlan: '70/30 payment plan',
-      priceFrom: 500000,
-      priceFromAED: 1836500,
-      sizeFrom: 80,
-      sizeTo: 200,
-      sizeFromSqft: 861.12,
-      sizeToSqft: 2152.78,
-      bedroomsFrom: 1,
-      bedroomsTo: 3,
-      bathroomsFrom: 1,
-      bathroomsTo: 2,
-      latitude: 25.2048,
-      longitude: 55.2708,
-      createdAt: '2024-01-15T10:00:00.000Z',
-      updatedAt: '2024-01-15T10:00:00.000Z',
+    const fetchProperty = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const data = await getProperty(propertyId);
+        setProperty(data);
+      } catch (err: any) {
+        console.error('Error fetching property:', err);
+        setError(err.message || t('notFound') || 'Property not found');
+      } finally {
+        setLoading(false);
+      }
     };
 
-    setTimeout(() => {
-      setProperty(mockProperty);
-      setLoading(false);
-    }, 500);
-  }, [propertyId]);
+    fetchProperty();
+  }, [propertyId, t]);
 
   // Initialize map when property is loaded
   useEffect(() => {
@@ -300,10 +153,11 @@ export default function PropertyDetail({ propertyId }: PropertyDetailProps) {
     );
   }
 
-  if (!property) {
+  if (error || !property) {
     return (
       <div className={styles.error}>
-        <p>{t('notFound')}</p>
+        <p>{error || t('notFound') || 'Property not found'}</p>
+        <button onClick={() => router.back()}>{t('goBack') || 'Go Back'}</button>
       </div>
     );
   }
@@ -314,11 +168,9 @@ export default function PropertyDetail({ propertyId }: PropertyDetailProps) {
   const getCityName = () => locale === 'ru' ? property.city.nameRu : property.city.nameEn;
   const getFacilityName = (facility: typeof property.facilities[0]) => 
     locale === 'ru' ? facility.nameRu : facility.nameEn;
-  const formatPrice = (price: number) => new Intl.NumberFormat('en-US').format(price);
-  const formatSize = (size: number) => new Intl.NumberFormat('en-US', { 
-    minimumFractionDigits: 0, 
-    maximumFractionDigits: 2 
-  }).format(size);
+  // Formatting functions are now imported from utils
+  const formatPrice = formatNumber;
+  const formatSize = (size: number) => formatNumber(Math.round(size * 100) / 100);
 
   const handleImageChange = (dir: 'prev' | 'next') => {
     if (property.photos.length <= 1 || isTransitioning) return;
@@ -547,8 +399,90 @@ export default function PropertyDetail({ propertyId }: PropertyDetailProps) {
           </div>
         )}
 
+        {/* Area Details */}
+        {property.area.description && (
+          <div className={styles.descriptionSection}>
+            <h2 className={styles.sectionTitle}>
+              {property.area.description.title || (locale === 'ru' ? 'О районе' : 'About Area')}
+            </h2>
+            {property.area.description.description && (
+              <p className={styles.description}>{property.area.description.description}</p>
+            )}
+          </div>
+        )}
+
+        {property.area.infrastructure && (
+          <div className={styles.descriptionSection}>
+            <h2 className={styles.sectionTitle}>
+              {property.area.infrastructure.title || (locale === 'ru' ? 'Инфраструктура' : 'Infrastructure')}
+            </h2>
+            {property.area.infrastructure.description && (
+              <p className={styles.description}>{property.area.infrastructure.description}</p>
+            )}
+          </div>
+        )}
+
+        {property.area.images && property.area.images.length > 0 && (
+          <div className={styles.areaImagesSection}>
+            <h2 className={styles.sectionTitle}>{locale === 'ru' ? 'Фото района' : 'Area Photos'}</h2>
+            <div className={styles.areaImagesGrid}>
+              {property.area.images.map((image, index) => (
+                <div key={index} className={styles.areaImageWrapper}>
+                  <Image
+                    src={image}
+                    alt={`${getAreaName()} - ${index + 1}`}
+                    fill
+                    style={{ objectFit: 'cover' }}
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Developer Details */}
+        {property.developer.description && (
+          <div className={styles.descriptionSection}>
+            <h2 className={styles.sectionTitle}>
+              {locale === 'ru' ? 'О девелопере' : 'About Developer'}
+            </h2>
+            {property.developer.logo && (
+              <div className={styles.developerLogoWrapper}>
+                <Image
+                  src={property.developer.logo}
+                  alt={property.developer.name}
+                  width={200}
+                  height={100}
+                  style={{ objectFit: 'contain' }}
+                />
+              </div>
+            )}
+            <p className={styles.description}>{property.developer.description}</p>
+          </div>
+        )}
+
+        {property.developer.images && property.developer.images.length > 0 && (
+          <div className={styles.developerImagesSection}>
+            <h2 className={styles.sectionTitle}>{locale === 'ru' ? 'Фото девелопера' : 'Developer Photos'}</h2>
+            <div className={styles.developerImagesGrid}>
+              {property.developer.images.map((image, index) => (
+                <div key={index} className={styles.developerImageWrapper}>
+                  <Image
+                    src={image}
+                    alt={`${property.developer.name} - ${index + 1}`}
+                    fill
+                    style={{ objectFit: 'cover' }}
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Units */}
-        {property.units.length > 0 && (
+        {property.units && property.units.length > 0 && (
           <div className={styles.unitsSection}>
             <div className={styles.unitsHeader}>
               <h2 className={styles.sectionTitle}>{t('availableUnits')}</h2>
@@ -600,12 +534,12 @@ export default function PropertyDetail({ propertyId }: PropertyDetailProps) {
                     </div>
                   )}
                   <div className={styles.unitDetails}>
-                    <div className={styles.unitPrice}>{formatPrice(unit.price)} AED</div>
+                    <div className={styles.unitPrice}>{formatPrice(unit.priceAED)} AED</div>
                     <div className={styles.unitSize}>
-                      {formatSize(unit.totalSize)} {t('sqm')} ({formatSize(unit.totalSize * 10.764)} {t('sqft')})
+                      {formatSize(unit.totalSize)} {t('sqm')} ({formatSize(unit.totalSizeSqft)} {t('sqft')})
                       {unit.balconySize > 0 && (
                         <span className={styles.balconySize}>
-                          + {formatSize(unit.balconySize)} {t('sqm')} {t('balcony')}
+                          + {formatSize(unit.balconySize)} {t('sqm')} ({formatSize(unit.balconySizeSqft)} {t('sqft')}) {t('balcony')}
                         </span>
                       )}
                     </div>
@@ -623,95 +557,14 @@ export default function PropertyDetail({ propertyId }: PropertyDetailProps) {
             </div>
           </div>
 
-          {/* Right Column - 30% - Contact Form */}
+          {/* Right Column - 30% - Investment Form */}
           <div className={styles.rightColumn}>
-            <div className={styles.contactForm}>
-              <h3 className={styles.contactTitle}>Meet our sales expert</h3>
-              <p className={styles.contactDescription}>
-                Contact us to learn more about this exclusive project and schedule a viewing.
-              </p>
-              
-              {/* Agent Avatar */}
-              <div className={styles.agentAvatar}>
-                <div className={styles.avatarPlaceholder}>
-                  <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                    <circle cx="12" cy="7" r="4"></circle>
-                  </svg>
-                </div>
-                <div className={styles.agentInfo}>
-                  <div className={styles.agentName}>Agent Name</div>
-                  <div className={styles.agentRole}>Real Estate Agent</div>
-                </div>
-              </div>
-
-              <form className={styles.form} onSubmit={(e) => { e.preventDefault(); }}>
-                <div className={styles.formField}>
-                  <input
-                    type="text"
-                    placeholder="Name"
-                    className={styles.input}
-                    required
-                  />
-                </div>
-
-                <div className={styles.formField}>
-                  <div className={styles.phoneInputWrapper}>
-                    <span className={styles.phonePrefix}>+</span>
-                    <input
-                      type="tel"
-                      placeholder="Phone number"
-                      className={styles.input}
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div className={styles.formField}>
-                  <textarea
-                    placeholder="Comment"
-                    className={`${styles.input} ${styles.textarea}`}
-                    rows={4}
-                  ></textarea>
-                </div>
-
-                <button type="submit" className={styles.submitButton}>
-                  Send
-                </button>
-
-                <div className={styles.agreeTerms}>
-                  <input type="checkbox" id="agree" className={styles.checkbox} required />
-                  <label htmlFor="agree" className={styles.checkboxLabel}>
-                    While submitting I agree to the{' '}
-                    <Link href={`/${locale}/privacy-policy`} className={styles.privacyLink}>
-                      Privacy Policy
-                    </Link>
-                  </label>
-                </div>
-              </form>
-
-              {/* Contact Methods */}
-              <div className={styles.contactMethods}>
-                <a href="tel:+971501234567" className={styles.contactMethod}>
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
-                  </svg>
-                  <span>+971 50 123 4567</span>
-                </a>
-                <a href="https://wa.me/971501234567" target="_blank" rel="noopener noreferrer" className={styles.contactMethod}>
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
-                  </svg>
-                  <span>WhatsApp</span>
-                </a>
-                <a href="https://t.me/username" target="_blank" rel="noopener noreferrer" className={styles.contactMethod}>
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.139-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
-                  </svg>
-                  <span>Telegram</span>
-                </a>
-              </div>
-            </div>
+            <InvestmentForm
+              propertyId={property.id}
+              propertyPriceFrom={property.priceFromAED}
+              propertyPrice={property.priceAED}
+              propertyType={property.propertyType}
+            />
           </div>
         </div>
       </div>

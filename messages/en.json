@@ -25,7 +25,10 @@
   "areas": {
     "title": "These are popular locations to live in Dubai",
     "description": "Discover the most attractive neighborhoods in Dubai, each offering a unique lifestyle, convenient amenities, and excellent investment potential.",
-    "projects": "PROPERTIES"
+    "projects": "PROPERTIES",
+    "pageTitle": "Areas",
+    "pageDescription": "Explore all the amazing neighborhoods in Dubai. Each area offers unique opportunities for living and investment.",
+    "loading": "Loading areas..."
   },
   "aboutUs": {
     "header": "ABOUT US",
@@ -225,6 +228,13 @@
   "properties": {
     "title": "Properties",
     "resultsCount": "{count, plural, =0 {No properties found} one {# property found} other {# properties found}}",
+    "showing": "Showing {count} properties",
+    "loading": "Loading properties...",
+    "errorLoading": "Error loading properties",
+    "retry": "Retry",
+    "noProperties": "No properties found",
+    "previous": "Previous",
+    "next": "Next",
     "pagination": {
       "previous": "Previous",
       "next": "Next",
@@ -234,11 +244,20 @@
   "propertyCard": {
     "type": {
       "new": "New Building",
+      "offPlan": "Off Plan",
       "secondary": "Secondary"
     },
     "developer": "Developer"
   },
   "filters": {
+    "city": {
+      "placeholder": "City",
+      "all": "All Cities"
+    },
+    "developer": {
+      "placeholder": "Developer",
+      "all": "All Developers"
+    },
     "type": {
       "offPlan": "Off Plan",
       "secondary": "Secondary"
@@ -281,6 +300,7 @@
   "propertyDetail": {
     "loading": "Loading...",
     "notFound": "Property not found",
+    "goBack": "Go Back",
     "developer": "Developer",
     "description": "Description",
     "facilities": "Facilities",
@@ -294,5 +314,123 @@
     "beds": "beds",
     "baths": "baths",
     "balcony": "balcony"
+  },
+  "investment": {
+    "title": "Submit Investment Request",
+    "description": "Fill out the form below to submit your investment request.",
+    "firstName": "First Name",
+    "firstNamePlaceholder": "Enter your first name",
+    "lastName": "Last Name",
+    "lastNamePlaceholder": "Enter your last name",
+    "email": "Email",
+    "emailPlaceholder": "your.email@example.com",
+    "phone": "Phone",
+    "phonePlaceholder": "+971501234567",
+    "amount": "Investment Amount",
+    "date": "Investment Date",
+    "notes": "Notes",
+    "notesPlaceholder": "Any additional information...",
+    "optional": "Optional",
+    "submit": "Submit Investment",
+    "submitting": "Submitting...",
+    "submitError": "Failed to submit investment",
+    "successTitle": "Investment Submitted!",
+    "successMessage": "Your investment request has been submitted successfully. We will contact you soon.",
+    "agreeTerms": "I agree to the",
+    "privacyPolicy": "Privacy Policy"
+  },
+  "developers": {
+    "pageTitle": "Developers",
+    "loading": "Loading developers...",
+    "viewButton": "View",
+    "images": "Images",
+    "createdAt": "Established",
+    "noSelection": "Select a developer to view details"
+  },
+  "areaDetail": {
+    "loading": "Loading area details...",
+    "notFound": "Area not found",
+    "offPlanProperties": "Off Plan Properties",
+    "viewAllSecondary": "View All Secondary Properties"
+  },
+  "news": {
+    "pageTitle": "News",
+    "loading": "Loading news..."
+  },
+  "newsDetail": {
+    "loading": "Loading news article...",
+    "notFound": "News article not found"
+  },
+  "auth": {
+    "loginTitle": "Sign In",
+    "loginSubtitle": "Welcome back! Please sign in to your account",
+    "registerTitle": "Create Account",
+    "registerSubtitle": "Join us and start your real estate journey",
+    "forgotPasswordTitle": "Reset Password",
+    "forgotPasswordSubtitle": "Enter your email address and we'll send you a verification code",
+    "verifyCodeSubtitle": "Enter the 6-digit code sent to your email",
+    "resetPasswordSubtitle": "Enter your new password",
+    "email": "Email",
+    "emailPlaceholder": "your.email@example.com",
+    "password": "Password",
+    "passwordPlaceholder": "Enter your password",
+    "confirmPassword": "Confirm Password",
+    "confirmPasswordPlaceholder": "Confirm your password",
+    "newPassword": "New Password",
+    "newPasswordPlaceholder": "Enter your new password",
+    "firstName": "First Name",
+    "firstNamePlaceholder": "John",
+    "lastName": "Last Name",
+    "lastNamePlaceholder": "Doe",
+    "phone": "Phone",
+    "phonePlaceholder": "+1234567890",
+    "role": "Role",
+    "roleClient": "Client",
+    "roleBroker": "Broker",
+    "roleInvestor": "Investor",
+    "licenseNumber": "License Number",
+    "licenseNumberPlaceholder": "Enter your license number",
+    "verificationCode": "Verification Code",
+    "forgotPassword": "Forgot Password?",
+    "loginButton": "Sign In",
+    "registerButton": "Create Account",
+    "sendCode": "Send Code",
+    "verifyCode": "Verify Code",
+    "resetPasswordButton": "Reset Password",
+    "loading": "Loading...",
+    "or": "or",
+    "noAccount": "Don't have an account?",
+    "registerLink": "Sign up",
+    "haveAccount": "Already have an account?",
+    "loginLink": "Sign in",
+    "backToLogin": "Back to Login",
+    "changeEmail": "Change Email",
+    "codeSentTo": "Code sent to",
+    "loginError": "Invalid email or password",
+    "registerError": "Registration failed. Please try again",
+    "forgotPasswordError": "Failed to send code. Please try again",
+    "verifyCodeError": "Invalid or expired code",
+    "resetPasswordError": "Failed to reset password. Please try again",
+    "registrationSuccess": "Account Created Successfully!",
+    "registrationSuccessText": "Your account has been created. You can now sign in.",
+    "pendingApprovalTitle": "Pending Approval",
+    "pendingApprovalText": "Your account has been created and is pending approval. You will receive a notification once your account is activated.",
+    "resetPasswordSuccess": "Password Reset Successful!",
+    "resetPasswordSuccessText": "Your password has been reset successfully. You can now sign in with your new password."
+  },
+  "broker": {
+    "dashboardTitle": "Broker Dashboard",
+    "knowledgeBase": "Knowledge Base",
+    "totalCourses": "Total Courses",
+    "completedCourses": "Completed Courses",
+    "inProgressCourses": "In Progress",
+    "completionRate": "Completion Rate",
+    "sections": "sections",
+    "links": "links",
+    "loading": "Loading...",
+    "backToCourses": "Back to Courses",
+    "externalLinks": "External Links",
+    "courseNotFound": "Course not found",
+    "logout": "Log Out"
   }
 }

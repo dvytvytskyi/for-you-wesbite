@@ -18,6 +18,18 @@ const nextConfig = {
         protocol: 'https',
         hostname: 'elysian.com',
       },
+      {
+        protocol: 'https',
+        hostname: 'files.alnair.ae',
+      },
+      {
+        protocol: 'https',
+        hostname: 'res.cloudinary.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'cloudinary.com',
+      },
     ],
   },
 };
