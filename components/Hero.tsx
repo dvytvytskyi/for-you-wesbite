@@ -1,26 +1,78 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
+import { useRouter } from 'next/navigation';
+import { getPublicData } from '@/lib/api';
 import styles from './Hero.module.css';
+
+interface Area {
+  id: string;
+  nameEn: string;
+  nameRu: string;
+  nameAr: string;
+  cityId: string;
+}
 
 export default function Hero() {
   const t = useTranslations('hero');
-  const [searchQuery, setSearchQuery] = useState('');
+  const locale = useLocale();
+  const router = useRouter();
+  const [selectedArea, setSelectedArea] = useState<Area | null>(null);
   const [selectedBedrooms, setSelectedBedrooms] = useState<string>('all');
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [isAreaDropdownOpen, setIsAreaDropdownOpen] = useState(false);
+  const [isBedroomsDropdownOpen, setIsBedroomsDropdownOpen] = useState(false);
+  const [areas, setAreas] = useState<Area[]>([]);
+  const [loading, setLoading] = useState(true);
+  const areaDropdownRef = useRef<HTMLDivElement>(null);
+  const bedroomsDropdownRef = useRef<HTMLDivElement>(null);
 
   const bedroomsOptions = ['all', '1', '2', '3', '4', '5+'];
 
+  // Load areas from API
+  useEffect(() => {
+    const loadAreas = async () => {
+      try {
+        const publicData = await getPublicData();
+        if (publicData.areas && Array.isArray(publicData.areas)) {
+          setAreas(publicData.areas);
+        }
+      } catch (error) {
+        console.error('Error loading areas:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadAreas();
+  }, []);
+
   const handleSearch = () => {
-    // TODO: Implement search functionality
-    console.log('Search:', searchQuery, 'Bedrooms:', selectedBedrooms);
+    if (!selectedArea) return;
+
+    const params = new URLSearchParams();
+    params.set('areaId', selectedArea.id);
+    if (selectedBedrooms !== 'all') {
+      params.set('bedrooms', selectedBedrooms);
+    }
+
+    const localePrefix = locale === 'en' ? '' : `/${locale}`;
+    router.push(`${localePrefix}/properties?${params.toString()}`);
+  };
+
+  const handleAreaSelect = (area: Area) => {
+    setSelectedArea(area);
+    setIsAreaDropdownOpen(false);
   };
 
   const handleBedroomSelect = (value: string) => {
     setSelectedBedrooms(value);
-    setIsDropdownOpen(false);
+    setIsBedroomsDropdownOpen(false);
+  };
+
+  const getAreaName = (area: Area | null) => {
+    if (!area) return t('search.placeholder');
+    return locale === 'ru' ? area.nameRu : area.nameEn;
   };
 
   const getBedroomLabel = (value: string) => {
@@ -30,8 +82,11 @@ export default function Hero() {
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsDropdownOpen(false);
+      if (areaDropdownRef.current && !areaDropdownRef.current.contains(event.target as Node)) {
+        setIsAreaDropdownOpen(false);
+      }
+      if (bedroomsDropdownRef.current && !bedroomsDropdownRef.current.contains(event.target as Node)) {
+        setIsBedroomsDropdownOpen(false);
       }
     };
 
@@ -61,7 +116,7 @@ export default function Hero() {
         <p className={styles.subtitle}>{t('subtitle')}</p>
         
         <div className={styles.searchBlock}>
-          <div className={styles.searchInputWrapper}>
+          <div className={styles.searchInputWrapper} ref={areaDropdownRef}>
             <svg
               className={styles.searchIcon}
               width="20"
@@ -85,25 +140,16 @@ export default function Hero() {
                 strokeLinejoin="round"
               />
             </svg>
-            <input
-              type="text"
-              placeholder={t('search.placeholder')}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-              className={styles.searchInput}
-            />
-          </div>
-          
-          <div className={styles.dropdownWrapper} ref={dropdownRef}>
             <button
               type="button"
-              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-              className={styles.bedroomsSelect}
+              onClick={() => setIsAreaDropdownOpen(!isAreaDropdownOpen)}
+              className={styles.areaSelect}
             >
-              <span>{getBedroomLabel(selectedBedrooms)}</span>
+              <span className={selectedArea ? '' : styles.placeholder}>
+                {getAreaName(selectedArea)}
+              </span>
               <svg
-                className={`${styles.dropdownArrow} ${isDropdownOpen ? styles.dropdownArrowOpen : ''}`}
+                className={`${styles.dropdownArrow} ${isAreaDropdownOpen ? styles.dropdownArrowOpen : ''}`}
                 width="12"
                 height="8"
                 viewBox="0 0 12 8"
@@ -120,7 +166,54 @@ export default function Hero() {
               </svg>
             </button>
             
-            {isDropdownOpen && (
+            {isAreaDropdownOpen && (
+              <div className={styles.dropdownMenu}>
+                {loading ? (
+                  <div className={styles.dropdownItem}>Loading...</div>
+                ) : areas.length === 0 ? (
+                  <div className={styles.dropdownItem}>No areas available</div>
+                ) : (
+                  areas.map((area) => (
+                    <button
+                      key={area.id}
+                      type="button"
+                      onClick={() => handleAreaSelect(area)}
+                      className={`${styles.dropdownItem} ${selectedArea?.id === area.id ? styles.dropdownItemActive : ''}`}
+                    >
+                      {locale === 'ru' ? area.nameRu : area.nameEn}
+                    </button>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
+          
+          <div className={styles.dropdownWrapper} ref={bedroomsDropdownRef}>
+            <button
+              type="button"
+              onClick={() => setIsBedroomsDropdownOpen(!isBedroomsDropdownOpen)}
+              className={styles.bedroomsSelect}
+            >
+              <span>{getBedroomLabel(selectedBedrooms)}</span>
+              <svg
+                className={`${styles.dropdownArrow} ${isBedroomsDropdownOpen ? styles.dropdownArrowOpen : ''}`}
+                width="12"
+                height="8"
+                viewBox="0 0 12 8"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M1 1.5L6 6.5L11 1.5"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </button>
+            
+            {isBedroomsDropdownOpen && (
               <div className={styles.dropdownMenu}>
                 {bedroomsOptions.map((option) => (
                   <button
@@ -136,7 +229,11 @@ export default function Hero() {
             )}
           </div>
           
-          <button onClick={handleSearch} className={styles.searchButton}>
+          <button 
+            onClick={handleSearch} 
+            className={styles.searchButton}
+            disabled={!selectedArea}
+          >
             {t('search.searchButton')}
           </button>
         </div>

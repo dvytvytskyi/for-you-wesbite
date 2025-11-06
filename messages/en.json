@@ -16,10 +16,10 @@
     "title": "Finding Spaces That Inspire Modern World in Dubai",
     "subtitle": "With years of experience in the market, we specialize in helping clients sell their properties quickly and at the best possible price, ensuring a smooth and successful transaction from start to finish",
     "search": {
-      "placeholder": "Search properties...",
+      "placeholder": "Search by area name",
       "bedrooms": "Bedrooms",
       "bedroomsAll": "All",
-      "searchButton": "Search"
+      "searchButton": "Search Properties"
     }
   },
   "areas": {

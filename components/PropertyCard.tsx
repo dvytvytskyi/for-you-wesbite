@@ -6,13 +6,15 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Property } from '@/lib/api';
 import { formatNumber } from '@/lib/utils';
+import { saveScrollState } from '@/lib/scrollRestoration';
 import styles from './PropertyCard.module.css';
 
 interface PropertyCardProps {
   property: Property;
+  currentPage?: number;
 }
 
-export default function PropertyCard({ property }: PropertyCardProps) {
+export default function PropertyCard({ property, currentPage = 1 }: PropertyCardProps) {
   const t = useTranslations('propertyCard');
   const locale = useLocale();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -31,9 +33,27 @@ export default function PropertyCard({ property }: PropertyCardProps) {
   };
 
   const getLocation = () => {
-    const area = locale === 'ru' ? property.area.nameRu : property.area.nameEn;
-    const city = locale === 'ru' ? property.city.nameRu : property.city.nameEn;
-    return `${area}, ${city}`;
+    // For off-plan properties: area is a string "areaName, cityName"
+    // For secondary properties: area is an object
+    if (typeof property.area === 'string') {
+      // Off-plan: area already contains "areaName, cityName"
+      return property.area;
+    }
+    
+    // Secondary: area is an object, need to combine with city
+    if (!property.area || !property.city) {
+      return '';
+    }
+    
+    const areaName = locale === 'ru' ? property.area.nameRu : property.area.nameEn;
+    const cityName = locale === 'ru' ? property.city.nameRu : property.city.nameEn;
+    
+    // Format: "area name, city name"
+    const parts = [];
+    if (areaName) parts.push(areaName);
+    if (cityName) parts.push(cityName);
+    
+    return parts.join(', ');
   };
 
   const getDeveloper = () => {
@@ -123,8 +143,17 @@ export default function PropertyCard({ property }: PropertyCardProps) {
     setCurrentImageIndex(0);
   }, [property.id]);
 
+  const handleClick = () => {
+    // Save scroll position and page before navigating
+    saveScrollState(currentPage);
+  };
+
   return (
-    <Link href={getLocalizedPath(`/properties/${property.id}`)} className={styles.card}>
+    <Link 
+      href={getLocalizedPath(`/properties/${property.id}`)} 
+      className={styles.card}
+      onClick={handleClick}
+    >
       <div className={styles.imageContainer}>
         <div className={styles.imageGradientTop}></div>
         <div className={styles.imageGradientBottom}></div>

@@ -2,8 +2,8 @@ import axios, { AxiosInstance, AxiosError } from 'axios';
 
 // API Configuration
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://admin.foryou-realestate.com/api';
-const API_KEY = process.env.NEXT_PUBLIC_API_KEY || 'ak_aa4d19418b385c370939b45365d0c687ddbdef7cbe9a72548748ef67f5e469e1';
-const API_SECRET = process.env.NEXT_PUBLIC_API_SECRET || 'as_623caef2632983630ce11293e544504c834a9ab1015fa2c75a7c2583d6f28d7c';
+const API_KEY = process.env.NEXT_PUBLIC_API_KEY || 'fyr_8f968d115244e76d209a26f5177c5c998aca0e8dbce4a6e9071b2bc43b78f6d2';
+const API_SECRET = process.env.NEXT_PUBLIC_API_SECRET || '5c8335f9c7e476cbe77454fd32532cc68f57baf86f7f96e6bafcf682f98b275bc579d73484cf5bada7f4cd7d071b122778b71f414fb96b741c5fe60394d1795f';
 
 // Create axios instance
 const apiClient: AxiosInstance = axios.create({
@@ -51,17 +51,15 @@ apiClient.interceptors.request.use(
         },
         apiKeyLength: apiKeyValue?.length || 0,
         apiSecretLength: apiSecretValue?.length || 0,
-        apiKeyStartsWith: apiKeyValue ? apiKeyValue.substring(0, 3) : 'N/A',
-        apiSecretStartsWith: apiSecretValue ? apiSecretValue.substring(0, 3) : 'N/A',
+        apiKeyStartsWith: apiKeyValue ? apiKeyValue.substring(0, 4) : 'N/A',
+        apiSecretStartsWith: apiSecretValue ? apiSecretValue.substring(0, 4) : 'N/A',
       });
       
       // Validate API keys format
-      if (apiKeyValue && !apiKeyValue.startsWith('ak_')) {
-        console.warn('⚠️ API Key does not start with "ak_" - might be invalid format');
+      if (apiKeyValue && !apiKeyValue.startsWith('fyr_')) {
+        console.warn('⚠️ API Key does not start with "fyr_" - might be invalid format');
       }
-      if (apiSecretValue && !apiSecretValue.startsWith('as_')) {
-        console.warn('⚠️ API Secret does not start with "as_" - might be invalid format');
-      }
+      // Note: API Secret doesn't have a prefix, it's just a hash
     }
     
     return config;
@@ -107,13 +105,13 @@ apiClient.interceptors.response.use(
           
           if (apiKeyValue) {
             console.error('   API Key sent:', apiKeyValue.substring(0, 30) + '...');
-            console.error('   API Key starts with:', apiKeyValue.substring(0, 3));
-            console.error('   Expected: "ak_"');
+            console.error('   API Key starts with:', apiKeyValue.substring(0, 4));
+            console.error('   Expected: "fyr_"');
           }
           if (apiSecretValue) {
             console.error('   API Secret sent:', apiSecretValue.substring(0, 30) + '...');
-            console.error('   API Secret starts with:', apiSecretValue.substring(0, 3));
-            console.error('   Expected: "as_"');
+            console.error('   API Secret length:', apiSecretValue.length);
+            console.error('   Note: API Secret is a hash without prefix');
           }
         }
       }
@@ -180,7 +178,9 @@ export interface Property {
     nameRu: string;
     nameAr: string;
   };
-  area: {
+  // For off-plan properties: area is a string "areaName, cityName" (e.g., "JVC, Dubai")
+  // For secondary properties: area is an object with full area details
+  area: string | {
     id: string;
     nameEn: string;
     nameRu: string;
@@ -591,10 +591,13 @@ export async function getProperties(filters?: PropertyFilters): Promise<Property
         
         // Debug: Check if properties have area data
         if (properties.length > 0 && process.env.NODE_ENV === 'development') {
-          const propertiesWithArea = properties.filter(p => p.area && p.area.id).length;
+          const propertiesWithArea = properties.filter(p => typeof p.area === 'object' && p.area && p.area.id).length;
           console.log(`Properties with area data: ${propertiesWithArea} / ${properties.length}`);
           if (filters?.areaIds || filters?.areaId) {
-            const sampleAreaIds = properties.slice(0, 10).map(p => p.area?.id).filter(Boolean);
+            const sampleAreaIds = properties.slice(0, 10).map(p => {
+              if (typeof p.area === 'object') return p.area?.id;
+              return null;
+            }).filter(Boolean);
             console.log('Sample area IDs from properties:', sampleAreaIds);
             console.log('Looking for areaIds:', filters?.areaIds || [filters?.areaId].filter(Boolean));
           }
@@ -683,20 +686,23 @@ export async function getProperties(filters?: PropertyFilters): Promise<Property
             const sampleAreaIds = propertiesBeforeFilter.slice(0, 10).map(p => ({
               propertyId: p.id,
               propertyName: p.name,
-              areaId: p.area?.id,
-              areaName: p.area?.nameEn,
+              areaId: typeof p.area === 'object' ? p.area?.id : null,
+              areaName: typeof p.area === 'object' ? p.area?.nameEn : p.area,
             }));
             console.log('Sample area IDs from properties BEFORE filter:', sampleAreaIds);
             console.log('Looking for areaIds:', filters.areaIds);
             
             // Check if any property matches
             const matchingCount = propertiesBeforeFilter.filter(p => 
-              p.area?.id && filters.areaIds!.includes(p.area.id)
+              typeof p.area === 'object' && p.area?.id && filters.areaIds!.includes(p.area.id)
             ).length;
             console.log(`Found ${matchingCount} properties that should match the area filter`);
             
             // Show all unique area IDs in the dataset
-            const uniqueAreaIds = [...new Set(propertiesBeforeFilter.map(p => p.area?.id).filter(Boolean))];
+            const uniqueAreaIds = [...new Set(propertiesBeforeFilter.map(p => {
+              if (typeof p.area === 'object') return p.area?.id;
+              return null;
+            }).filter(Boolean))];
             console.log(`Total unique area IDs in dataset: ${uniqueAreaIds.length}`);
             console.log('First 20 unique area IDs:', uniqueAreaIds.slice(0, 20));
             
@@ -711,7 +717,8 @@ export async function getProperties(filters?: PropertyFilters): Promise<Property
           }
           
           properties = properties.filter(p => {
-            if (!p.area || !p.area.id) {
+            // Only filter by areaId for secondary properties (where area is an object)
+            if (typeof p.area !== 'object' || !p.area.id) {
               return false;
             }
             return filters.areaIds!.includes(p.area.id);
@@ -736,13 +743,17 @@ export async function getProperties(filters?: PropertyFilters): Promise<Property
           
           // Debug: Show sample area IDs BEFORE filtering
           if (process.env.NODE_ENV === 'development' && before > 0) {
-            const sampleAreaIds = properties.slice(0, 10).map(p => p.area?.id).filter(Boolean);
+            const sampleAreaIds = properties.slice(0, 10).map(p => {
+              if (typeof p.area === 'object') return p.area?.id;
+              return null;
+            }).filter(Boolean);
             console.log('Sample area IDs from properties BEFORE filter:', sampleAreaIds);
             console.log('Looking for areaId:', filters.areaId);
           }
           
           properties = properties.filter(p => {
-            if (!p.area || !p.area.id) return false;
+            // Only filter by areaId for secondary properties (where area is an object)
+            if (typeof p.area !== 'object' || !p.area.id) return false;
             return p.area.id === filters.areaId;
           });
           

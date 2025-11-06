@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef, startTransition } from 'react';
 import { useTranslations } from 'next-intl';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { useDebounce } from '@/lib/utils';
 import { getProperties, Property, PropertyFilters as ApiPropertyFilters } from '@/lib/api';
+import { restoreScrollState } from '@/lib/scrollRestoration';
 import styles from './PropertiesList.module.css';
 import PropertyCard from './PropertyCard';
 import PropertyFilters from './PropertyFilters';
@@ -120,7 +121,15 @@ const filtersToUrlParams = (filters: Filters, page?: number): URLSearchParams =>
   if (filters.sort !== 'newest') params.set('sort', filters.sort);
   if (filters.developerId) params.set('developerId', filters.developerId);
   if (filters.cityId) params.set('cityId', filters.cityId);
-  if (page && page > 1) params.set('page', page.toString());
+  // Always include page parameter if provided (even for page 1)
+  if (page !== undefined && page !== null) {
+    if (page > 1) {
+      params.set('page', page.toString());
+    } else {
+      // For page 1, remove page parameter if it exists (cleaner URL)
+      params.delete('page');
+    }
+  }
   
   return params;
 };
@@ -147,6 +156,11 @@ export default function PropertiesList() {
   const router = useRouter();
   const pathname = usePathname();
   
+  // Create a new searchParams object for URL updates
+  const createSearchParams = useCallback((newFilters: Filters, page?: number): URLSearchParams => {
+    return filtersToUrlParams(newFilters, page);
+  }, []);
+  
   const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -172,6 +186,32 @@ export default function PropertiesList() {
   // Initialize page from URL
   const initialPage = searchParams.get('page') ? parseInt(searchParams.get('page') || '1', 10) : 1;
   const [currentPage, setCurrentPage] = useState(initialPage);
+  const [scrollRestored, setScrollRestored] = useState(false);
+
+  // Sync page with URL when URL changes (e.g., browser back/forward)
+  // Use a ref to track if we're updating URL ourselves to avoid loops
+  const isUpdatingUrlRef = useRef(false);
+  
+  useEffect(() => {
+    // Skip if we're the ones updating the URL
+    if (isUpdatingUrlRef.current) {
+      // Reset flag after a delay
+      setTimeout(() => {
+        isUpdatingUrlRef.current = false;
+      }, 100);
+      return;
+    }
+    
+    const urlPage = searchParams.get('page') ? parseInt(searchParams.get('page') || '1', 10) : 1;
+    setCurrentPage((prevPage) => {
+      // Only update if URL page is different from current page
+      if (urlPage !== prevPage && urlPage >= 1) {
+        console.log('Syncing page from URL:', urlPage, 'prev:', prevPage);
+        return urlPage;
+      }
+      return prevPage;
+    });
+  }, [searchParams]);
 
   // Debounce search
   const debouncedSearch = useDebounce(filters.search, 500);
@@ -210,32 +250,93 @@ export default function PropertiesList() {
     }
   }, [filters.type, filters.location, filters.bedrooms, filters.sizeFrom, filters.sizeTo, filters.priceFrom, filters.priceTo, filters.sort, filters.developerId, filters.cityId, debouncedSearch, t]);
 
-  useEffect(() => {
-    loadProperties();
-    setCurrentPage(1); // Reset to first page when filters change
-  }, [loadProperties]);
-
   // Update URL when filters or page change
   const updateUrl = useCallback((newFilters: Filters, page?: number) => {
-    const params = filtersToUrlParams(newFilters, page);
-    const newUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname;
-    router.replace(newUrl, { scroll: false });
-  }, [pathname, router]);
+    isUpdatingUrlRef.current = true; // Mark that we're updating URL ourselves
+    const params = createSearchParams(newFilters, page);
+    const queryString = params.toString();
+    const newUrl = queryString ? `${pathname}?${queryString}` : pathname;
+    
+    console.log('updateUrl called:', { page, newUrl, params: queryString, currentUrl: window.location.href });
+    
+    // Use router.replace with the full URL including query string
+    // Next.js App Router should handle this correctly
+    const urlWithQuery = queryString ? `${pathname}?${queryString}` : pathname;
+    
+    // Use startTransition for non-urgent URL updates
+    startTransition(() => {
+      router.replace(urlWithQuery, { scroll: false });
+    });
+    
+    // Force URL update in browser address bar immediately
+    if (typeof window !== 'undefined' && window.history) {
+      window.history.replaceState(null, '', urlWithQuery);
+      
+      // Reset flag after a delay
+      setTimeout(() => {
+        isUpdatingUrlRef.current = false;
+      }, 100);
+    } else {
+      setTimeout(() => {
+        isUpdatingUrlRef.current = false;
+      }, 100);
+    }
+  }, [pathname, router, createSearchParams]);
+
+  useEffect(() => {
+    loadProperties();
+  }, [loadProperties]);
+
+  // Restore scroll position and page when returning from property detail page
+  useEffect(() => {
+    if (scrollRestored || loading) return;
+    
+    const restoredState = restoreScrollState();
+    if (restoredState) {
+      // Update page if it was restored and different from current
+      if (restoredState.page !== currentPage) {
+        setCurrentPage(restoredState.page);
+        updateUrl(filters, restoredState.page);
+      }
+      // Scroll position is restored automatically by restoreScrollState function
+      setScrollRestored(true);
+    }
+  }, [loading, scrollRestored, currentPage, filters, updateUrl]);
 
   const handleFilterChange = (newFilters: Filters) => {
     setFilters(newFilters);
     setCurrentPage(1); // Reset to first page when filters change
+    setScrollRestored(false); // Reset scroll restoration flag when filters change
     updateUrl(newFilters, 1); // Update URL (reset page to 1)
   };
 
   // Calculate pagination
-  const totalPages = Math.ceil(properties.length / ITEMS_PER_PAGE);
-  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const totalPages = Math.ceil(properties.length / ITEMS_PER_PAGE) || 1;
+  
+  // Ensure currentPage is within valid range
+  const validPage = totalPages > 0 ? Math.min(Math.max(1, currentPage), totalPages) : 1;
+  const startIndex = (validPage - 1) * ITEMS_PER_PAGE;
   const endIndex = startIndex + ITEMS_PER_PAGE;
   const currentProperties = properties.slice(startIndex, endIndex);
 
+  // Sync currentPage if it's out of bounds (but only if we have properties loaded)
+  useEffect(() => {
+    if (properties.length > 0 && totalPages > 0 && currentPage > totalPages) {
+      console.log(`Current page ${currentPage} is out of bounds (total: ${totalPages}), resetting to 1`);
+      setCurrentPage(1);
+      updateUrl(filters, 1);
+    }
+  }, [totalPages, currentPage, filters, updateUrl, properties.length]);
+
   const handlePageChange = (page: number) => {
+    if (page < 1 || page > totalPages) {
+      console.warn('Invalid page number:', page, 'Total pages:', totalPages);
+      return; // Validate page number
+    }
+    
+    console.log('handlePageChange called with page:', page, 'Total pages:', totalPages);
     setCurrentPage(page);
+    setScrollRestored(false); // Reset scroll restoration when manually changing page
     updateUrl(filters, page); // Update URL with new page
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -281,15 +382,15 @@ export default function PropertiesList() {
             </div>
             <div className={styles.grid}>
               {currentProperties.map((property) => (
-                <PropertyCard key={property.id} property={property} />
+                <PropertyCard key={property.id} property={property} currentPage={currentPage} />
               ))}
             </div>
             {totalPages > 1 && (
               <div className={styles.pagination}>
                 <button
                   className={styles.paginationButton}
-                  onClick={() => handlePageChange(currentPage - 1)}
-                  disabled={currentPage === 1}
+                  onClick={() => handlePageChange(validPage - 1)}
+                  disabled={validPage === 1}
                 >
                   {t('previous') || 'Previous'}
                 </button>
@@ -299,18 +400,18 @@ export default function PropertiesList() {
                     if (
                       page === 1 ||
                       page === totalPages ||
-                      (page >= currentPage - 2 && page <= currentPage + 2)
+                      (page >= validPage - 2 && page <= validPage + 2)
                     ) {
                       return (
                         <button
                           key={page}
-                          className={`${styles.paginationNumber} ${currentPage === page ? styles.active : ''}`}
+                          className={`${styles.paginationNumber} ${validPage === page ? styles.active : ''}`}
                           onClick={() => handlePageChange(page)}
                         >
                           {page}
                         </button>
                       );
-                    } else if (page === currentPage - 3 || page === currentPage + 3) {
+                    } else if (page === validPage - 3 || page === validPage + 3) {
                       return <span key={page} className={styles.paginationEllipsis}>...</span>;
                     }
                     return null;
@@ -318,8 +419,8 @@ export default function PropertiesList() {
                 </div>
                 <button
                   className={styles.paginationButton}
-                  onClick={() => handlePageChange(currentPage + 1)}
-                  disabled={currentPage === totalPages}
+                  onClick={() => handlePageChange(validPage + 1)}
+                  disabled={validPage === totalPages}
                 >
                   {t('next') || 'Next'}
                 </button>

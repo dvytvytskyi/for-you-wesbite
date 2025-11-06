@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import Image from 'next/image';
 import styles from './PropertyPopup.module.css';
 
@@ -51,12 +53,18 @@ interface PropertyPopupProps {
 export default function PropertyPopup({ property, onClose }: PropertyPopupProps) {
   const t = useTranslations('propertyCard');
   const locale = useLocale();
+  const router = useRouter();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [prevImageIndex, setPrevImageIndex] = useState(0);
   const [direction, setDirection] = useState<'left' | 'right' | null>(null);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [isFavorite, setIsFavorite] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
+
+  const getPropertyPath = () => {
+    const localePrefix = locale === 'en' ? '' : `/${locale}`;
+    return `${localePrefix}/properties/${property.id}`;
+  };
 
   if (!property) return null;
 
@@ -237,9 +245,13 @@ export default function PropertyPopup({ property, onClose }: PropertyPopupProps)
 
         {/* Fixed bottom actions */}
         <div className={styles.bottomActions}>
-          <button className={styles.actionButton}>
+          <Link 
+            href={getPropertyPath()}
+            className={styles.actionButton}
+            onClick={handleClose}
+          >
             View full property
-          </button>
+          </Link>
           <button 
             className={`${styles.actionButton} ${isFavorite ? styles.actionButtonLiked : ''}`}
             onClick={() => setIsFavorite(!isFavorite)}

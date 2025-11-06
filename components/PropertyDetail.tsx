@@ -10,6 +10,7 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 import { getProperty, Property } from '@/lib/api';
 import { formatNumber } from '@/lib/utils';
 import InvestmentForm from '@/components/investment/InvestmentForm';
+import PropertyDetailSkeleton from '@/components/PropertyDetailSkeleton';
 import styles from './PropertyDetail.module.css';
 
 interface PropertyDetailProps {
@@ -146,11 +147,7 @@ export default function PropertyDetail({ propertyId }: PropertyDetailProps) {
   }, [property]);
 
   if (loading) {
-    return (
-      <div className={styles.loading}>
-        <p>{t('loading')}</p>
-      </div>
-    );
+    return <PropertyDetailSkeleton />;
   }
 
   if (error || !property) {
@@ -164,8 +161,24 @@ export default function PropertyDetail({ propertyId }: PropertyDetailProps) {
 
   const getName = () => property.name;
   const getDescription = () => property.description;
-  const getAreaName = () => locale === 'ru' ? property.area.nameRu : property.area.nameEn;
+  // For off-plan properties: area is a string "areaName, cityName"
+  // For secondary properties: area is an object
+  const getAreaName = () => {
+    if (typeof property.area === 'string') {
+      // Off-plan: extract area name from string (before comma)
+      return property.area.split(',')[0].trim();
+    }
+    return locale === 'ru' ? property.area.nameRu : property.area.nameEn;
+  };
   const getCityName = () => locale === 'ru' ? property.city.nameRu : property.city.nameEn;
+  const getLocation = () => {
+    if (typeof property.area === 'string') {
+      // Off-plan: area already contains "areaName, cityName"
+      return property.area;
+    }
+    // Secondary: combine area and city
+    return `${getAreaName()}, ${getCityName()}`;
+  };
   const getFacilityName = (facility: typeof property.facilities[0]) => 
     locale === 'ru' ? facility.nameRu : facility.nameEn;
   // Formatting functions are now imported from utils
@@ -330,7 +343,7 @@ export default function PropertyDetail({ propertyId }: PropertyDetailProps) {
                 <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
                 <circle cx="12" cy="10" r="3"></circle>
               </svg>
-              <span>{getAreaName()}, {getCityName()}</span>
+              <span>{getLocation()}</span>
             </div>
           </div>
 
@@ -401,8 +414,8 @@ export default function PropertyDetail({ propertyId }: PropertyDetailProps) {
           </div>
         )}
 
-        {/* Area Details */}
-        {property.area.description && (
+        {/* Area Details - Only show for secondary properties (where area is an object) */}
+        {typeof property.area === 'object' && property.area.description && (
           <div className={styles.descriptionSection}>
             <h2 className={styles.sectionTitle}>
               {property.area.description.title || (locale === 'ru' ? 'О районе' : 'About Area')}
@@ -413,7 +426,7 @@ export default function PropertyDetail({ propertyId }: PropertyDetailProps) {
           </div>
         )}
 
-        {property.area.infrastructure && (
+        {typeof property.area === 'object' && property.area.infrastructure && (
           <div className={styles.descriptionSection}>
             <h2 className={styles.sectionTitle}>
               {property.area.infrastructure.title || (locale === 'ru' ? 'Инфраструктура' : 'Infrastructure')}
@@ -424,7 +437,7 @@ export default function PropertyDetail({ propertyId }: PropertyDetailProps) {
           </div>
         )}
 
-        {property.area.images && property.area.images.length > 0 && (
+        {typeof property.area === 'object' && property.area.images && property.area.images.length > 0 && (
           <div className={styles.areaImagesSection}>
             <h2 className={styles.sectionTitle}>{locale === 'ru' ? 'Фото района' : 'Area Photos'}</h2>
             <div className={styles.areaImagesGrid}>

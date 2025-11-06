@@ -1,0 +1,85 @@
+import styles from './PropertyDetailSkeleton.module.css';
+
+export default function PropertyDetailSkeleton() {
+  return (
+    <div className={styles.container}>
+      {/* Breadcrumb Skeleton */}
+      <div className={styles.breadcrumb}>
+        <div className={styles.breadcrumbSkeleton}></div>
+        <div className={styles.breadcrumbSkeleton}></div>
+        <div className={styles.breadcrumbSkeleton}></div>
+      </div>
+
+      {/* Hero Image Skeleton */}
+      <div className={styles.heroSection}>
+        <div className={styles.heroImageSkeleton}></div>
+      </div>
+
+      {/* Content Section */}
+      <div className={styles.content}>
+        <div className={styles.contentWrapper}>
+          {/* Left Column */}
+          <div className={styles.leftColumn}>
+            {/* Main Info */}
+            <div className={styles.mainInfo}>
+              <div className={styles.header}>
+                <div className={styles.titleSkeleton}></div>
+                <div className={styles.locationSkeleton}></div>
+              </div>
+
+              <div className={styles.priceSection}>
+                <div className={styles.priceSkeleton}></div>
+                <div className={styles.paymentPlanSkeleton}></div>
+              </div>
+
+              <div className={styles.details}>
+                <div className={styles.detailItemSkeleton}></div>
+                <div className={styles.detailItemSkeleton}></div>
+                <div className={styles.detailItemSkeleton}></div>
+              </div>
+
+              <div className={styles.developerSkeleton}></div>
+            </div>
+
+            {/* Description Section */}
+            <div className={styles.descriptionSection}>
+              <div className={styles.sectionTitleSkeleton}></div>
+              <div className={styles.descriptionLine}></div>
+              <div className={styles.descriptionLine}></div>
+              <div className={styles.descriptionLine} style={{ width: '60%' }}></div>
+            </div>
+
+            {/* Facilities Section */}
+            <div className={styles.facilitiesSection}>
+              <div className={styles.sectionTitleSkeleton}></div>
+              <div className={styles.facilitiesList}>
+                {[...Array(6)].map((_, i) => (
+                  <div key={i} className={styles.facilityItemSkeleton}></div>
+                ))}
+              </div>
+            </div>
+
+            {/* Map Section */}
+            <div className={styles.mapSection}>
+              <div className={styles.sectionTitleSkeleton}></div>
+              <div className={styles.mapSkeleton}></div>
+            </div>
+          </div>
+
+          {/* Right Column - Investment Form */}
+          <div className={styles.rightColumn}>
+            <div className={styles.investmentFormSkeleton}>
+              <div className={styles.formTitleSkeleton}></div>
+              <div className={styles.formFieldSkeleton}></div>
+              <div className={styles.formFieldSkeleton}></div>
+              <div className={styles.formFieldSkeleton}></div>
+              <div className={styles.formFieldSkeleton}></div>
+              <div className={styles.formButtonSkeleton}></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
