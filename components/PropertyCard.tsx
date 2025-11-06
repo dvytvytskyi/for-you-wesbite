@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -20,6 +20,7 @@ export default function PropertyCard({ property }: PropertyCardProps) {
   const [direction, setDirection] = useState<'left' | 'right' | null>(null);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [isFavorite, setIsFavorite] = useState(false);
+  const [imageLoading, setImageLoading] = useState(true);
 
   const getLocalizedPath = (path: string) => {
     return locale === 'en' ? path : `/${locale}${path}`;
@@ -36,7 +37,7 @@ export default function PropertyCard({ property }: PropertyCardProps) {
   };
 
   const getDeveloper = () => {
-    return property.developer.name;
+    return property.developer?.name || '';
   };
 
   const getPrice = () => {
@@ -116,13 +117,23 @@ export default function PropertyCard({ property }: PropertyCardProps) {
     }, 500);
   };
 
+  // Reset image loading when property changes
+  useEffect(() => {
+    setImageLoading(true);
+    setCurrentImageIndex(0);
+  }, [property.id]);
+
   return (
     <Link href={getLocalizedPath(`/properties/${property.id}`)} className={styles.card}>
       <div className={styles.imageContainer}>
         <div className={styles.imageGradientTop}></div>
         <div className={styles.imageGradientBottom}></div>
+        {/* Image skeleton while loading */}
+        {imageLoading && (
+          <div className={styles.imageSkeleton}></div>
+        )}
         {property.photos && property.photos.length > 0 && (
-          <div className={styles.imageWrapper}>
+          <div className={styles.imageWrapper} style={{ opacity: imageLoading ? 0 : 1, transition: 'opacity 0.3s ease' }}>
             {/* Previous image - sliding out */}
             {isTransitioning && prevImageIndex !== currentImageIndex && (
               <Image
@@ -144,6 +155,8 @@ export default function PropertyCard({ property }: PropertyCardProps) {
               style={{ objectFit: 'cover' }}
               sizes="(max-width: 1200px) 50vw, (max-width: 900px) 100vw, 33vw"
               className={`${styles.cardImage} ${styles.currentImage} ${isTransitioning && direction === 'right' ? styles.slideInRight : isTransitioning && direction === 'left' ? styles.slideInLeft : ''}`}
+              onLoad={() => setImageLoading(false)}
+              onError={() => setImageLoading(false)}
             />
           </div>
         )}
@@ -183,12 +196,14 @@ export default function PropertyCard({ property }: PropertyCardProps) {
             <div className={styles.typeBadge}>
               {property.propertyType === 'off-plan' ? (t('type.offPlan') || 'Off Plan') : (t('type.secondary') || 'Secondary')}
             </div>
-            <div className={styles.developerBadge}>
-              {property.developer.logo && (
-                <img src={property.developer.logo} alt={getDeveloper()} className={styles.developerLogo} />
-              )}
-              <span className={styles.developerName}>{getDeveloper()}</span>
-            </div>
+            {property.developer && (
+              <div className={styles.developerBadge}>
+                {property.developer.logo && (
+                  <img src={property.developer.logo} alt={getDeveloper()} className={styles.developerLogo} />
+                )}
+                <span className={styles.developerName}>{getDeveloper()}</span>
+              </div>
+            )}
           </div>
           <button
             className={styles.favoriteButton}

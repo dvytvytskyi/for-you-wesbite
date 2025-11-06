@@ -1,13 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import Image from 'next/image';
 import { submitInvestment, submitInvestmentPublic, isAuthenticated } from '@/lib/api';
 import { aedToUsd } from '@/lib/utils';
+import { formatNumber } from '@/lib/utils';
 import styles from './InvestmentForm.module.css';
 
 interface InvestmentFormProps {
@@ -46,22 +48,32 @@ export default function InvestmentForm({
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [formattedAmount, setFormattedAmount] = useState<string>('');
   const authenticated = isAuthenticated();
 
   const schema = authenticated ? investmentSchemaRegistered : investmentSchemaPublic;
+  const defaultAmount = propertyPriceFrom || propertyPrice || 0;
   const {
     register,
     handleSubmit,
     formState: { errors },
     watch,
+    setValue,
   } = useForm<InvestmentFormData>({
     resolver: zodResolver(schema),
     defaultValues: {
-      amount: propertyPriceFrom || propertyPrice || 0,
+      amount: defaultAmount,
       date: new Date().toISOString().split('T')[0],
       notes: '',
     },
   });
+
+  // Initialize formatted amount
+  useEffect(() => {
+    if (defaultAmount > 0) {
+      setFormattedAmount(formatNumber(defaultAmount));
+    }
+  }, [defaultAmount]);
 
   const onSubmit = async (data: InvestmentFormData) => {
     setLoading(true);
@@ -82,11 +94,25 @@ export default function InvestmentForm({
         }),
       };
 
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Submitting investment form:', {
+          propertyId,
+          amountAED: data.amount,
+          amountUSD,
+          date: requestData.date,
+          authenticated,
+        });
+      }
+
       let result;
       if (authenticated) {
         result = await submitInvestment(requestData);
       } else {
         result = await submitInvestmentPublic(requestData);
+      }
+
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Investment submitted successfully:', result);
       }
 
       setSuccess(true);
@@ -96,14 +122,32 @@ export default function InvestmentForm({
         // Optionally redirect or show success message
       }, 3000);
     } catch (err: any) {
-      console.error('Error submitting investment:', err);
-      setError(err.response?.data?.message || err.message || t('submitError') || 'Failed to submit investment');
+      console.error('Error submitting investment form:', err);
+      
+      // Extract error message
+      let errorMessage = t('submitError') || 'Failed to submit investment';
+      
+      if (err.message) {
+        errorMessage = err.message;
+      } else if (err.response?.data?.message) {
+        errorMessage = err.response.data.message;
+      } else if (err.response?.data?.error) {
+        errorMessage = err.response.data.error;
+      } else if (err.response?.status === 403) {
+        errorMessage = 'Access denied. Please check your API credentials.';
+      } else if (err.response?.status === 401) {
+        errorMessage = 'Unauthorized. Please log in.';
+      } else if (err.response?.status === 400) {
+        errorMessage = 'Invalid data. Please check your input.';
+      } else if (err.response?.status >= 500) {
+        errorMessage = 'Server error. Please try again later.';
+      }
+      
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
   };
-
-  const defaultAmount = propertyPriceFrom || propertyPrice || 0;
 
   if (success) {
     return (
@@ -125,6 +169,32 @@ export default function InvestmentForm({
         {t('description') || 'Fill out the form below to submit your investment request.'}
       </p>
 
+      {/* Agent Section */}
+      <div className={styles.agentSection}>
+        <div className={styles.agentAvatar}>
+          <Image
+            src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&h=400&fit=crop&crop=face"
+            alt={t('agentName') || 'Agent'}
+            fill
+            style={{ objectFit: 'cover' }}
+            onError={(e) => {
+              // Fallback to initials if image fails
+              const target = e.target as HTMLImageElement;
+              target.style.display = 'none';
+              const parent = target.parentElement;
+              if (parent && !parent.textContent) {
+                const name = t('agentName') || 'A';
+                parent.textContent = name.charAt(0).toUpperCase();
+              }
+            }}
+          />
+        </div>
+        <div className={styles.agentInfo}>
+          <div className={styles.agentName}>{t('agentName') || 'Contact Agent'}</div>
+          <div className={styles.agentRole}>{t('agentRole') || 'Real Estate Specialist'}</div>
+        </div>
+      </div>
+
       {error && (
         <div className={styles.error}>
           <p>{error}</p>
@@ -144,7 +214,7 @@ export default function InvestmentForm({
                   type="text"
                   {...register('userFirstName')}
                   className={`${styles.input} ${errors.userFirstName ? styles.inputError : ''}`}
-                  placeholder={t('firstNamePlaceholder') || 'Enter your first name'}
+                  placeholder={t('firstNamePlaceholder') || 'Name'}
                 />
                 {errors.userFirstName && (
                   <span className={styles.errorMessage}>{errors.userFirstName.message}</span>
@@ -160,7 +230,7 @@ export default function InvestmentForm({
                   type="text"
                   {...register('userLastName')}
                   className={`${styles.input} ${errors.userLastName ? styles.inputError : ''}`}
-                  placeholder={t('lastNamePlaceholder') || 'Enter your last name'}
+                  placeholder={t('lastNamePlaceholder') || 'Surname'}
                 />
                 {errors.userLastName && (
                   <span className={styles.errorMessage}>{errors.userLastName.message}</span>
@@ -208,11 +278,25 @@ export default function InvestmentForm({
           </label>
           <input
             id="amount"
-            type="number"
-            {...register('amount', { valueAsNumber: true })}
+            type="text"
+            value={formattedAmount}
+            onChange={(e) => {
+              // Remove all non-digit characters
+              const rawValue = e.target.value.replace(/[^0-9]/g, '');
+              const numValue = rawValue ? parseInt(rawValue, 10) : 0;
+              
+              // Format with commas
+              if (rawValue) {
+                setFormattedAmount(formatNumber(numValue));
+              } else {
+                setFormattedAmount('');
+              }
+              
+              // Set the numeric value for form validation
+              setValue('amount', numValue, { shouldValidate: true });
+            }}
             className={`${styles.input} ${errors.amount ? styles.inputError : ''}`}
-            placeholder={defaultAmount.toString()}
-            min="1"
+            placeholder={defaultAmount > 0 ? formatNumber(defaultAmount) : ''}
           />
           {errors.amount && (
             <span className={styles.errorMessage}>{errors.amount.message}</span>
@@ -250,6 +334,10 @@ export default function InvestmentForm({
           )}
         </div>
 
+        <div className={styles.termsMessage}>
+          {t('termsMessage') || 'When sending, I agree to terms and conditions.'}
+        </div>
+
         <button 
           type="submit" 
           className={styles.submitButton}
@@ -257,16 +345,6 @@ export default function InvestmentForm({
         >
           {loading ? (t('submitting') || 'Submitting...') : (t('submit') || 'Submit Investment')}
         </button>
-
-        <div className={styles.agreeTerms}>
-          <input type="checkbox" id="agree" className={styles.checkbox} required />
-          <label htmlFor="agree" className={styles.checkboxLabel}>
-            {t('agreeTerms') || 'I agree to the'}{' '}
-            <a href={`/${locale}/privacy-policy`} className={styles.privacyLink}>
-              {t('privacyPolicy') || 'Privacy Policy'}
-            </a>
-          </label>
-        </div>
       </form>
     </div>
   );

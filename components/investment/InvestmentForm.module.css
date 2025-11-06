@@ -1,8 +1,7 @@
 .formContainer {
   background: #ffffff;
   border-radius: 12px;
-  padding: 24px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  padding: 0px 0px 0px 24px;
 }
 
 .title {
@@ -71,6 +70,12 @@
   gap: 16px;
 }
 
+@media (max-width: 768px) {
+  .formRow {
+    grid-template-columns: 1fr;
+  }
+}
+
 .formField {
   display: flex;
   flex-direction: column;
@@ -93,6 +98,8 @@
   background: #ffffff;
   color: #000000;
   transition: border-color 0.3s ease;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .input:focus {
@@ -132,6 +139,8 @@
   cursor: pointer;
   transition: background 0.3s ease;
   margin-top: 8px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .submitButton:hover:not(:disabled) {
@@ -143,33 +152,65 @@
   cursor: not-allowed;
 }
 
-.agreeTerms {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  margin-top: 8px;
-}
-
-.checkbox {
-  margin-top: 4px;
-  flex-shrink: 0;
-}
-
-.checkboxLabel {
+.termsMessage {
   font-family: 'Inter', sans-serif;
   font-size: 12px;
   color: rgb(93 93 93 / 80%);
   line-height: 1.5;
+  margin-top: 4px;
+  margin-bottom: 0;
 }
 
-.privacyLink {
+.agentSection {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.agentAvatar {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: #e0e0e0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgb(93 93 93 / 60%);
+  flex-shrink: 0;
+  font-family: 'Inter', sans-serif;
+  font-size: 20px;
+  font-weight: 600;
+  overflow: hidden;
+  position: relative;
+}
+
+.agentAvatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.agentInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.agentName {
+  font-family: 'Inter', sans-serif;
+  font-size: 16px;
+  font-weight: 600;
   color: #003077;
-  text-decoration: underline;
-  transition: color 0.3s ease;
+  margin-bottom: 4px;
 }
 
-.privacyLink:hover {
-  color: #002366;
+.agentRole {
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  color: rgb(93 93 93 / 60%);
 }
 
 @media (max-width: 768px) {

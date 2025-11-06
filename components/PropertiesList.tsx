@@ -2,11 +2,13 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { useDebounce } from '@/lib/utils';
 import { getProperties, Property, PropertyFilters as ApiPropertyFilters } from '@/lib/api';
 import styles from './PropertiesList.module.css';
 import PropertyCard from './PropertyCard';
 import PropertyFilters from './PropertyFilters';
+import PropertyCardSkeleton from './PropertyCardSkeleton';
 
 interface Filters {
   type: 'new' | 'secondary';
@@ -23,7 +25,10 @@ interface Filters {
 }
 
 // Map frontend sort to backend sort
-const mapSortToBackend = (frontendSort: string, propertyType: 'off-plan' | 'secondary'): { sortBy: ApiPropertyFilters['sortBy'], sortOrder: ApiPropertyFilters['sortOrder'] } => {
+const mapSortToBackend = (frontendSort: string | undefined, propertyType: 'off-plan' | 'secondary'): { sortBy: ApiPropertyFilters['sortBy'], sortOrder: ApiPropertyFilters['sortOrder'] } => {
+  // Default to 'newest' if sort is empty or undefined
+  const sortValue = frontendSort || 'newest';
+  
   const mapping: Record<string, { sortBy: ApiPropertyFilters['sortBy'], sortOrder: ApiPropertyFilters['sortOrder'] }> = {
     'price-desc': { sortBy: propertyType === 'off-plan' ? 'priceFrom' : 'price', sortOrder: 'DESC' },
     'price-asc': { sortBy: propertyType === 'off-plan' ? 'priceFrom' : 'price', sortOrder: 'ASC' },
@@ -31,7 +36,7 @@ const mapSortToBackend = (frontendSort: string, propertyType: 'off-plan' | 'seco
     'size-asc': { sortBy: propertyType === 'off-plan' ? 'sizeFrom' : 'size', sortOrder: 'ASC' },
     'newest': { sortBy: 'createdAt', sortOrder: 'DESC' },
   };
-  return mapping[frontendSort] || mapping['newest'];
+  return mapping[sortValue] || mapping['newest'];
 };
 
 // Convert frontend filters to API filters
@@ -59,6 +64,8 @@ const convertFiltersToApi = (filters: Filters): ApiPropertyFilters => {
   if (filters.location.length > 0) {
     // API supports only one areaId, so we'll use the first selected
     apiFilters.areaId = filters.location[0];
+    // But for client-side filtering, we need all selected areas
+    apiFilters.areaIds = filters.location;
   }
 
   // Bedrooms filter (multiselect - convert to comma-separated string)
@@ -98,24 +105,73 @@ const convertFiltersToApi = (filters: Filters): ApiPropertyFilters => {
 
 const ITEMS_PER_PAGE = 36;
 
+// Helper functions to sync filters with URL
+const filtersToUrlParams = (filters: Filters, page?: number): URLSearchParams => {
+  const params = new URLSearchParams();
+  
+  if (filters.type !== 'new') params.set('type', filters.type);
+  if (filters.search) params.set('search', filters.search);
+  if (filters.location.length > 0) params.set('location', filters.location.join(','));
+  if (filters.bedrooms.length > 0) params.set('bedrooms', filters.bedrooms.join(','));
+  if (filters.sizeFrom) params.set('sizeFrom', filters.sizeFrom);
+  if (filters.sizeTo) params.set('sizeTo', filters.sizeTo);
+  if (filters.priceFrom) params.set('priceFrom', filters.priceFrom);
+  if (filters.priceTo) params.set('priceTo', filters.priceTo);
+  if (filters.sort !== 'newest') params.set('sort', filters.sort);
+  if (filters.developerId) params.set('developerId', filters.developerId);
+  if (filters.cityId) params.set('cityId', filters.cityId);
+  if (page && page > 1) params.set('page', page.toString());
+  
+  return params;
+};
+
+const urlParamsToFilters = (searchParams: URLSearchParams): Filters => {
+  return {
+    type: (searchParams.get('type') as 'new' | 'secondary') || 'new',
+    search: searchParams.get('search') || '',
+    location: searchParams.get('location')?.split(',').filter(Boolean) || [],
+    bedrooms: searchParams.get('bedrooms')?.split(',').map(Number).filter(n => !isNaN(n)) || [],
+    sizeFrom: searchParams.get('sizeFrom') || '',
+    sizeTo: searchParams.get('sizeTo') || '',
+    priceFrom: searchParams.get('priceFrom') || '',
+    priceTo: searchParams.get('priceTo') || '',
+    sort: searchParams.get('sort') || 'newest',
+    developerId: searchParams.get('developerId') || undefined,
+    cityId: searchParams.get('cityId') || undefined,
+  };
+};
+
 export default function PropertiesList() {
   const t = useTranslations('properties');
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+  
   const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [currentPage, setCurrentPage] = useState(1);
   
-  const [filters, setFilters] = useState<Filters>({
-    type: 'new',
-    search: '',
-    location: [],
-    bedrooms: [],
-    sizeFrom: '',
-    sizeTo: '',
-    priceFrom: '',
-    priceTo: '',
-    sort: 'newest',
+  // Initialize filters from URL or defaults
+  const [filters, setFilters] = useState<Filters>(() => {
+    if (typeof window !== 'undefined' && searchParams.toString()) {
+      return urlParamsToFilters(searchParams);
+    }
+    return {
+      type: 'new',
+      search: '',
+      location: [],
+      bedrooms: [],
+      sizeFrom: '',
+      sizeTo: '',
+      priceFrom: '',
+      priceTo: '',
+      sort: 'newest',
+    };
   });
+
+  // Initialize page from URL
+  const initialPage = searchParams.get('page') ? parseInt(searchParams.get('page') || '1', 10) : 1;
+  const [currentPage, setCurrentPage] = useState(initialPage);
 
   // Debounce search
   const debouncedSearch = useDebounce(filters.search, 500);
@@ -134,6 +190,16 @@ export default function PropertiesList() {
         delete apiFilters.search;
       }
       
+      // Debug: log sort parameters
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Frontend sort value:', filters.sort);
+        console.log('Converted to API filters:', {
+          sortBy: apiFilters.sortBy,
+          sortOrder: apiFilters.sortOrder,
+          propertyType: apiFilters.propertyType,
+        });
+      }
+      
       const data = await getProperties(apiFilters);
       setProperties(data);
     } catch (err: any) {
@@ -149,9 +215,17 @@ export default function PropertiesList() {
     setCurrentPage(1); // Reset to first page when filters change
   }, [loadProperties]);
 
+  // Update URL when filters or page change
+  const updateUrl = useCallback((newFilters: Filters, page?: number) => {
+    const params = filtersToUrlParams(newFilters, page);
+    const newUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname;
+    router.replace(newUrl, { scroll: false });
+  }, [pathname, router]);
+
   const handleFilterChange = (newFilters: Filters) => {
     setFilters(newFilters);
     setCurrentPage(1); // Reset to first page when filters change
+    updateUrl(newFilters, 1); // Update URL (reset page to 1)
   };
 
   // Calculate pagination
@@ -162,6 +236,7 @@ export default function PropertiesList() {
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
+    updateUrl(filters, page); // Update URL with new page
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -185,9 +260,16 @@ export default function PropertiesList() {
         <PropertyFilters filters={filters} onFilterChange={handleFilterChange} />
         
         {loading ? (
-          <div className={styles.loading}>
-            <p>{t('loading') || 'Loading properties...'}</p>
-          </div>
+          <>
+            <div className={styles.resultsCount}>
+              <div className={styles.skeletonText}></div>
+            </div>
+            <div className={styles.grid}>
+              {Array.from({ length: 12 }).map((_, index) => (
+                <PropertyCardSkeleton key={`skeleton-${index}`} />
+              ))}
+            </div>
+          </>
         ) : properties.length === 0 ? (
           <div className={styles.empty}>
             <p>{t('noProperties') || 'No properties found'}</p>

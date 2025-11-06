@@ -296,7 +296,7 @@
   top: 100px;
   align-self: flex-start;
   box-sizing: border-box;
-  overflow: hidden;
+  overflow: visible;
 }
 
 /* Main Info */
@@ -650,7 +650,6 @@
   border: 1px solid rgba(0, 0, 0, 0.1);
   border-radius: 12px;
   padding: 24px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
   width: 100%;
   box-sizing: border-box;
   overflow: hidden;

@@ -318,10 +318,12 @@
   "investment": {
     "title": "Подать заявку на инвестицию",
     "description": "Заполните форму ниже, чтобы подать заявку на инвестицию.",
+    "agentName": "Гульноза",
+    "agentRole": "Специалист по недвижимости",
     "firstName": "Имя",
-    "firstNamePlaceholder": "Введите ваше имя",
+    "firstNamePlaceholder": "Имя",
     "lastName": "Фамилия",
-    "lastNamePlaceholder": "Введите вашу фамилию",
+    "lastNamePlaceholder": "Фамилия",
     "email": "Email",
     "emailPlaceholder": "ваш.email@example.com",
     "phone": "Телефон",
@@ -336,8 +338,7 @@
     "submitError": "Не удалось отправить заявку",
     "successTitle": "Заявка отправлена!",
     "successMessage": "Ваша заявка на инвестицию успешно отправлена. Мы свяжемся с вами в ближайшее время.",
-    "agreeTerms": "Я согласен с",
-    "privacyPolicy": "Политикой конфиденциальности"
+    "termsMessage": "При отправке я соглашаюсь с условиями и положениями."
   },
   "developers": {
     "pageTitle": "Застройщики",

@@ -2,8 +2,8 @@ import axios, { AxiosInstance, AxiosError } from 'axios';
 
 // API Configuration
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://admin.foryou-realestate.com/api';
-const API_KEY = process.env.NEXT_PUBLIC_API_KEY || 'fyr_7af8658259b4663cdf953bb4d0dd0653493b0161eba325fa97c0e2f1b4f32c05';
-const API_SECRET = process.env.NEXT_PUBLIC_API_SECRET || '11619acf961b30770814157357f0a566032fc15bf414d35fdf1eff072f4be5982f1300a2d3794f54674d0f1994f0497e7b0e269f0012daf5e6216699fdf348c0';
+const API_KEY = process.env.NEXT_PUBLIC_API_KEY || 'ak_aa4d19418b385c370939b45365d0c687ddbdef7cbe9a72548748ef67f5e469e1';
+const API_SECRET = process.env.NEXT_PUBLIC_API_SECRET || 'as_623caef2632983630ce11293e544504c834a9ab1015fa2c75a7c2583d6f28d7c';
 
 // Create axios instance
 const apiClient: AxiosInstance = axios.create({
@@ -16,6 +16,14 @@ apiClient.interceptors.request.use(
   (config) => {
     // Always add API key and secret
     config.headers['Content-Type'] = 'application/json';
+    
+    // Ensure API key and secret are set
+    if (!API_KEY || !API_SECRET) {
+      console.error('❌ CRITICAL: API_KEY or API_SECRET is missing!');
+      console.error('API_KEY:', API_KEY ? 'present' : 'missing');
+      console.error('API_SECRET:', API_SECRET ? 'present' : 'missing');
+    }
+    
     config.headers['x-api-key'] = API_KEY;
     config.headers['x-api-secret'] = API_SECRET;
     
@@ -29,17 +37,31 @@ apiClient.interceptors.request.use(
     
     // Debug logging (remove in production)
     if (process.env.NODE_ENV === 'development') {
+      const apiKeyValue = config.headers['x-api-key'] as string;
+      const apiSecretValue = config.headers['x-api-secret'] as string;
+      
       console.log('API Request:', {
         url: `${config.baseURL}${config.url}`,
         method: config.method,
         headers: {
           'Content-Type': config.headers['Content-Type'],
-          'x-api-key': config.headers['x-api-key'] ? `${config.headers['x-api-key'].substring(0, 10)}...` : 'missing',
-          'x-api-secret': config.headers['x-api-secret'] ? `${config.headers['x-api-secret'].substring(0, 10)}...` : 'missing',
+          'x-api-key': apiKeyValue ? `${apiKeyValue.substring(0, 20)}...` : 'missing',
+          'x-api-secret': apiSecretValue ? `${apiSecretValue.substring(0, 20)}...` : 'missing',
           'Authorization': config.headers.Authorization ? '***' : 'missing',
         },
-        fullHeaders: Object.keys(config.headers),
+        apiKeyLength: apiKeyValue?.length || 0,
+        apiSecretLength: apiSecretValue?.length || 0,
+        apiKeyStartsWith: apiKeyValue ? apiKeyValue.substring(0, 3) : 'N/A',
+        apiSecretStartsWith: apiSecretValue ? apiSecretValue.substring(0, 3) : 'N/A',
       });
+      
+      // Validate API keys format
+      if (apiKeyValue && !apiKeyValue.startsWith('ak_')) {
+        console.warn('⚠️ API Key does not start with "ak_" - might be invalid format');
+      }
+      if (apiSecretValue && !apiSecretValue.startsWith('as_')) {
+        console.warn('⚠️ API Secret does not start with "as_" - might be invalid format');
+      }
     }
     
     return config;
@@ -56,17 +78,44 @@ apiClient.interceptors.response.use(
     if (error.response) {
       // Log detailed error info in development
       if (process.env.NODE_ENV === 'development') {
-        console.error('API Error Response:', {
+        const errorData = error.response.data as any;
+        const errorMessage = errorData?.message || errorData?.error || 'Unknown error';
+        
+        console.error('❌ API Error Response:', {
           status: error.response.status,
           statusText: error.response.statusText,
+          message: errorMessage,
           data: error.response.data,
-          headers: error.response.headers,
-          config: {
-            url: error.config?.url,
-            method: error.config?.method,
-            headers: error.config?.headers,
+          requestUrl: error.config?.url,
+          requestMethod: error.config?.method,
+          requestHeaders: {
+            'x-api-key': error.config?.headers?.['x-api-key'] ? 'present' : 'missing',
+            'x-api-secret': error.config?.headers?.['x-api-secret'] ? 'present' : 'missing',
           },
         });
+        
+        // Special handling for 403 errors
+        if (error.response.status === 403) {
+          console.error('❌ 403 Forbidden - Possible causes:');
+          console.error('   1. API Key/Secret are incorrect');
+          console.error('   2. API Key/Secret are not active in the database');
+          console.error('   3. Backend middleware is not properly checking API Key/Secret');
+          console.error('   4. API Key/Secret format is incorrect');
+          
+          const apiKeyValue = error.config?.headers?.['x-api-key'] as string;
+          const apiSecretValue = error.config?.headers?.['x-api-secret'] as string;
+          
+          if (apiKeyValue) {
+            console.error('   API Key sent:', apiKeyValue.substring(0, 30) + '...');
+            console.error('   API Key starts with:', apiKeyValue.substring(0, 3));
+            console.error('   Expected: "ak_"');
+          }
+          if (apiSecretValue) {
+            console.error('   API Secret sent:', apiSecretValue.substring(0, 30) + '...');
+            console.error('   API Secret starts with:', apiSecretValue.substring(0, 3));
+            console.error('   Expected: "as_"');
+          }
+        }
       }
       
       if (error.response.status === 401) {
@@ -101,6 +150,7 @@ export interface PropertyFilters {
   developerId?: string;
   cityId?: string;
   areaId?: string;
+  areaIds?: string[]; // For client-side filtering with multiple areas
   bedrooms?: string; // Comma-separated: "1,2,3"
   sizeFrom?: number;
   sizeTo?: number;
@@ -151,7 +201,7 @@ export interface Property {
     logo: string | null;
     description?: string;
     images?: string[];
-  };
+  } | null;
   latitude: number;
   longitude: number;
   
@@ -293,64 +343,201 @@ export async function getProperties(filters?: PropertyFilters): Promise<Property
     if (filters?.priceFrom) params.append('priceFrom', filters.priceFrom.toString());
     if (filters?.priceTo) params.append('priceTo', filters.priceTo.toString());
     if (filters?.search) params.append('search', filters.search);
-    if (filters?.sortBy) params.append('sortBy', filters.sortBy);
-    if (filters?.sortOrder) params.append('sortOrder', filters.sortOrder);
+    // Always include sort parameters (default to createdAt DESC if not specified)
+    const sortBy = filters?.sortBy || 'createdAt';
+    const sortOrder = filters?.sortOrder || 'DESC';
+    params.append('sortBy', sortBy);
+    params.append('sortOrder', sortOrder);
     
     const url = `/properties?${params.toString()}`;
+    const fullUrl = `${API_BASE_URL}${url}`;
     
-    // Debug: log the sort parameters
+    // Debug: log the sort parameters and headers
     if (process.env.NODE_ENV === 'development') {
       console.log('Sorting params:', {
         sortBy: filters?.sortBy,
         sortOrder: filters?.sortOrder,
-        fullUrl: `${API_BASE_URL}${url}`,
+        propertyType: filters?.propertyType,
+        fullUrl: fullUrl,
       });
+      console.log('API Key/Secret headers:', {
+        'x-api-key': API_KEY ? `${API_KEY.substring(0, 10)}...` : 'missing',
+        'x-api-secret': API_SECRET ? `${API_SECRET.substring(0, 10)}...` : 'missing',
+      });
+      
+      // Validate URL is properly encoded
+      try {
+        new URL(fullUrl);
+        console.log('✅ URL is valid');
+      } catch (e) {
+        console.error('❌ Invalid URL:', fullUrl, e);
+      }
     }
     
-    // Try regular endpoint first (for authenticated users)
+    // Try regular endpoint first (should work with API Key/Secret now)
     try {
       const response = await apiClient.get<ApiResponse<Property[]>>(url);
+      
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`✅ Successfully loaded ${response.data.data?.length || 0} properties from /api/properties endpoint`);
+        if (filters?.propertyType) {
+          console.log(`Property type filter: ${filters.propertyType}`);
+        }
+      }
       let data = response.data.data;
       
       // Apply client-side sorting as backup (in case server doesn't sort correctly)
-      if (filters?.sortBy && filters?.sortOrder && data.length > 0) {
-        data = [...data]; // Create a copy to avoid mutating original
-        data.sort((a, b) => {
-          let aValue: any, bValue: any;
+      // Always sort, even if server should have sorted (to ensure consistency)
+      const sortBy = filters?.sortBy || 'createdAt';
+      const sortOrder = filters?.sortOrder || 'DESC';
+      
+      if (data.length > 0) {
+        // Create a stable copy for sorting
+        const sortedData = [...data];
+        
+        sortedData.sort((a, b) => {
+          let aValue: number | string, bValue: number | string;
           
-          switch (filters.sortBy) {
+          switch (sortBy) {
             case 'name':
-              aValue = a.name.toLowerCase();
-              bValue = b.name.toLowerCase();
-              break;
+              aValue = (a.name || '').toLowerCase();
+              bValue = (b.name || '').toLowerCase();
+              // String comparison
+              if (sortOrder === 'ASC') {
+                return aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
+              } else {
+                return aValue > bValue ? -1 : aValue < bValue ? 1 : 0;
+              }
+            
             case 'price':
             case 'priceFrom':
-              aValue = a.propertyType === 'off-plan' ? (a.priceFrom || 0) : (a.price || 0);
-              bValue = b.propertyType === 'off-plan' ? (b.priceFrom || 0) : (b.price || 0);
+              // Use USD prices for comparison
+              // IMPORTANT: priceFrom/price may come as strings from API, need to convert to number
+              if (a.propertyType === 'off-plan') {
+                const priceFrom = a.priceFrom;
+                if (typeof priceFrom === 'number' && !isNaN(priceFrom)) {
+                  aValue = priceFrom;
+                } else if (typeof priceFrom === 'string') {
+                  aValue = parseFloat(priceFrom) || 0;
+                } else {
+                  aValue = 0;
+                }
+              } else {
+                const price = a.price;
+                if (typeof price === 'number' && !isNaN(price)) {
+                  aValue = price;
+                } else if (typeof price === 'string') {
+                  aValue = parseFloat(price) || 0;
+                } else {
+                  aValue = 0;
+                }
+              }
+              
+              if (b.propertyType === 'off-plan') {
+                const priceFrom = b.priceFrom;
+                if (typeof priceFrom === 'number' && !isNaN(priceFrom)) {
+                  bValue = priceFrom;
+                } else if (typeof priceFrom === 'string') {
+                  bValue = parseFloat(priceFrom) || 0;
+                } else {
+                  bValue = 0;
+                }
+              } else {
+                const price = b.price;
+                if (typeof price === 'number' && !isNaN(price)) {
+                  bValue = price;
+                } else if (typeof price === 'string') {
+                  bValue = parseFloat(price) || 0;
+                } else {
+                  bValue = 0;
+                }
+              }
+              
+              // Debug log for price sorting
+              if (process.env.NODE_ENV === 'development') {
+                const indexA = sortedData.indexOf(a);
+                const indexB = sortedData.indexOf(b);
+                if (indexA < 5 || indexB < 5) {
+                  console.log(`Price sort (API): ${a.name} (${aValue}) vs ${b.name} (${bValue}), order: ${sortOrder}`);
+                }
+              }
               break;
+            
             case 'size':
             case 'sizeFrom':
-              aValue = a.propertyType === 'off-plan' ? (a.sizeFrom || 0) : (a.size || 0);
-              bValue = b.propertyType === 'off-plan' ? (b.sizeFrom || 0) : (b.size || 0);
+              // Use m² for comparison
+              // IMPORTANT: sizeFrom/size may come as strings from API, need to convert to number
+              if (a.propertyType === 'off-plan') {
+                const sizeFrom = a.sizeFrom;
+                if (typeof sizeFrom === 'number' && !isNaN(sizeFrom)) {
+                  aValue = sizeFrom;
+                } else if (typeof sizeFrom === 'string') {
+                  aValue = parseFloat(sizeFrom) || 0;
+                } else {
+                  aValue = 0;
+                }
+              } else {
+                const size = a.size;
+                if (typeof size === 'number' && !isNaN(size)) {
+                  aValue = size;
+                } else if (typeof size === 'string') {
+                  aValue = parseFloat(size) || 0;
+                } else {
+                  aValue = 0;
+                }
+              }
+              
+              if (b.propertyType === 'off-plan') {
+                const sizeFrom = b.sizeFrom;
+                if (typeof sizeFrom === 'number' && !isNaN(sizeFrom)) {
+                  bValue = sizeFrom;
+                } else if (typeof sizeFrom === 'string') {
+                  bValue = parseFloat(sizeFrom) || 0;
+                } else {
+                  bValue = 0;
+                }
+              } else {
+                const size = b.size;
+                if (typeof size === 'number' && !isNaN(size)) {
+                  bValue = size;
+                } else if (typeof size === 'string') {
+                  bValue = parseFloat(size) || 0;
+                } else {
+                  bValue = 0;
+                }
+              }
               break;
+            
             case 'createdAt':
-              aValue = new Date(a.createdAt).getTime();
-              bValue = new Date(b.createdAt).getTime();
+              aValue = new Date(a.createdAt || 0).getTime();
+              bValue = new Date(b.createdAt || 0).getTime();
               break;
+            
             default:
-              return 0;
+              // Default to createdAt if sortBy is unknown
+              aValue = new Date(a.createdAt || 0).getTime();
+              bValue = new Date(b.createdAt || 0).getTime();
+              break;
           }
           
-          // Handle null/undefined values
-          if (aValue == null) aValue = 0;
-          if (bValue == null) bValue = 0;
+          // Handle null/undefined/NaN values for numeric comparisons
+          if (typeof aValue === 'number') {
+            if (isNaN(aValue) || aValue == null) aValue = 0;
+          }
+          if (typeof bValue === 'number') {
+            if (isNaN(bValue) || bValue == null) bValue = 0;
+          }
           
-          if (filters.sortOrder === 'ASC') {
-            return aValue > bValue ? 1 : aValue < bValue ? -1 : 0;
+          // Numeric comparison
+          if (sortOrder === 'ASC') {
+            return (aValue as number) - (bValue as number);
           } else {
-            return aValue < bValue ? 1 : aValue > bValue ? -1 : 0;
+            return (bValue as number) - (aValue as number);
           }
         });
+        
+        // Replace the array
+        data = sortedData;
       }
       
       // Debug: log first few properties to verify sorting
@@ -366,37 +553,202 @@ export async function getProperties(filters?: PropertyFilters): Promise<Property
       return data;
     } catch (error: any) {
       // If 403 or 401, user is not authenticated - use public endpoint
+      // Note: /api/public/data now returns all properties including secondary (as per backend fix)
       if (error.response?.status === 403 || error.response?.status === 401) {
         console.warn(`Status ${error.response.status} on /properties, using /public/data endpoint...`);
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('Request URL that failed:', error.config?.url);
+          console.warn('Request params:', error.config?.params);
+          console.warn('Request headers:', {
+            'x-api-key': error.config?.headers?.['x-api-key'] ? 'present' : 'missing',
+            'x-api-secret': error.config?.headers?.['x-api-secret'] ? 'present' : 'missing',
+          });
+        }
         
-        // Get all data from public endpoint
-        const publicData = await getPublicData();
+        // If we have area filters or propertyType filter, force refresh to get all properties
+        // (cache might contain filtered data from previous requests)
+        const hasAreaFilters = (filters?.areaIds && filters.areaIds.length > 0) || filters?.areaId;
+        const hasPropertyTypeFilter = !!filters?.propertyType;
+        
+        // Clear cache if we have area filters or propertyType filter to ensure we get fresh data with all properties
+        if (hasAreaFilters || hasPropertyTypeFilter) {
+          clearPublicDataCache();
+        }
+        
+        // Get all data from public endpoint (force refresh if area filters or propertyType filter are present)
+        const publicData = await getPublicData(hasAreaFilters || hasPropertyTypeFilter);
         
         // Extract properties from public data
         let properties: Property[] = [];
         if (publicData.properties && Array.isArray(publicData.properties)) {
           properties = publicData.properties;
+          console.log(`Loaded ${properties.length} properties from /api/public/data`);
         } else {
           // If properties are not directly in publicData, it might be structured differently
           console.warn('Properties not found in public data structure. Actual structure:', Object.keys(publicData));
           return [];
         }
         
+        // Debug: Check if properties have area data
+        if (properties.length > 0 && process.env.NODE_ENV === 'development') {
+          const propertiesWithArea = properties.filter(p => p.area && p.area.id).length;
+          console.log(`Properties with area data: ${propertiesWithArea} / ${properties.length}`);
+          if (filters?.areaIds || filters?.areaId) {
+            const sampleAreaIds = properties.slice(0, 10).map(p => p.area?.id).filter(Boolean);
+            console.log('Sample area IDs from properties:', sampleAreaIds);
+            console.log('Looking for areaIds:', filters?.areaIds || [filters?.areaId].filter(Boolean));
+          }
+        }
+        
+        // Debug: log sample property structure
+        if (properties.length > 0 && process.env.NODE_ENV === 'development') {
+          console.log('Sample property structure:', {
+            id: properties[0].id,
+            name: properties[0].name,
+            propertyType: properties[0].propertyType,
+            area: properties[0].area ? {
+              id: properties[0].area.id,
+              nameEn: properties[0].area.nameEn,
+            } : null,
+          });
+          console.log('Filters applied:', {
+            areaIds: filters?.areaIds,
+            areaId: filters?.areaId,
+            propertyType: filters?.propertyType,
+          });
+        }
+        
         // Apply filters client-side
+        let beforeFilters = properties.length;
+        const propertiesBeforeFilter = [...properties]; // Keep copy for debugging
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`Starting with ${beforeFilters} properties before client-side filtering`);
+          
+          // Log property types distribution
+          if (beforeFilters > 0) {
+            const propertyTypes = properties.reduce((acc, p) => {
+              acc[p.propertyType] = (acc[p.propertyType] || 0) + 1;
+              return acc;
+            }, {} as Record<string, number>);
+            console.log('Property types in loaded data:', propertyTypes);
+          }
+        }
+        
         if (filters?.propertyType) {
+          const before = properties.length;
           properties = properties.filter(p => p.propertyType === filters.propertyType);
+          if (process.env.NODE_ENV === 'development') {
+            console.log(`PropertyType filter (${filters.propertyType}): ${before} -> ${properties.length}`);
+            if (properties.length === 0 && before > 0) {
+              // Show sample property types to debug - use original properties array
+              const sampleTypes = propertiesBeforeFilter.slice(0, 10).map(p => p.propertyType);
+              const uniqueTypes = [...new Set(sampleTypes)];
+              console.warn('⚠️ No properties match filter. Sample property types from loaded data:', uniqueTypes);
+              console.warn('⚠️ Filter was looking for propertyType:', filters.propertyType);
+              
+              // Special warning for secondary properties
+              if (filters.propertyType === 'secondary') {
+                console.error('❌ CRITICAL: /api/public/data does not contain secondary properties!');
+                console.error('❌ This endpoint only returns off-plan properties.');
+                console.error('❌ You need to use /api/properties?propertyType=secondary directly with API Key/Secret.');
+                console.error('❌ Please check backend configuration for /api/public/data endpoint.');
+              }
+            }
+          }
         }
         
         if (filters?.developerId) {
-          properties = properties.filter(p => p.developer.id === filters.developerId);
+          const before = properties.length;
+          properties = properties.filter(p => p.developer?.id === filters.developerId);
+          if (process.env.NODE_ENV === 'development') {
+            console.log(`Developer filter: ${before} -> ${properties.length}`);
+          }
         }
         
         if (filters?.cityId) {
-          properties = properties.filter(p => p.city.id === filters.cityId);
+          const before = properties.length;
+          properties = properties.filter(p => p.city?.id === filters.cityId);
+          if (process.env.NODE_ENV === 'development') {
+            console.log(`City filter: ${before} -> ${properties.length}`);
+          }
         }
         
-        if (filters?.areaId) {
-          properties = properties.filter(p => p.area.id === filters.areaId);
+        // Area filter - support multiple areas for client-side filtering
+        if (filters?.areaIds && filters.areaIds.length > 0) {
+          const before = properties.length;
+          const propertiesBeforeFilter = [...properties]; // Keep copy for debugging
+          
+          // Debug: Show sample area IDs BEFORE filtering
+          if (process.env.NODE_ENV === 'development' && before > 0) {
+            const sampleAreaIds = propertiesBeforeFilter.slice(0, 10).map(p => ({
+              propertyId: p.id,
+              propertyName: p.name,
+              areaId: p.area?.id,
+              areaName: p.area?.nameEn,
+            }));
+            console.log('Sample area IDs from properties BEFORE filter:', sampleAreaIds);
+            console.log('Looking for areaIds:', filters.areaIds);
+            
+            // Check if any property matches
+            const matchingCount = propertiesBeforeFilter.filter(p => 
+              p.area?.id && filters.areaIds!.includes(p.area.id)
+            ).length;
+            console.log(`Found ${matchingCount} properties that should match the area filter`);
+            
+            // Show all unique area IDs in the dataset
+            const uniqueAreaIds = [...new Set(propertiesBeforeFilter.map(p => p.area?.id).filter(Boolean))];
+            console.log(`Total unique area IDs in dataset: ${uniqueAreaIds.length}`);
+            console.log('First 20 unique area IDs:', uniqueAreaIds.slice(0, 20));
+            
+            // Note: If all properties have the same area ID and it doesn't match the filter,
+            // this might indicate that /api/public/data is not returning all properties.
+            // But this should be fixed on the backend now.
+            if (uniqueAreaIds.length === 1 && !filters.areaIds.includes(uniqueAreaIds[0])) {
+              console.warn('⚠️ /api/public/data returned properties with only one area ID, but filter is looking for a different area ID.');
+              console.warn(`Expected area IDs: ${filters.areaIds.join(', ')}`);
+              console.warn(`Got area ID in data: ${uniqueAreaIds[0]}`);
+            }
+          }
+          
+          properties = properties.filter(p => {
+            if (!p.area || !p.area.id) {
+              return false;
+            }
+            return filters.areaIds!.includes(p.area.id);
+          });
+          
+          if (process.env.NODE_ENV === 'development') {
+            console.log(`Area filter: ${before} -> ${properties.length} properties (filtering by areaIds: ${filters.areaIds.join(', ')})`);
+            if (properties.length === 0 && before > 0) {
+              // Show first few properties with their area IDs to debug
+              const sampleProperties = propertiesBeforeFilter.slice(0, 5).map(p => ({
+                id: p.id,
+                name: p.name,
+                areaId: p.area?.id,
+                areaName: p.area?.nameEn,
+              }));
+              console.warn('No properties found after area filter. Sample properties with their area IDs:', sampleProperties);
+            }
+          }
+        } else if (filters?.areaId) {
+          // Fallback to single areaId for backward compatibility
+          const before = properties.length;
+          
+          // Debug: Show sample area IDs BEFORE filtering
+          if (process.env.NODE_ENV === 'development' && before > 0) {
+            const sampleAreaIds = properties.slice(0, 10).map(p => p.area?.id).filter(Boolean);
+            console.log('Sample area IDs from properties BEFORE filter:', sampleAreaIds);
+            console.log('Looking for areaId:', filters.areaId);
+          }
+          
+          properties = properties.filter(p => {
+            if (!p.area || !p.area.id) return false;
+            return p.area.id === filters.areaId;
+          });
+          
+          if (process.env.NODE_ENV === 'development') {
+            console.log(`Area filter (single): ${before} -> ${properties.length} properties (filtering by areaId: ${filters.areaId})`);
+          }
         }
         
         if (filters?.bedrooms) {
@@ -428,17 +780,62 @@ export async function getProperties(filters?: PropertyFilters): Promise<Property
         }
         
         if (filters?.priceFrom) {
+          // Filter values come in AED (from UI), so we need to compare with AED prices
+          const priceFromFilter = typeof filters.priceFrom === 'string' 
+            ? parseFloat(filters.priceFrom.replace(/[^0-9.-]/g, '')) || 0
+            : filters.priceFrom;
+          const before = properties.length;
           properties = properties.filter(p => {
-            const price = p.propertyType === 'off-plan' ? p.priceFrom : p.price;
-            return price !== undefined && price >= filters.priceFrom!;
+            // Use AED prices for comparison since filter is in AED
+            const priceAED = p.propertyType === 'off-plan' ? p.priceFromAED : p.priceAED;
+            const priceValue = typeof priceAED === 'string' ? parseFloat(priceAED) || 0 : (priceAED || 0);
+            
+            if (process.env.NODE_ENV === 'development' && before > 0 && properties.length === before) {
+              // Log first few properties for debugging
+              const index = properties.indexOf(p);
+              if (index < 3) {
+                console.log(`PriceFrom filter check: ${p.name}, priceAED: ${priceValue}, filter: >= ${priceFromFilter}, match: ${priceValue >= priceFromFilter}`);
+              }
+            }
+            
+            return priceValue >= priceFromFilter;
           });
+          if (process.env.NODE_ENV === 'development') {
+            console.log(`PriceFrom filter (>= ${priceFromFilter} AED): ${before} -> ${properties.length}`);
+          }
         }
         
         if (filters?.priceTo) {
+          // Filter values come in AED (from UI), so we need to compare with AED prices
+          const priceToFilter = typeof filters.priceTo === 'string'
+            ? parseFloat(filters.priceTo.replace(/[^0-9.-]/g, '')) || Infinity
+            : filters.priceTo;
+          const before = properties.length;
           properties = properties.filter(p => {
-            const price = p.propertyType === 'off-plan' ? p.priceTo : p.price;
-            return price !== undefined && price <= filters.priceTo!;
+            // Use AED prices for comparison since filter is in AED
+            // For off-plan, use priceToAED if available, otherwise priceFromAED
+            // For secondary, use priceAED
+            let priceAED: number | string | undefined;
+            if (p.propertyType === 'off-plan') {
+              priceAED = (p as any).priceToAED || p.priceFromAED;
+            } else {
+              priceAED = p.priceAED;
+            }
+            const priceValue = typeof priceAED === 'string' ? parseFloat(priceAED) || 0 : (priceAED || 0);
+            
+            if (process.env.NODE_ENV === 'development' && before > 0 && properties.length === before) {
+              // Log first few properties for debugging
+              const index = properties.indexOf(p);
+              if (index < 3) {
+                console.log(`PriceTo filter check: ${p.name}, priceAED: ${priceValue}, filter: <= ${priceToFilter}, match: ${priceValue <= priceToFilter}`);
+              }
+            }
+            
+            return priceValue <= priceToFilter;
           });
+          if (process.env.NODE_ENV === 'development') {
+            console.log(`PriceTo filter (<= ${priceToFilter} AED): ${before} -> ${properties.length}`);
+          }
         }
         
         if (filters?.search) {
@@ -450,63 +847,202 @@ export async function getProperties(filters?: PropertyFilters): Promise<Property
         }
         
         // Apply sorting (client-side when using public data)
-        if (filters?.sortBy && filters?.sortOrder) {
-          console.log('Applying client-side sort:', filters.sortBy, filters.sortOrder);
-          
-          properties.sort((a, b) => {
-            let aValue: any, bValue: any;
-            
-            switch (filters.sortBy) {
-              case 'name':
-                aValue = a.name.toLowerCase();
-                bValue = b.name.toLowerCase();
-                break;
-              case 'price':
-              case 'priceFrom':
-                // Use USD prices for comparison
-                aValue = a.propertyType === 'off-plan' ? (a.priceFrom || 0) : (a.price || 0);
-                bValue = b.propertyType === 'off-plan' ? (b.priceFrom || 0) : (b.price || 0);
-                break;
-              case 'size':
-              case 'sizeFrom':
-                // Use m² for comparison
-                aValue = a.propertyType === 'off-plan' ? (a.sizeFrom || 0) : (a.size || 0);
-                bValue = b.propertyType === 'off-plan' ? (b.sizeFrom || 0) : (b.size || 0);
-                break;
-              case 'createdAt':
-                aValue = new Date(a.createdAt).getTime();
-                bValue = new Date(b.createdAt).getTime();
-                break;
-              default:
-                return 0;
-            }
-            
-            // Handle null/undefined values
-            if (aValue == null) aValue = 0;
-            if (bValue == null) bValue = 0;
-            
-            if (filters.sortOrder === 'ASC') {
-              return aValue > bValue ? 1 : aValue < bValue ? -1 : 0;
-            } else {
-              return aValue < bValue ? 1 : aValue > bValue ? -1 : 0;
-            }
+        // Always sort, using provided sort or default
+        const sortBy = filters?.sortBy || 'createdAt';
+        const sortOrder = filters?.sortOrder || 'DESC';
+        
+        if (process.env.NODE_ENV === 'development') {
+          console.log('Applying client-side sort:', sortBy, sortOrder);
+          console.log(`Total properties to sort: ${properties.length}`);
+          console.log('Filters received:', {
+            sortBy: filters?.sortBy,
+            sortOrder: filters?.sortOrder,
+            propertyType: filters?.propertyType,
           });
-          
-          // Debug: log first few properties after sorting
-          if (process.env.NODE_ENV === 'development' && properties.length > 0) {
-            console.log('First 3 properties after client-side sort:', properties.slice(0, 3).map(p => ({
+        }
+        
+        // Log detailed info about first 3 properties before sorting
+        if (properties.length > 0 && process.env.NODE_ENV === 'development') {
+          const sampleProps = properties.slice(0, 3).map(p => {
+            const priceValue = p.propertyType === 'off-plan' ? p.priceFrom : p.price;
+            return {
               name: p.name,
-              price: p.propertyType === 'off-plan' ? p.priceFrom : p.price,
-              createdAt: p.createdAt,
-            })));
-          }
-        } else {
-          // Default sort by createdAt DESC if no sort specified
-          properties.sort((a, b) => {
-            const aDate = new Date(a.createdAt).getTime();
-            const bDate = new Date(b.createdAt).getTime();
-            return bDate - aDate;
+              propertyType: p.propertyType,
+              priceFrom: p.priceFrom,
+              price: p.price,
+              priceFromAED: p.priceFromAED,
+              priceAED: p.priceAED,
+              priceValueForSort: priceValue,
+              sizeFrom: p.sizeFrom,
+              size: p.size,
+            };
           });
+          console.log('Properties before sort (first 3):', sampleProps);
+        }
+        
+        // Create a stable copy for sorting
+        const sortedProperties = [...properties];
+        
+        sortedProperties.sort((a, b) => {
+          let aValue: number | string, bValue: number | string;
+          
+          switch (sortBy) {
+            case 'name':
+              aValue = (a.name || '').toLowerCase();
+              bValue = (b.name || '').toLowerCase();
+              // String comparison
+              if (sortOrder === 'ASC') {
+                return aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
+              } else {
+                return aValue > bValue ? -1 : aValue < bValue ? 1 : 0;
+              }
+            
+            case 'price':
+            case 'priceFrom':
+              // Use USD prices for comparison (more consistent)
+              // IMPORTANT: priceFrom/price may come as strings from API, need to convert to number
+              if (a.propertyType === 'off-plan') {
+                const priceFrom = a.priceFrom;
+                if (typeof priceFrom === 'number' && !isNaN(priceFrom)) {
+                  aValue = priceFrom;
+                } else if (typeof priceFrom === 'string') {
+                  aValue = parseFloat(priceFrom) || 0;
+                } else {
+                  aValue = 0;
+                }
+              } else {
+                const price = a.price;
+                if (typeof price === 'number' && !isNaN(price)) {
+                  aValue = price;
+                } else if (typeof price === 'string') {
+                  aValue = parseFloat(price) || 0;
+                } else {
+                  aValue = 0;
+                }
+              }
+              
+              if (b.propertyType === 'off-plan') {
+                const priceFrom = b.priceFrom;
+                if (typeof priceFrom === 'number' && !isNaN(priceFrom)) {
+                  bValue = priceFrom;
+                } else if (typeof priceFrom === 'string') {
+                  bValue = parseFloat(priceFrom) || 0;
+                } else {
+                  bValue = 0;
+                }
+              } else {
+                const price = b.price;
+                if (typeof price === 'number' && !isNaN(price)) {
+                  bValue = price;
+                } else if (typeof price === 'string') {
+                  bValue = parseFloat(price) || 0;
+                } else {
+                  bValue = 0;
+                }
+              }
+              
+              // Debug log for price sorting
+              if (process.env.NODE_ENV === 'development') {
+                const indexA = sortedProperties.indexOf(a);
+                const indexB = sortedProperties.indexOf(b);
+                if (indexA < 5 || indexB < 5) {
+                  console.log(`Price sort: ${a.name} (${aValue}) vs ${b.name} (${bValue}), order: ${sortOrder}, result: ${sortOrder === 'ASC' ? (aValue as number) - (bValue as number) : (bValue as number) - (aValue as number)}`);
+                }
+              }
+              break;
+            
+            case 'size':
+            case 'sizeFrom':
+              // Use m² for comparison
+              // IMPORTANT: sizeFrom/size may come as strings from API, need to convert to number
+              if (a.propertyType === 'off-plan') {
+                const sizeFrom = a.sizeFrom;
+                if (typeof sizeFrom === 'number' && !isNaN(sizeFrom)) {
+                  aValue = sizeFrom;
+                } else if (typeof sizeFrom === 'string') {
+                  aValue = parseFloat(sizeFrom) || 0;
+                } else {
+                  aValue = 0;
+                }
+              } else {
+                const size = a.size;
+                if (typeof size === 'number' && !isNaN(size)) {
+                  aValue = size;
+                } else if (typeof size === 'string') {
+                  aValue = parseFloat(size) || 0;
+                } else {
+                  aValue = 0;
+                }
+              }
+              
+              if (b.propertyType === 'off-plan') {
+                const sizeFrom = b.sizeFrom;
+                if (typeof sizeFrom === 'number' && !isNaN(sizeFrom)) {
+                  bValue = sizeFrom;
+                } else if (typeof sizeFrom === 'string') {
+                  bValue = parseFloat(sizeFrom) || 0;
+                } else {
+                  bValue = 0;
+                }
+              } else {
+                const size = b.size;
+                if (typeof size === 'number' && !isNaN(size)) {
+                  bValue = size;
+                } else if (typeof size === 'string') {
+                  bValue = parseFloat(size) || 0;
+                } else {
+                  bValue = 0;
+                }
+              }
+              break;
+            
+            case 'createdAt':
+              aValue = new Date(a.createdAt || 0).getTime();
+              bValue = new Date(b.createdAt || 0).getTime();
+              break;
+            
+            default:
+              // Default to createdAt if sortBy is unknown
+              aValue = new Date(a.createdAt || 0).getTime();
+              bValue = new Date(b.createdAt || 0).getTime();
+              break;
+          }
+          
+          // Handle null/undefined/NaN values for numeric comparisons
+          if (typeof aValue === 'number') {
+            if (isNaN(aValue) || aValue == null) aValue = 0;
+          }
+          if (typeof bValue === 'number') {
+            if (isNaN(bValue) || bValue == null) bValue = 0;
+          }
+          
+          // Numeric comparison
+          if (sortOrder === 'ASC') {
+            return (aValue as number) - (bValue as number);
+          } else {
+            return (bValue as number) - (aValue as number);
+          }
+        });
+        
+        // Replace the array
+        properties.length = 0;
+        properties.push(...sortedProperties);
+        
+        // Debug: log first few properties after sorting
+        if (process.env.NODE_ENV === 'development' && properties.length > 0) {
+          const sortedSample = properties.slice(0, 3).map(p => {
+            const priceValue = p.propertyType === 'off-plan' ? p.priceFrom : p.price;
+            return {
+              name: p.name,
+              propertyType: p.propertyType,
+              priceUSD: priceValue,
+              priceAED: p.propertyType === 'off-plan' ? p.priceFromAED : p.priceAED,
+              size: p.propertyType === 'off-plan' ? p.sizeFrom : p.size,
+              createdAt: p.createdAt,
+            };
+          });
+          console.log('First 3 properties after client-side sort:', sortedSample);
+          console.log(`Sort completed: ${sortBy} ${sortOrder}`);
         }
         
         return properties;
@@ -537,6 +1073,35 @@ export async function getProperty(id: string): Promise<Property> {
     const response = await apiClient.get<ApiResponse<Property>>(`/properties/${id}`);
     return response.data.data;
   } catch (error: any) {
+    // If 403 or 401, try to get from public data endpoint
+    if (error.response?.status === 403 || error.response?.status === 401) {
+      console.warn(`Status ${error.response.status} on /properties/${id}, trying to find property in public data...`);
+      
+      try {
+        // Get all data from public endpoint
+        const publicData = await getPublicData();
+        
+        if (publicData.properties && Array.isArray(publicData.properties)) {
+          const property = publicData.properties.find(p => p.id === id);
+          
+          if (property) {
+            if (process.env.NODE_ENV === 'development') {
+              console.log(`✅ Found property ${id} in public data`);
+            }
+            return property;
+          } else {
+            throw new Error('Property not found in public data');
+          }
+        } else {
+          throw new Error('Properties not found in public data structure');
+        }
+      } catch (publicDataError: any) {
+        console.error('Error fetching property from public data:', publicDataError);
+        throw new Error(`Property not found: ${publicDataError.message || 'Unknown error'}`);
+      }
+    }
+    
+    // For other errors, log and rethrow
     console.error('Error fetching property:', error);
     if (error.response) {
       console.error('Response status:', error.response.status);
@@ -546,13 +1111,61 @@ export async function getProperty(id: string): Promise<Property> {
   }
 }
 
+// Cache for public data to avoid multiple requests
+let publicDataCache: PublicData | null = null;
+let publicDataCacheTime: number = 0;
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
 /**
  * Get public data (countries, cities, areas, developers, facilities)
+ * Uses cache to avoid multiple requests
  */
-export async function getPublicData(): Promise<PublicData> {
+export async function getPublicData(forceRefresh = false): Promise<PublicData> {
+  // Return cached data if available and not expired
+  const now = Date.now();
+  if (!forceRefresh && publicDataCache && (now - publicDataCacheTime) < CACHE_DURATION) {
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Using cached public data');
+    }
+    return publicDataCache;
+  }
+
   try {
     const response = await apiClient.get<ApiResponse<PublicData>>('/public/data');
-    return response.data.data;
+    const data = response.data.data;
+    
+    // Cache the data
+    publicDataCache = data;
+    publicDataCacheTime = now;
+    
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Loaded and cached public data');
+      if (data.properties && Array.isArray(data.properties)) {
+        const uniqueAreaIds = [...new Set(data.properties.map(p => p.area?.id).filter(Boolean))];
+        console.log(`Public data contains ${data.properties.length} properties with ${uniqueAreaIds.length} unique area IDs`);
+        
+        // Show all unique area IDs (for debugging)
+        if (uniqueAreaIds.length > 0) {
+          console.log('All unique area IDs in public data:', uniqueAreaIds);
+        }
+        
+        // Check if we have areas data and compare with properties
+        if (data.areas && Array.isArray(data.areas)) {
+          const areaIdsFromAreas = data.areas.map(a => a.id);
+          console.log(`Areas data contains ${areaIdsFromAreas.length} areas`);
+          console.log('First 10 area IDs from areas:', areaIdsFromAreas.slice(0, 10));
+          
+          // Check if properties use area IDs that exist in areas
+          const areaIdsInProperties = uniqueAreaIds;
+          const missingAreaIds = areaIdsInProperties.filter(id => !areaIdsFromAreas.includes(id));
+          if (missingAreaIds.length > 0) {
+            console.warn('⚠️ Some area IDs in properties are not found in areas list:', missingAreaIds);
+          }
+        }
+      }
+    }
+    
+    return data;
   } catch (error: any) {
     console.error('Error fetching public data:', error);
     if (error.response) {
@@ -564,14 +1177,47 @@ export async function getPublicData(): Promise<PublicData> {
 }
 
 /**
+ * Clear public data cache (useful for testing or forced refresh)
+ */
+export function clearPublicDataCache(): void {
+  publicDataCache = null;
+  publicDataCacheTime = 0;
+  if (process.env.NODE_ENV === 'development') {
+    console.log('Public data cache cleared');
+  }
+}
+
+/**
  * Submit investment (for registered users)
  */
 export async function submitInvestment(data: InvestmentRequest): Promise<Investment> {
   try {
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Submitting investment (authenticated):', {
+        propertyId: data.propertyId,
+        amount: data.amount,
+        date: data.date,
+        hasNotes: !!data.notes,
+      });
+    }
+    
     const response = await apiClient.post<ApiResponse<Investment>>('/investments', data);
+    
+    if (process.env.NODE_ENV === 'development') {
+      console.log('✅ Investment submitted successfully:', response.data.data);
+    }
+    
     return response.data.data;
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error submitting investment:', error);
+    if (error.response) {
+      console.error('Response status:', error.response.status);
+      console.error('Response data:', error.response.data);
+      
+      // Throw a more user-friendly error
+      const errorMessage = error.response.data?.message || error.response.data?.error || 'Failed to submit investment';
+      throw new Error(errorMessage);
+    }
     throw error;
   }
 }
@@ -581,10 +1227,34 @@ export async function submitInvestment(data: InvestmentRequest): Promise<Investm
  */
 export async function submitInvestmentPublic(data: InvestmentRequest): Promise<Investment> {
   try {
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Submitting investment (public):', {
+        propertyId: data.propertyId,
+        amount: data.amount,
+        date: data.date,
+        userEmail: data.userEmail,
+        userPhone: data.userPhone,
+        hasNotes: !!data.notes,
+      });
+    }
+    
     const response = await apiClient.post<ApiResponse<Investment>>('/investments/public', data);
+    
+    if (process.env.NODE_ENV === 'development') {
+      console.log('✅ Investment submitted successfully (public):', response.data.data);
+    }
+    
     return response.data.data;
-  } catch (error) {
-    console.error('Error submitting investment:', error);
+  } catch (error: any) {
+    console.error('Error submitting investment (public):', error);
+    if (error.response) {
+      console.error('Response status:', error.response.status);
+      console.error('Response data:', error.response.data);
+      
+      // Throw a more user-friendly error
+      const errorMessage = error.response.data?.message || error.response.data?.error || 'Failed to submit investment';
+      throw new Error(errorMessage);
+    }
     throw error;
   }
 }

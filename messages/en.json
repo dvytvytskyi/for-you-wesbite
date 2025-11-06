@@ -318,10 +318,12 @@
   "investment": {
     "title": "Submit Investment Request",
     "description": "Fill out the form below to submit your investment request.",
+    "agentName": "Gulnoza",
+    "agentRole": "Real Estate Specialist",
     "firstName": "First Name",
-    "firstNamePlaceholder": "Enter your first name",
+    "firstNamePlaceholder": "Name",
     "lastName": "Last Name",
-    "lastNamePlaceholder": "Enter your last name",
+    "lastNamePlaceholder": "Surname",
     "email": "Email",
     "emailPlaceholder": "your.email@example.com",
     "phone": "Phone",
@@ -336,8 +338,7 @@
     "submitError": "Failed to submit investment",
     "successTitle": "Investment Submitted!",
     "successMessage": "Your investment request has been submitted successfully. We will contact you soon.",
-    "agreeTerms": "I agree to the",
-    "privacyPolicy": "Privacy Policy"
+    "termsMessage": "When sending, I agree to terms and conditions."
   },
   "developers": {
     "pageTitle": "Developers",

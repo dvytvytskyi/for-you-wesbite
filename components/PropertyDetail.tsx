@@ -371,10 +371,12 @@ export default function PropertyDetail({ propertyId }: PropertyDetailProps) {
             )}
           </div>
 
-          <div className={styles.developer}>
-            <span className={styles.developerLabel}>{t('developer')}:</span>
-            <span className={styles.developerName}>{property.developer.name}</span>
-          </div>
+          {property.developer && (
+            <div className={styles.developer}>
+              <span className={styles.developerLabel}>{t('developer')}:</span>
+              <span className={styles.developerName}>{property.developer.name}</span>
+            </div>
+          )}
         </div>
 
         {/* Description */}
@@ -442,7 +444,7 @@ export default function PropertyDetail({ propertyId }: PropertyDetailProps) {
         )}
 
         {/* Developer Details */}
-        {property.developer.description && (
+        {property.developer && property.developer.description && (
           <div className={styles.descriptionSection}>
             <h2 className={styles.sectionTitle}>
               {locale === 'ru' ? 'О девелопере' : 'About Developer'}
@@ -451,7 +453,7 @@ export default function PropertyDetail({ propertyId }: PropertyDetailProps) {
               <div className={styles.developerLogoWrapper}>
                 <Image
                   src={property.developer.logo}
-                  alt={property.developer.name}
+                  alt={property.developer.name || 'Developer'}
                   width={200}
                   height={100}
                   style={{ objectFit: 'contain' }}
@@ -462,7 +464,7 @@ export default function PropertyDetail({ propertyId }: PropertyDetailProps) {
           </div>
         )}
 
-        {property.developer.images && property.developer.images.length > 0 && (
+        {property.developer && property.developer.images && property.developer.images.length > 0 && (
           <div className={styles.developerImagesSection}>
             <h2 className={styles.sectionTitle}>{locale === 'ru' ? 'Фото девелопера' : 'Developer Photos'}</h2>
             <div className={styles.developerImagesGrid}>
@@ -470,7 +472,7 @@ export default function PropertyDetail({ propertyId }: PropertyDetailProps) {
                 <div key={index} className={styles.developerImageWrapper}>
                   <Image
                     src={image}
-                    alt={`${property.developer.name} - ${index + 1}`}
+                    alt={`${property.developer?.name || 'Developer'} - ${index + 1}`}
                     fill
                     style={{ objectFit: 'cover' }}
                     sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
