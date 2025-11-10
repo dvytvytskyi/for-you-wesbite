@@ -308,74 +308,7 @@ export default function AboutHero() {
       </div>
 
       {/* Team Section */}
-      <div className={styles.teamSection}>
-        <div className={styles.teamContainer}>
-          <h2 className={styles.teamTitle}>{t('teamTitle')}</h2>
-          <p className={styles.teamDescription}>{t('teamDescription')}</p>
-          <div className={styles.teamGrid}>
-            <div className={styles.teamMember}>
-              <div className={styles.teamPhoto}>
-                <Image
-                  src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&h=500&fit=crop"
-                  alt="Team member"
-                  fill
-                  style={{ objectFit: 'cover' }}
-                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
-                />
-              </div>
-              <div className={styles.teamInfo}>
-                <div className={styles.teamName}>Sarah Johnson</div>
-                <div className={styles.teamRole}>Head of Marketing</div>
-              </div>
-            </div>
-            <div className={styles.teamMember}>
-              <div className={styles.teamPhoto}>
-                <Image
-                  src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=500&fit=crop"
-                  alt="Team member"
-                  fill
-                  style={{ objectFit: 'cover' }}
-                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
-                />
-              </div>
-              <div className={styles.teamInfo}>
-                <div className={styles.teamName}>Michael Chen</div>
-                <div className={styles.teamRole}>Chief Executive Officer</div>
-              </div>
-            </div>
-            <div className={styles.teamMember}>
-              <div className={styles.teamPhoto}>
-                <Image
-                  src="https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&h=500&fit=crop"
-                  alt="Team member"
-                  fill
-                  style={{ objectFit: 'cover' }}
-                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
-                />
-              </div>
-              <div className={styles.teamInfo}>
-                <div className={styles.teamName}>Emma Williams</div>
-                <div className={styles.teamRole}>Head of Sales</div>
-              </div>
-            </div>
-            <div className={styles.teamMember}>
-              <div className={styles.teamPhoto}>
-                <Image
-                  src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=500&fit=crop"
-                  alt="Team member"
-                  fill
-                  style={{ objectFit: 'cover' }}
-                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
-                />
-              </div>
-              <div className={styles.teamInfo}>
-                <div className={styles.teamName}>David Brown</div>
-                <div className={styles.teamRole}>Head of Operations</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <TeamSection t={t} />
 
       {/* Office Section */}
       <OfficeSection t={t} />
@@ -389,7 +322,81 @@ export default function AboutHero() {
   );
 }
 
-function OfficeSection({ t }: { t: any }) {
+
+export function TeamSection({ t }: { t: any }) {
+  return (
+    <div className={styles.teamSection}>
+      <div className={styles.teamContainer}>
+        <h2 className={styles.teamTitle}>{t('teamTitle')}</h2>
+        <p className={styles.teamDescription}>{t('teamDescription')}</p>
+        <div className={styles.teamGrid}>
+          <div className={styles.teamMember}>
+            <div className={styles.teamPhoto}>
+              <Image
+                src="/IMG_9273.JPG"
+                alt={t('teamMembers.daniil')}
+                fill
+                style={{ objectFit: 'cover' }}
+                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
+              />
+            </div>
+            <div className={styles.teamInfo}>
+              <div className={styles.teamName}>{t('teamMembers.daniil')}</div>
+              <div className={styles.teamRole}>{t('teamMembers.daniilRole')}</div>
+            </div>
+          </div>
+          <div className={styles.teamMember}>
+            <div className={styles.teamPhoto}>
+              <Image
+                src="/IMG_9331.JPG"
+                alt={t('teamMembers.angelina')}
+                fill
+                style={{ objectFit: 'cover' }}
+                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
+              />
+            </div>
+            <div className={styles.teamInfo}>
+              <div className={styles.teamName}>{t('teamMembers.angelina')}</div>
+              <div className={styles.teamRole}>{t('teamMembers.angelinaRole')}</div>
+            </div>
+          </div>
+          <div className={styles.teamMember}>
+            <div className={styles.teamPhoto}>
+              <Image
+                src="/IMG_9341.JPG"
+                alt={t('teamMembers.kamila')}
+                fill
+                style={{ objectFit: 'cover' }}
+                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
+              />
+            </div>
+            <div className={styles.teamInfo}>
+              <div className={styles.teamName}>{t('teamMembers.kamila')}</div>
+              <div className={styles.teamRole}>{t('teamMembers.kamilaRole')}</div>
+            </div>
+          </div>
+          <div className={styles.teamMember}>
+            <div className={styles.teamPhoto}>
+              <Image
+                src="/IMG_9345.JPG"
+                alt={t('teamMembers.ekaterina')}
+                fill
+                style={{ objectFit: 'cover' }}
+                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
+              />
+            </div>
+            <div className={styles.teamInfo}>
+              <div className={styles.teamName}>{t('teamMembers.ekaterina')}</div>
+              <div className={styles.teamRole}>{t('teamMembers.ekaterinaRole')}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function OfficeSection({ t }: { t: any }) {
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedTime, setSelectedTime] = useState('');
   const [selectedSpecialist, setSelectedSpecialist] = useState('');
@@ -405,7 +412,7 @@ function OfficeSection({ t }: { t: any }) {
 
     const loadMapbox = async () => {
       const mapboxgl = (await import('mapbox-gl')).default;
-      await import('mapbox-gl/dist/mapbox-gl.css');
+      // CSS is imported globally in app/globals.css
       
       const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || '';
 
@@ -575,7 +582,7 @@ function OfficeSection({ t }: { t: any }) {
   );
 }
 
-function FAQSection({ t }: { t: any }) {
+export function FAQSection({ t }: { t: any }) {
   const faqRef = useRef<HTMLDivElement>(null);
   const [isVisible, setIsVisible] = useState(false);
   const [openIndex, setOpenIndex] = useState<number | null>(null);
@@ -651,8 +658,12 @@ function FAQSection({ t }: { t: any }) {
   );
 }
 
-function LeadershipSection({ t }: { t: any }) {
-  const [isExpanded, setIsExpanded] = useState(false);
+export function LeadershipSection({ t }: { t: any }) {
+  const [expandedCard, setExpandedCard] = useState<string | null>(null);
+
+  const handleToggle = (name: string) => {
+    setExpandedCard(expandedCard === name ? null : name);
+  };
 
   return (
     <div className={styles.leadershipSection}>
@@ -662,30 +673,30 @@ function LeadershipSection({ t }: { t: any }) {
           <LeaderCard
             name={t('leaders.artem.name')}
             description={t('leaders.artem.description')}
-            photo="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=500&fit=crop&grayscale"
-            isExpanded={isExpanded}
-            onToggle={() => setIsExpanded(!isExpanded)}
+            photo="/Screenshot-2025-06-29-at-16.28.29.png"
+            isExpanded={expandedCard === t('leaders.artem.name')}
+            onToggle={() => handleToggle(t('leaders.artem.name'))}
           />
           <LeaderCard
             name={t('leaders.nikita.name')}
             description={t('leaders.nikita.description')}
-            photo="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=500&fit=crop&grayscale"
-            isExpanded={isExpanded}
-            onToggle={() => setIsExpanded(!isExpanded)}
+            photo="/Screenshot-2025-06-29-at-13.30.47.png"
+            isExpanded={expandedCard === t('leaders.nikita.name')}
+            onToggle={() => handleToggle(t('leaders.nikita.name'))}
           />
           <LeaderCard
             name={t('leaders.antony.name')}
             description={t('leaders.antony.description')}
-            photo="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&h=500&fit=crop&grayscale"
-            isExpanded={isExpanded}
-            onToggle={() => setIsExpanded(!isExpanded)}
+            photo="/photo_2024-09-23_15-49-10.webp"
+            isExpanded={expandedCard === t('leaders.antony.name')}
+            onToggle={() => handleToggle(t('leaders.antony.name'))}
           />
           <LeaderCard
             name={t('leaders.gulnoza.name')}
             description={t('leaders.gulnoza.description')}
-            photo="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&h=500&fit=crop&grayscale"
-            isExpanded={isExpanded}
-            onToggle={() => setIsExpanded(!isExpanded)}
+            photo="/IMG_4539-1-scaled.webp"
+            isExpanded={expandedCard === t('leaders.gulnoza.name')}
+            onToggle={() => handleToggle(t('leaders.gulnoza.name'))}
           />
         </div>
       </div>

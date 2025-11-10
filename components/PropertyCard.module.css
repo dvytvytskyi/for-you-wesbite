@@ -63,6 +63,24 @@
   overflow: hidden;
 }
 
+.placeholderImage {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f5f5f5;
+  color: #999;
+  border-radius: 8px;
+}
+
+.placeholderImage svg {
+  opacity: 0.3;
+}
+
 .cardImage {
   position: absolute;
   top: 0;

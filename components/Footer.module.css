@@ -12,8 +12,8 @@
 
 .mainContent {
   display: grid;
-  grid-template-columns: 2fr 1.5fr 1.5fr 1.5fr 2fr;
-  gap: 60px;
+  grid-template-columns: 2fr 1.5fr 1.5fr 1.8fr 1.5fr 2fr;
+  gap: 40px;
   margin-bottom: 60px;
 }
 
@@ -40,6 +40,7 @@
 
 .navigationSection,
 .legalSection,
+.contactSection,
 .appSection,
 .socialSection {
   display: flex;
@@ -53,7 +54,7 @@
   font-family: 'Cormorant Garamond', serif;
   font-size: 20px;
   font-weight: 500;
-  color: #000000;
+  color: #003077;
   margin: 0;
 }
 
@@ -79,6 +80,34 @@
   color: #003077;
 }
 
+.contactInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.contactAddress {
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 300;
+  color: #666666;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.contactLink {
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 300;
+  color: #666666;
+  text-decoration: none;
+  transition: color 0.3s ease;
+}
+
+.contactLink:hover {
+  color: #003077;
+}
+
 .appLinks {
   display: flex;
   flex-direction: column;
@@ -89,11 +118,96 @@
 .googlePlayLink {
   display: inline-block;
   transition: opacity 0.3s ease;
+  text-decoration: none;
 }
 
 .appStoreLink:hover,
 .googlePlayLink:hover {
   opacity: 0.8;
+}
+
+.appStoreButton {
+  display: flex;
+  width: 160px;
+  height: 48px;
+  background: #000000;
+  color: #ffffff;
+  border-radius: 12px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px;
+  gap: 10px;
+}
+
+.appStoreIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.appStoreText {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.appStoreSubtext {
+  font-family: 'Inter', sans-serif;
+  font-size: 10px;
+  font-weight: 400;
+  line-height: 1;
+  margin-bottom: 2px;
+}
+
+.appStoreMaintext {
+  font-family: 'Inter', sans-serif;
+  font-size: 18px;
+  font-weight: 500;
+  line-height: 1;
+  margin-top: -4px;
+}
+
+.googlePlayButton {
+  display: flex;
+  width: 160px;
+  height: 48px;
+  background: #000000;
+  color: #ffffff;
+  border-radius: 8px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px;
+  gap: 10px;
+}
+
+.googlePlayIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.googlePlayText {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.googlePlaySubtext {
+  font-family: 'Inter', sans-serif;
+  font-size: 10px;
+  font-weight: 400;
+  line-height: 1;
+  margin-bottom: 2px;
+}
+
+.googlePlayMaintext {
+  font-family: 'Inter', sans-serif;
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1;
+  margin-top: -4px;
 }
 
 .socialLinks {
@@ -178,6 +292,17 @@
   margin: 0;
 }
 
+@media (max-width: 1400px) {
+  .mainContent {
+    grid-template-columns: 2fr 1.5fr 1.5fr 1.8fr 2fr;
+    gap: 40px;
+  }
+
+  .socialSection {
+    grid-column: span 1;
+  }
+}
+
 @media (max-width: 1200px) {
   .mainContent {
     grid-template-columns: 1fr 1fr 1fr;
@@ -185,7 +310,8 @@
   }
 
   .appSection,
-  .socialSection {
+  .socialSection,
+  .contactSection {
     grid-column: span 1;
   }
 }
@@ -208,6 +334,7 @@
   .logoSection,
   .navigationSection,
   .legalSection,
+  .contactSection,
   .appSection,
   .socialSection {
     width: 100%;

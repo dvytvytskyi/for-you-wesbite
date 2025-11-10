@@ -41,7 +41,7 @@ const mapSortToBackend = (frontendSort: string | undefined, propertyType: 'off-p
 };
 
 // Convert frontend filters to API filters
-const convertFiltersToApi = (filters: Filters): ApiPropertyFilters => {
+const convertFiltersToApi = (filters: Filters, page: number): ApiPropertyFilters => {
   const propertyType = filters.type === 'new' ? 'off-plan' : 'secondary';
   const sort = mapSortToBackend(filters.sort, propertyType);
   
@@ -49,6 +49,9 @@ const convertFiltersToApi = (filters: Filters): ApiPropertyFilters => {
     propertyType,
     sortBy: sort.sortBy,
     sortOrder: sort.sortOrder,
+    // Server-side pagination: request only the current page
+    page: page,
+    limit: ITEMS_PER_PAGE, // 36 items per page
   };
 
   // Developer filter
@@ -135,8 +138,11 @@ const filtersToUrlParams = (filters: Filters, page?: number): URLSearchParams =>
 };
 
 const urlParamsToFilters = (searchParams: URLSearchParams): Filters => {
+  const typeParam = searchParams.get('type');
+  const type: 'new' | 'secondary' = typeParam === 'secondary' ? 'secondary' : 'new';
+  
   return {
-    type: (searchParams.get('type') as 'new' | 'secondary') || 'new',
+    type,
     search: searchParams.get('search') || '',
     location: searchParams.get('location')?.split(',').filter(Boolean) || [],
     bedrooms: searchParams.get('bedrooms')?.split(',').map(Number).filter(n => !isNaN(n)) || [],
@@ -162,26 +168,29 @@ export default function PropertiesList() {
   }, []);
   
   const [properties, setProperties] = useState<Property[]>([]);
+  const [totalProperties, setTotalProperties] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
   // Initialize filters from URL or defaults
   const [filters, setFilters] = useState<Filters>(() => {
-    if (typeof window !== 'undefined' && searchParams.toString()) {
-      return urlParamsToFilters(searchParams);
-    }
-    return {
-      type: 'new',
-      search: '',
-      location: [],
-      bedrooms: [],
-      sizeFrom: '',
-      sizeTo: '',
-      priceFrom: '',
-      priceTo: '',
-      sort: 'newest',
-    };
+    return urlParamsToFilters(searchParams);
   });
+
+  // Sync filters with URL when URL changes (e.g., browser back/forward)
+  useEffect(() => {
+    const urlFilters = urlParamsToFilters(searchParams);
+    setFilters(prevFilters => {
+      // Only update if filters actually changed
+      if (JSON.stringify(prevFilters) !== JSON.stringify(urlFilters)) {
+        if (process.env.NODE_ENV === 'development') {
+          console.log('🔄 Syncing filters from URL:', urlFilters);
+        }
+        return urlFilters;
+      }
+      return prevFilters;
+    });
+  }, [searchParams]);
 
   // Initialize page from URL
   const initialPage = searchParams.get('page') ? parseInt(searchParams.get('page') || '1', 10) : 1;
@@ -216,13 +225,15 @@ export default function PropertiesList() {
   // Debounce search
   const debouncedSearch = useDebounce(filters.search, 500);
 
-  // Load properties from API
+  // Load properties from API with server-side pagination
   const loadProperties = useCallback(async () => {
     setLoading(true);
     setError(null);
     
     try {
-      const apiFilters = convertFiltersToApi(filters);
+      // Convert filters and pass current page for server-side pagination
+      const apiFilters = convertFiltersToApi(filters, currentPage);
+      
       // Override search with debounced value
       if (debouncedSearch) {
         apiFilters.search = debouncedSearch;
@@ -230,25 +241,60 @@ export default function PropertiesList() {
         delete apiFilters.search;
       }
       
-      // Debug: log sort parameters
       if (process.env.NODE_ENV === 'development') {
-        console.log('Frontend sort value:', filters.sort);
-        console.log('Converted to API filters:', {
-          sortBy: apiFilters.sortBy,
-          sortOrder: apiFilters.sortOrder,
+        console.log('Loading properties (server-side pagination):', {
           propertyType: apiFilters.propertyType,
+          page: apiFilters.page,
+          limit: apiFilters.limit,
+          currentPage,
         });
       }
       
-      const data = await getProperties(apiFilters);
-      setProperties(data);
+      // Request only the current page from API (36 items)
+      const result = await getProperties(apiFilters);
+      const loadedProperties = Array.isArray(result.properties) ? result.properties : [];
+      
+      // Use total from API - this is the total count of ALL properties matching filters
+      let total = result.total || 0;
+      
+      // If total is 0 or equals loaded count and we got a full page, estimate there are more
+      // This handles cases where API doesn't return correct total
+      if ((total === 0 || total === loadedProperties.length) && loadedProperties.length === ITEMS_PER_PAGE) {
+        // For secondary properties, estimate conservatively (26K+)
+        if (apiFilters.propertyType === 'secondary') {
+          total = 26000; // Conservative estimate for secondary
+          if (process.env.NODE_ENV === 'development') {
+            console.warn('⚠️ API total is 0 or equals loaded count for secondary. Using estimated total:', total);
+          }
+        } else {
+          // For off-plan, estimate 1000
+          total = 1000;
+          if (process.env.NODE_ENV === 'development') {
+            console.warn('⚠️ API total is 0 or equals loaded count for off-plan. Using estimated total:', total);
+          }
+        }
+      }
+      
+      setTotalProperties(total);
+      
+      // Set properties directly (no slicing needed - API returns only this page)
+      setProperties(loadedProperties);
+      
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Properties loaded:', {
+          loaded: loadedProperties.length,
+          totalFromAPI: total,
+          currentPage,
+          totalPages: Math.ceil(total / ITEMS_PER_PAGE),
+        });
+      }
     } catch (err: any) {
       console.error('Error loading properties:', err);
       setError(err.message || t('errorLoading') || 'Error loading properties');
     } finally {
       setLoading(false);
     }
-  }, [filters.type, filters.location, filters.bedrooms, filters.sizeFrom, filters.sizeTo, filters.priceFrom, filters.priceTo, filters.sort, filters.developerId, filters.cityId, debouncedSearch, t]);
+  }, [filters, currentPage, debouncedSearch, t]);
 
   // Update URL when filters or page change
   const updateUrl = useCallback((newFilters: Filters, page?: number) => {
@@ -284,6 +330,9 @@ export default function PropertiesList() {
   }, [pathname, router, createSearchParams]);
 
   useEffect(() => {
+    // Reset loading state when filters or page change
+    setLoading(true);
+    setError(null);
     loadProperties();
   }, [loadProperties]);
 
@@ -310,24 +359,37 @@ export default function PropertiesList() {
     updateUrl(newFilters, 1); // Update URL (reset page to 1)
   };
 
-  // Calculate pagination
-  const totalPages = Math.ceil(properties.length / ITEMS_PER_PAGE) || 1;
+  // Calculate pagination based on total from API
+  // Server-side pagination: API returns total count of all matching properties
+  const totalPages = totalProperties > 0 
+    ? Math.ceil(totalProperties / ITEMS_PER_PAGE) 
+    : Math.ceil(properties.length / ITEMS_PER_PAGE) || 1;
+  
+  // Ensure properties is always an array
+  const propertiesArray = Array.isArray(properties) ? properties : [];
   
   // Ensure currentPage is within valid range
   const validPage = totalPages > 0 ? Math.min(Math.max(1, currentPage), totalPages) : 1;
-  const startIndex = (validPage - 1) * ITEMS_PER_PAGE;
-  const endIndex = startIndex + ITEMS_PER_PAGE;
-  const currentProperties = properties.slice(startIndex, endIndex);
-
-  // Sync currentPage if it's out of bounds (but only if we have properties loaded)
+  
+  if (process.env.NODE_ENV === 'development') {
+    console.log('Pagination info:', {
+      totalProperties,
+      propertiesCount: propertiesArray.length,
+      totalPages,
+      currentPage,
+      validPage,
+    });
+  }
+  
+  // Sync currentPage if it's out of bounds
   useEffect(() => {
-    if (properties.length > 0 && totalPages > 0 && currentPage > totalPages) {
+    if (totalPages > 0 && currentPage > totalPages) {
       console.log(`Current page ${currentPage} is out of bounds (total: ${totalPages}), resetting to 1`);
       setCurrentPage(1);
       updateUrl(filters, 1);
     }
-  }, [totalPages, currentPage, filters, updateUrl, properties.length]);
-
+  }, [totalPages, currentPage, filters, updateUrl]);
+  
   const handlePageChange = (page: number) => {
     if (page < 1 || page > totalPages) {
       console.warn('Invalid page number:', page, 'Total pages:', totalPages);
@@ -371,28 +433,30 @@ export default function PropertiesList() {
               ))}
             </div>
           </>
-        ) : properties.length === 0 ? (
+        ) : propertiesArray.length === 0 ? (
           <div className={styles.empty}>
             <p>{t('noProperties') || 'No properties found'}</p>
           </div>
         ) : (
           <>
             <div className={styles.resultsCount}>
-              {t('showing', { count: properties.length }) || `${properties.length} ${properties.length === 1 ? 'property' : 'properties'}`}
+              {t('showing', { count: totalProperties }) || `${totalProperties} ${totalProperties === 1 ? 'property' : 'properties'}`}
             </div>
             <div className={styles.grid}>
-              {currentProperties.map((property) => (
-                <PropertyCard key={property.id} property={property} currentPage={currentPage} />
+              {propertiesArray.map((property) => (
+                <PropertyCard key={property.id} property={property} currentPage={validPage} />
               ))}
             </div>
+            {/* Pagination */}
             {totalPages > 1 && (
               <div className={styles.pagination}>
                 <button
                   className={styles.paginationButton}
                   onClick={() => handlePageChange(validPage - 1)}
                   disabled={validPage === 1}
+                  aria-label="Previous page"
                 >
-                  {t('previous') || 'Previous'}
+                  ← {t('previous') || 'Previous'}
                 </button>
                 <div className={styles.paginationNumbers}>
                   {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
@@ -420,9 +484,10 @@ export default function PropertiesList() {
                 <button
                   className={styles.paginationButton}
                   onClick={() => handlePageChange(validPage + 1)}
-                  disabled={validPage === totalPages}
+                  disabled={validPage >= totalPages}
+                  aria-label="Next page"
                 >
-                  {t('next') || 'Next'}
+                  {t('next') || 'Next'} →
                 </button>
               </div>
             )}
@@ -432,3 +497,4 @@ export default function PropertiesList() {
     </div>
   );
 }
+

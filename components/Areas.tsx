@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useRef, useEffect, useState } from 'react';
 import styles from './Areas.module.css';
+import { getAreas, Area as ApiArea } from '@/lib/api';
 
 interface Area {
   id: string;
@@ -14,16 +15,25 @@ interface Area {
   image: string;
 }
 
-const areas: Area[] = [
-  { id: 'palm', name: 'Palm Jumeirah', nameRu: 'Пальм Джумейра', projectsCount: 10, image: 'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=800&h=600&fit=crop' },
-  { id: 'business-bay', name: 'Business Bay', nameRu: 'Бізнес Бей', projectsCount: 40, image: 'https://images.unsplash.com/photo-1518684079-3c830dcef090?w=800&h=600&fit=crop' },
-  { id: 'downtown', name: 'Downtown Dubai', nameRu: 'Даунтаун Дубай', projectsCount: 5, image: 'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=800&h=600&fit=crop' },
-  { id: 'town-square', name: 'Town Square', nameRu: 'Таун Сквер', projectsCount: 2, image: 'https://images.unsplash.com/photo-1480714378408-67cf0d13bc1b?w=800&h=600&fit=crop' },
-  { id: 'dubai-marina', name: 'Dubai Marina', nameRu: 'Дубай Марина', projectsCount: 32, image: 'https://images.unsplash.com/photo-1518684079-3c830dcef090?w=800&h=600&fit=crop' },
-  { id: 'dubai-hills', name: 'Dubai Hills', nameRu: 'Дубай Хіллз', projectsCount: 22, image: 'https://images.unsplash.com/photo-1480714378408-67cf0d13bc1b?w=800&h=600&fit=crop' },
-  { id: 'jbr', name: 'JBR', nameRu: 'JBR', projectsCount: 18, image: 'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=800&h=600&fit=crop' },
-  { id: 'dubai-creek', name: 'Dubai Creek', nameRu: 'Дубай Крік', projectsCount: 15, image: 'https://images.unsplash.com/photo-1518684079-3c830dcef090?w=800&h=600&fit=crop' },
+// Target areas to display on home page (by ID)
+const TARGET_AREA_IDS = [
+  '7924f2dd-94bf-4ec3-b3fe-cbc5606a073a', // Business Bay
+  '1b6f0f1f-0587-4d5f-96b2-5cb76844b1a3', // Downtown Dubai
+  '599de105-6125-405c-9a9c-cd4e1c80bc38', // City Walk
+  'a22870e9-9d1e-4dfb-aaba-9cc647afe23b', // Palm Jumeirah
+  'c9f2c230-e3b5-465a-9c5f-cf7bebc35905', // Jumeirah Village Circle (JVC)
+  '2a295d06-8184-40d0-a68a-18cf529173af', // Dubai Hills
 ];
+
+// Area names mapping for sorting
+const AREA_ORDER: { [key: string]: number } = {
+  '7924f2dd-94bf-4ec3-b3fe-cbc5606a073a': 0, // Business Bay
+  '1b6f0f1f-0587-4d5f-96b2-5cb76844b1a3': 1, // Downtown Dubai
+  '599de105-6125-405c-9a9c-cd4e1c80bc38': 2, // City Walk
+  'a22870e9-9d1e-4dfb-aaba-9cc647afe23b': 3, // Palm Jumeirah
+  'c9f2c230-e3b5-465a-9c5f-cf7bebc35905': 4, // JVC
+  '2a295d06-8184-40d0-a68a-18cf529173af': 5, // Dubai Hills
+};
 
 export default function Areas() {
   const t = useTranslations('areas');
@@ -32,6 +42,8 @@ export default function Areas() {
   const cardsWrapperRef = useRef<HTMLDivElement>(null);
   const sectionRef = useRef<HTMLElement>(null);
   const [isVisible, setIsVisible] = useState(false);
+  const [areas, setAreas] = useState<Area[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const getLocalizedPath = (path: string) => {
     return locale === 'en' ? path : `/${locale}${path}`;
@@ -40,6 +52,58 @@ export default function Areas() {
   const getAreaName = (area: Area) => {
     return locale === 'ru' ? area.nameRu : area.name;
   };
+
+  // Load areas from API
+  useEffect(() => {
+    const loadAreas = async () => {
+      setLoading(true);
+      try {
+        const apiAreas = await getAreas();
+        
+        // Filter only target areas by ID and convert to component format
+        const filteredAreas: Area[] = apiAreas
+          .filter((apiArea: ApiArea) => TARGET_AREA_IDS.includes(apiArea.id))
+          .map((apiArea: ApiArea) => {
+            // Get image - use first image from images array or fallback
+            let imageUrl = 'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=800&h=600&fit=crop';
+            if (apiArea.images && apiArea.images.length > 0) {
+              imageUrl = apiArea.images[0];
+            }
+            
+            // Generate slug from nameEn
+            const slug = (apiArea.nameEn || '')
+              .toLowerCase()
+              .replace(/\s+/g, '-')
+              .replace(/[^a-z0-9-]/g, '');
+            
+            return {
+              id: slug || apiArea.id,
+              name: apiArea.nameEn || '',
+              nameRu: apiArea.nameRu || apiArea.nameEn || '',
+              projectsCount: apiArea.projectsCount?.total || 0,
+              image: imageUrl,
+              areaId: apiArea.id, // Keep original ID for sorting
+            };
+          })
+          .sort((a, b) => {
+            // Sort by AREA_ORDER
+            const aOrder = AREA_ORDER[(a as any).areaId] ?? 999;
+            const bOrder = AREA_ORDER[(b as any).areaId] ?? 999;
+            return aOrder - bOrder;
+          })
+          .map(({ areaId, ...area }) => area); // Remove areaId from final result
+        
+        setAreas(filteredAreas);
+      } catch (error) {
+        console.error('Failed to load areas:', error);
+        setAreas([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadAreas();
+  }, []);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -113,7 +177,12 @@ export default function Areas() {
         <div className={styles.scrollWrapper}>
           <div className={styles.scrollContainer} ref={scrollRef}>
             <div className={styles.cardsWrapper} ref={cardsWrapperRef}>
-              {areas.map((area) => (
+              {loading ? (
+                <div className={styles.loading}>Loading areas...</div>
+              ) : areas.length === 0 ? (
+                <div className={styles.noAreas}>No areas found</div>
+              ) : (
+                areas.map((area) => (
                 <Link
                   key={area.id}
                   href={getLocalizedPath(`/areas/${area.id}`)}
@@ -142,7 +211,8 @@ export default function Areas() {
                     </div>
                   </div>
                 </Link>
-              ))}
+                ))
+              )}
             </div>
           </div>
         </div>

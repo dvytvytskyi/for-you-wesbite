@@ -6,6 +6,7 @@ import AboutUs from '@/components/AboutUs';
 import Partners from '@/components/Partners';
 import ProjectImage from '@/components/ProjectImage';
 import Footer from '@/components/Footer';
+import AboutSections from '@/components/AboutSections';
 
 export default function HomePage() {
   return (
@@ -17,6 +18,7 @@ export default function HomePage() {
       <Partners />
       <Areas />
       <ProjectImage />
+      <AboutSections />
       <Footer />
     </>
   );

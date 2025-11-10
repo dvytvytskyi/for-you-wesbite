@@ -12,10 +12,8 @@
   max-width: 1600px;
   margin: 0 auto;
   padding: 120px 40px 40px 40px;
-  opacity: 0;
-  transform: translateY(60px);
-  transition: opacity 1.2s ease, transform 1.2s cubic-bezier(0.34, 1.56, 0.64, 1);
-  will-change: transform, opacity;
+  opacity: 1;
+  transform: translateY(0);
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -97,6 +95,8 @@
   align-items: center;
   text-align: center;
   gap: 16px;
+  height: 240px;
+  justify-content: center;
 }
 
 .developerCard:hover {
@@ -111,32 +111,53 @@
   box-shadow: 0 4px 12px rgba(0, 48, 119, 0.15);
 }
 
-.logoContainer {
-  width: 60px;
-  height: 60px;
+.logoWrapper {
+  width: 100%;
+  height: 120px;
   display: flex;
   align-items: center;
   justify-content: center;
+  margin-bottom: 8px;
+  flex-shrink: 0;
+}
+
+.logoContainer {
+  position: relative;
+  width: 120px;
+  height: 120px;
+  min-width: 120px;
+  min-height: 120px;
+  max-width: 120px;
+  max-height: 120px;
+  overflow: hidden;
+  border-radius: 8px;
+  background: #f5f5f5;
+  flex-shrink: 0;
 }
 
 .logo {
-  max-width: 100%;
-  max-height: 100%;
-  object-fit: contain;
+  object-fit: cover;
+  object-position: center;
 }
 
 .logoPlaceholder {
-  width: 60px;
-  height: 60px;
-  border-radius: 12px;
+  width: 120px;
+  height: 120px;
+  min-width: 120px;
+  min-height: 120px;
+  max-width: 120px;
+  max-height: 120px;
+  border-radius: 8px;
   background: linear-gradient(135deg, #003077 0%, #0055aa 100%);
   display: flex;
   align-items: center;
   justify-content: center;
   color: #ffffff;
   font-family: 'Inter', sans-serif;
-  font-size: 24px;
+  font-size: 48px;
   font-weight: 600;
+  flex-shrink: 0;
+  overflow: hidden;
 }
 
 .logoPlaceholderText {
@@ -150,6 +171,16 @@
   color: #003077;
   margin: 0;
   line-height: 1.4;
+  flex: 1;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-height: 48px;
+  max-height: 64px;
+  text-align: center;
+  word-break: break-word;
 }
 
 .viewButton {
@@ -164,11 +195,56 @@
   cursor: pointer;
   transition: all 0.3s ease;
   width: 100%;
+  text-decoration: none;
+  display: inline-block;
+  text-align: center;
+  flex-shrink: 0;
+  margin-top: auto;
 }
 
 .viewButton:hover {
   background: #003077;
   color: #ffffff;
+}
+
+.projectsCount {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  margin: 8px 0;
+}
+
+.projectsCountNumber {
+  font-family: 'Inter', sans-serif;
+  font-size: 20px;
+  font-weight: 600;
+  color: #003077;
+}
+
+.projectsCountLabel {
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  color: #666666;
+  text-transform: lowercase;
+}
+
+.projectsCountSection {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 24px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid #e5e5e5;
+}
+
+.projectsCountSection .projectsCountNumber {
+  font-size: 24px;
+}
+
+.projectsCountSection .projectsCountLabel {
+  font-size: 14px;
 }
 
 /* Права частина - інформація по девелоперу (40%) */
@@ -311,6 +387,23 @@
   font-size: 16px;
 }
 
+.error {
+  text-align: center;
+  padding: 100px 20px;
+  font-family: 'Inter', sans-serif;
+  font-size: 18px;
+  color: #d32f2f;
+}
+
+.noDevelopers {
+  text-align: center;
+  padding: 100px 20px;
+  font-family: 'Inter', sans-serif;
+  font-size: 18px;
+  color: #666666;
+  grid-column: 1 / -1;
+}
+
 @media (max-width: 1400px) {
   .developersGrid {
     grid-template-columns: repeat(3, 1fr);
@@ -366,6 +459,21 @@
 
   .developerCard {
     padding: 20px;
+    height: 220px;
+  }
+
+  .logoWrapper {
+    height: 100px;
+  }
+
+  .logoContainer,
+  .logoPlaceholder {
+    width: 100px;
+    height: 100px;
+  }
+
+  .logoPlaceholder {
+    font-size: 40px;
   }
 
   .developerDetails {
@@ -393,6 +501,21 @@
 
   .developerCard {
     padding: 16px;
+    height: 200px;
+  }
+
+  .logoWrapper {
+    height: 80px;
+  }
+
+  .logoContainer,
+  .logoPlaceholder {
+    width: 80px;
+    height: 80px;
+  }
+
+  .logoPlaceholder {
+    font-size: 32px;
   }
 
   .developerName {

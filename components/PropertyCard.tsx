@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, memo } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -14,7 +14,7 @@ interface PropertyCardProps {
   currentPage?: number;
 }
 
-export default function PropertyCard({ property, currentPage = 1 }: PropertyCardProps) {
+function PropertyCard({ property, currentPage = 1 }: PropertyCardProps) {
   const t = useTranslations('propertyCard');
   const locale = useLocale();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -33,16 +33,25 @@ export default function PropertyCard({ property, currentPage = 1 }: PropertyCard
   };
 
   const getLocation = () => {
-    // For off-plan properties: area is a string "areaName, cityName"
+    // For off-plan properties: area is a string "areaName, cityName" or null
     // For secondary properties: area is an object
+    if (property.area === null || property.area === undefined) {
+      // If area is null, try to use city if available
+      if (property.city) {
+        return locale === 'ru' ? property.city.nameRu : property.city.nameEn;
+      }
+      return '';
+    }
+    
     if (typeof property.area === 'string') {
       // Off-plan: area already contains "areaName, cityName"
       return property.area;
     }
     
     // Secondary: area is an object, need to combine with city
-    if (!property.area || !property.city) {
-      return '';
+    if (!property.city) {
+      // If no city, just return area name
+      return locale === 'ru' ? property.area.nameRu : property.area.nameEn;
     }
     
     const areaName = locale === 'ru' ? property.area.nameRu : property.area.nameEn;
@@ -91,16 +100,33 @@ export default function PropertyCard({ property, currentPage = 1 }: PropertyCard
   const getSize = () => {
     if (property.propertyType === 'off-plan') {
       if (property.sizeFrom && property.sizeTo) {
-        const from = locale === 'ru' ? formatNumber(property.sizeFrom) : formatNumber(property.sizeFromSqft || 0);
-        const to = locale === 'ru' ? formatNumber(property.sizeTo) : formatNumber(property.sizeToSqft || 0);
+        let from: number;
+        let to: number;
+        if (locale === 'ru') {
+          from = property.sizeFrom || 0;
+          to = property.sizeTo || 0;
+        } else {
+          from = property.sizeFromSqft || (property.sizeFrom ? Math.round(property.sizeFrom * 10.764) : 0);
+          to = property.sizeToSqft || (property.sizeTo ? Math.round(property.sizeTo * 10.764) : 0);
+        }
         const unit = locale === 'ru' ? 'м²' : 'sq.ft';
-        return `${from} - ${to} ${unit}`;
+        return `${formatNumber(from)} - ${formatNumber(to)} ${unit}`;
       }
-      const size = locale === 'ru' ? (property.sizeFrom || 0) : (property.sizeFromSqft || 0);
+      let size: number;
+      if (locale === 'ru') {
+        size = property.sizeFrom || 0;
+      } else {
+        size = property.sizeFromSqft || (property.sizeFrom ? Math.round(property.sizeFrom * 10.764) : 0);
+      }
       const unit = locale === 'ru' ? 'м²' : 'sq.ft';
       return `${formatNumber(size)} ${unit}`;
     } else {
-      const size = locale === 'ru' ? (property.size || 0) : (property.sizeSqft || 0);
+      let size: number;
+      if (locale === 'ru') {
+        size = property.size || 0;
+      } else {
+        size = property.sizeSqft || (property.size ? Math.round(property.size * 10.764) : 0);
+      }
       const unit = locale === 'ru' ? 'м²' : 'sq.ft';
       return `${formatNumber(size)} ${unit}`;
     }
@@ -108,13 +134,26 @@ export default function PropertyCard({ property, currentPage = 1 }: PropertyCard
 
   const getPricePerSqm = () => {
     const price = getPrice();
+    if (!price || price === 0) {
+      return '0';
+    }
+    
     let size: number;
     if (property.propertyType === 'off-plan') {
-      size = property.sizeFrom || 1;
+      size = property.sizeFrom || 0;
     } else {
-      size = property.size || 1;
+      size = property.size || 0;
     }
+    
+    if (!size || size === 0) {
+      return 'N/A';
+    }
+    
     const pricePerSqm = price / size;
+    if (isNaN(pricePerSqm) || !isFinite(pricePerSqm)) {
+      return 'N/A';
+    }
+    
     return formatNumber(Math.round(pricePerSqm));
   };
 
@@ -141,7 +180,18 @@ export default function PropertyCard({ property, currentPage = 1 }: PropertyCard
   useEffect(() => {
     setImageLoading(true);
     setCurrentImageIndex(0);
-  }, [property.id]);
+    
+    // Debug: Log photos data
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`🖼️ PropertyCard photos for ${property.name}:`, {
+        photosType: typeof property.photos,
+        photosIsArray: Array.isArray(property.photos),
+        photosLength: Array.isArray(property.photos) ? property.photos.length : 'N/A',
+        photosValue: property.photos,
+        firstPhoto: Array.isArray(property.photos) && property.photos.length > 0 ? property.photos[0] : 'N/A',
+      });
+    }
+  }, [property.id, property.photos, property.name]);
 
   const handleClick = () => {
     // Save scroll position and page before navigating
@@ -161,10 +211,11 @@ export default function PropertyCard({ property, currentPage = 1 }: PropertyCard
         {imageLoading && (
           <div className={styles.imageSkeleton}></div>
         )}
-        {property.photos && property.photos.length > 0 && (
+        {/* Ensure photos is an array and has at least one valid URL */}
+        {Array.isArray(property.photos) && property.photos.length > 0 && property.photos[0] && (
           <div className={styles.imageWrapper} style={{ opacity: imageLoading ? 0 : 1, transition: 'opacity 0.3s ease' }}>
             {/* Previous image - sliding out */}
-            {isTransitioning && prevImageIndex !== currentImageIndex && (
+            {isTransitioning && prevImageIndex !== currentImageIndex && property.photos[prevImageIndex] && (
               <Image
                 key={`prev-${prevImageIndex}`}
                 src={property.photos[prevImageIndex]}
@@ -173,20 +224,46 @@ export default function PropertyCard({ property, currentPage = 1 }: PropertyCard
                 style={{ objectFit: 'cover' }}
                 sizes="(max-width: 1200px) 50vw, (max-width: 900px) 100vw, 33vw"
                 className={`${styles.cardImage} ${styles.prevImage} ${direction === 'right' ? styles.slideOutLeft : styles.slideOutRight}`}
+                unoptimized={property.photos[prevImageIndex]?.startsWith('http://') || property.photos[prevImageIndex]?.startsWith('https://')}
               />
             )}
             {/* Current image - sliding in */}
-            <Image
-              key={`current-${currentImageIndex}`}
-              src={property.photos[currentImageIndex]}
-              alt={getName()}
-              fill
-              style={{ objectFit: 'cover' }}
-              sizes="(max-width: 1200px) 50vw, (max-width: 900px) 100vw, 33vw"
-              className={`${styles.cardImage} ${styles.currentImage} ${isTransitioning && direction === 'right' ? styles.slideInRight : isTransitioning && direction === 'left' ? styles.slideInLeft : ''}`}
-              onLoad={() => setImageLoading(false)}
-              onError={() => setImageLoading(false)}
-            />
+            {property.photos[currentImageIndex] && (
+              <Image
+                key={`current-${currentImageIndex}`}
+                src={property.photos[currentImageIndex]}
+                alt={getName()}
+                fill
+                style={{ objectFit: 'cover' }}
+                sizes="(max-width: 1200px) 50vw, (max-width: 900px) 100vw, 33vw"
+                className={`${styles.cardImage} ${styles.currentImage} ${isTransitioning && direction === 'right' ? styles.slideInRight : isTransitioning && direction === 'left' ? styles.slideInLeft : ''}`}
+                unoptimized={property.photos[currentImageIndex]?.startsWith('http://') || property.photos[currentImageIndex]?.startsWith('https://')}
+                onLoad={() => {
+                  setImageLoading(false);
+                  if (process.env.NODE_ENV === 'development') {
+                    console.log(`✅ Image loaded for property ${property.name}:`, property.photos[currentImageIndex]);
+                  }
+                }}
+                onError={(e) => {
+                  console.error(`❌ Failed to load image for property ${property.name}:`, {
+                    imageUrl: property.photos[currentImageIndex],
+                    error: e,
+                    photosArray: property.photos,
+                  });
+                  setImageLoading(false);
+                }}
+              />
+            )}
+          </div>
+        )}
+        {/* Placeholder when no photos */}
+        {(!Array.isArray(property.photos) || property.photos.length === 0 || !property.photos[0]) && (
+          <div className={styles.imageWrapper}>
+            <div className={styles.placeholderImage}>
+              <svg width="64" height="64" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M4 16L8.586 11.414C9.367 10.633 10.633 10.633 11.414 11.414L16 16M14 14L15.586 12.414C16.367 11.633 17.633 11.633 18.414 12.414L20 14M14 8H14.01M6 20H18C19.105 20 20 19.105 20 18V6C20 4.895 19.105 4 18 4H6C4.895 4 4 4.895 4 6V18C4 19.105 4.895 20 6 20Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </div>
           </div>
         )}
         {property.photos && property.photos.length > 1 && (
@@ -312,4 +389,15 @@ export default function PropertyCard({ property, currentPage = 1 }: PropertyCard
     </Link>
   );
 }
+
+// Memoize component to prevent unnecessary re-renders
+export default memo(PropertyCard, (prevProps, nextProps) => {
+  // Only re-render if property ID or key properties change
+  return (
+    prevProps.property.id === nextProps.property.id &&
+    prevProps.property.photos?.[0] === nextProps.property.photos?.[0] &&
+    prevProps.property.priceAED === nextProps.property.priceAED &&
+    prevProps.property.priceFromAED === nextProps.property.priceFromAED
+  );
+});
 

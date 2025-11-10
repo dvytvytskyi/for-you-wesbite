@@ -68,15 +68,52 @@
   border-radius: 12px;
 }
 
-.cardOverlay {
+.cardOverlayTop {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 30%;
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.6) 0%, rgba(0, 0, 0, 0.2) 50%, rgba(0, 0, 0, 0) 100%);
+  z-index: 2;
+  pointer-events: none;
+}
+
+.cardOverlayBottom {
   position: absolute;
   bottom: 0;
   left: 0;
   right: 0;
-  height: 60%;
-  background: linear-gradient(to top, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0.3) 50%, rgba(0, 0, 0, 0) 100%);
+  height: 70%;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0.5) 50%, rgba(0, 0, 0, 0.2) 80%, rgba(0, 0, 0, 0) 100%);
   z-index: 2;
   pointer-events: none;
+}
+
+.imageSkeleton {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    90deg,
+    #f0f0f0 0%,
+    #e0e0e0 50%,
+    #f0f0f0 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  z-index: 1;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
 }
 
 .cardContent {
@@ -258,6 +295,116 @@
   .projectsCount,
   .projectsLabel {
     font-size: 14px;
+  }
+}
+
+.error {
+  text-align: center;
+  padding: 100px 20px;
+  font-family: 'Inter', sans-serif;
+  font-size: 18px;
+  color: #dc2626;
+}
+
+.noAreas {
+  text-align: center;
+  padding: 100px 20px;
+  font-family: 'Inter', sans-serif;
+  font-size: 18px;
+  color: #003077;
+}
+
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  margin-top: 60px;
+  flex-wrap: wrap;
+}
+
+.paginationButton {
+  padding: 10px 20px;
+  border: 1px solid rgba(0, 48, 119, 0.2);
+  background: #ffffff;
+  color: #003077;
+  border-radius: 8px;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.paginationButton:hover:not(:disabled) {
+  background: #003077;
+  color: #ffffff;
+  border-color: #003077;
+}
+
+.paginationButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.paginationNumbers {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.paginationNumber {
+  min-width: 40px;
+  height: 40px;
+  padding: 0 8px;
+  border: 1px solid rgba(0, 48, 119, 0.2);
+  background: #ffffff;
+  color: #003077;
+  border-radius: 8px;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.paginationNumber:hover {
+  background: rgba(0, 48, 119, 0.1);
+  border-color: rgba(0, 48, 119, 0.3);
+}
+
+.paginationNumber.active {
+  background: #003077;
+  color: #ffffff;
+  border-color: #003077;
+}
+
+.paginationEllipsis {
+  padding: 0 8px;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  color: #003077;
+  opacity: 0.5;
+}
+
+@media (max-width: 600px) {
+  .pagination {
+    gap: 8px;
+    margin-top: 40px;
+  }
+
+  .paginationButton {
+    padding: 8px 16px;
+    font-size: 13px;
+  }
+
+  .paginationNumber {
+    min-width: 36px;
+    height: 36px;
+    font-size: 13px;
   }
 }
 

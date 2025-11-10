@@ -161,23 +161,40 @@ export default function PropertyDetail({ propertyId }: PropertyDetailProps) {
 
   const getName = () => property.name;
   const getDescription = () => property.description;
-  // For off-plan properties: area is a string "areaName, cityName"
+  // For off-plan properties: area is a string "areaName, cityName" or null
   // For secondary properties: area is an object
   const getAreaName = () => {
+    if (property.area === null || property.area === undefined) {
+      return '';
+    }
     if (typeof property.area === 'string') {
       // Off-plan: extract area name from string (before comma)
       return property.area.split(',')[0].trim();
     }
     return locale === 'ru' ? property.area.nameRu : property.area.nameEn;
   };
-  const getCityName = () => locale === 'ru' ? property.city.nameRu : property.city.nameEn;
+  const getCityName = () => {
+    if (!property.city) {
+      return '';
+    }
+    return locale === 'ru' ? property.city.nameRu : property.city.nameEn;
+  };
   const getLocation = () => {
+    if (property.area === null || property.area === undefined) {
+      // If area is null, try to use city if available
+      return getCityName();
+    }
     if (typeof property.area === 'string') {
       // Off-plan: area already contains "areaName, cityName"
       return property.area;
     }
     // Secondary: combine area and city
-    return `${getAreaName()}, ${getCityName()}`;
+    const areaName = getAreaName();
+    const cityName = getCityName();
+    const parts = [];
+    if (areaName) parts.push(areaName);
+    if (cityName) parts.push(cityName);
+    return parts.join(', ') || '';
   };
   const getFacilityName = (facility: typeof property.facilities[0]) => 
     locale === 'ru' ? facility.nameRu : facility.nameEn;

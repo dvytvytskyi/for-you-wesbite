@@ -184,8 +184,23 @@ export default function MapPage() {
         setLoading(true);
         setError(null);
         
-        // Load all properties (no filters)
-        const apiProperties = await getProperties();
+        // Load only off-plan properties for map
+        // For map, we need all off-plan properties, so request a large limit
+        const result = await getProperties({ propertyType: 'off-plan', limit: 1000 });
+        const apiProperties = result.properties || [];
+        
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`Map: Loaded ${apiProperties.length} properties (total available: ${result.total})`);
+          if (apiProperties.length > 0) {
+            console.log('Sample property:', {
+              id: apiProperties[0].id,
+              name: apiProperties[0].name,
+              longitude: apiProperties[0].longitude,
+              latitude: apiProperties[0].latitude,
+              propertyType: apiProperties[0].propertyType
+            });
+          }
+        }
         
         // Convert to map format and filter out invalid ones
         const mapProperties = apiProperties
@@ -195,7 +210,14 @@ export default function MapPage() {
         setProperties(mapProperties);
         
         if (process.env.NODE_ENV === 'development') {
-          console.log(`Loaded ${mapProperties.length} properties with coordinates for map`);
+          console.log(`Loaded ${mapProperties.length} properties with valid coordinates for map (out of ${apiProperties.length} total)`);
+          if (mapProperties.length === 0 && apiProperties.length > 0) {
+            console.warn('No properties with valid coordinates found. Sample invalid property:', {
+              id: apiProperties[0].id,
+              longitude: apiProperties[0].longitude,
+              latitude: apiProperties[0].latitude
+            });
+          }
         }
       } catch (err: any) {
         console.error('Error loading properties for map:', err);

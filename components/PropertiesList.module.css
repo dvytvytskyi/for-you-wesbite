@@ -72,6 +72,10 @@
   font-weight: 400;
   cursor: pointer;
   transition: all 0.3s ease;
+  min-width: 100px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .paginationButton:hover:not(:disabled) {
@@ -83,6 +87,7 @@
 .paginationButton:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+  pointer-events: none;
 }
 
 .paginationNumbers {
@@ -213,6 +218,23 @@
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
   border-radius: 4px;
+}
+
+.loadingMore {
+  margin-top: 40px;
+}
+
+.endMessage {
+  text-align: center;
+  padding: 40px 20px;
+  color: #003077;
+  font-family: 'Inter', sans-serif;
+  font-size: 16px;
+  opacity: 0.7;
+}
+
+.endMessage p {
+  margin: 0;
 }
 
 @keyframes shimmer {

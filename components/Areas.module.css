@@ -109,6 +109,16 @@
   gap: 24px;
 }
 
+.loading,
+.noAreas {
+  text-align: center;
+  padding: 60px 20px;
+  font-family: 'Inter', sans-serif;
+  font-size: 18px;
+  color: #003077;
+  width: 100%;
+}
+
 
 .card {
   flex-shrink: 0;

@@ -3,6 +3,7 @@
 import { useTranslations, useLocale } from 'next-intl';
 import Image from 'next/image';
 import { useState, useEffect, useRef } from 'react';
+import { getDevelopers, Developer as ApiDeveloper } from '@/lib/api';
 import styles from './DevelopersList.module.css';
 
 interface Developer {
@@ -11,92 +12,81 @@ interface Developer {
   logo: string | null;
   description: string | null;
   images: string[] | null;
-  createdAt: Date;
+  projectsCount: number;
+  createdAt?: string;
 }
-
-// TODO: Замінити на реальний API запит
-// const fetchDevelopers = async (): Promise<Developer[]> => {
-//   const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/public/data`);
-//   const data = await response.json();
-//   return data.developers || [];
-// };
-
-// Mock data - замінити на реальні дані з API
-// Генеруємо 490 девелоперів для тестування
-const generateMockDevelopers = (): Developer[] => {
-  const developers: Developer[] = [];
-  const popularNames = [
-    { name: 'Emaar Properties', logo: null },
-    { name: 'Damac Properties', logo: null },
-    { name: 'Nakheel', logo: null },
-    { name: 'Dubai Properties', logo: null },
-    { name: 'Meraas', logo: null },
-    { name: 'Sobha Realty', logo: null },
-    { name: 'MAG Properties', logo: null },
-    { name: 'Azizi Developments', logo: null },
-    { name: 'Select Group', logo: null },
-    { name: 'Omniyat', logo: null },
-  ];
-
-  for (let i = 0; i < 490; i++) {
-    const popularIndex = i % popularNames.length;
-    const isPopular = i < popularNames.length;
-    const baseName = isPopular 
-      ? popularNames[i].name 
-      : `Developer ${i + 1}`;
-    
-    developers.push({
-      id: `dev-${i + 1}`,
-      name: baseName,
-      logo: isPopular ? popularNames[popularIndex].logo : null,
-      description: i < 10 
-        ? `Leading real estate developer in Dubai with a portfolio of luxury residential and commercial properties. Known for innovative design and world-class amenities.`
-        : `Professional real estate development company specializing in high-quality residential and commercial projects across Dubai.`,
-      images: i < 10 
-        ? [
-            'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=800&h=600&fit=crop',
-            'https://images.unsplash.com/photo-1480714378408-67cf0d13bc1b?w=800&h=600&fit=crop',
-            'https://images.unsplash.com/photo-1518684079-3c830dcef090?w=800&h=600&fit=crop',
-          ]
-        : null,
-      createdAt: new Date(2020 + (i % 5), (i % 12), (i % 28) + 1),
-    });
-  }
-  
-  return developers;
-};
-
-const mockDevelopers = generateMockDevelopers();
 
 export default function DevelopersList() {
   const t = useTranslations('developers');
   const locale = useLocale();
   const sectionRef = useRef<HTMLElement>(null);
   const [isVisible, setIsVisible] = useState(false);
-  const [developers, setDevelopers] = useState<Developer[]>(mockDevelopers);
-  const [selectedDeveloper, setSelectedDeveloper] = useState<Developer | null>(
-    developers.length > 0 ? developers[0] : null
-  );
-  const [loading, setLoading] = useState(false);
+  const [developers, setDevelopers] = useState<Developer[]>([]);
+  const [selectedDeveloper, setSelectedDeveloper] = useState<Developer | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // TODO: Замінити на реальний API запит
-  // useEffect(() => {
-  //   const loadDevelopers = async () => {
-  //     setLoading(true);
-  //     try {
-  //       const data = await fetchDevelopers();
-  //       setDevelopers(data);
-  //       if (data.length > 0) {
-  //         setSelectedDeveloper(data[0]);
-  //       }
-  //     } catch (error) {
-  //       console.error('Failed to fetch developers:', error);
-  //     } finally {
-  //       setLoading(false);
-  //     }
-  //   };
-  //   loadDevelopers();
-  // }, []);
+  useEffect(() => {
+    const loadDevelopers = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        console.log('🔄 Loading developers...');
+        const apiDevelopers = await getDevelopers();
+        console.log('✅ Received developers from API:', apiDevelopers.length);
+        
+        if (!Array.isArray(apiDevelopers)) {
+          console.error('❌ API returned non-array:', apiDevelopers);
+          setError('Invalid data format from API');
+          setLoading(false);
+          return;
+        }
+        
+        // Convert API developers to component format
+        const convertedDevelopers: Developer[] = apiDevelopers.map(dev => {
+          // Get description text (can be from description.description or description.title)
+          const descriptionText = dev.description 
+            ? (dev.description.description || dev.description.title || null)
+            : null;
+          
+          return {
+            id: dev.id,
+            name: dev.name,
+            logo: dev.logo,
+            description: descriptionText,
+            images: dev.images,
+            projectsCount: dev.projectsCount?.total || 0,
+            createdAt: dev.createdAt,
+          };
+        });
+        
+        console.log('✅ Converted developers:', convertedDevelopers.length);
+        setDevelopers(convertedDevelopers);
+        
+        if (convertedDevelopers.length > 0) {
+          setSelectedDeveloper(convertedDevelopers[0]);
+        }
+        
+        if (process.env.NODE_ENV === 'development') {
+          const developersWithImages = convertedDevelopers.filter(d => d.images && d.images.length > 0).length;
+          const developersWithLogo = convertedDevelopers.filter(d => d.logo).length;
+          console.log(`✅ Loaded ${convertedDevelopers.length} developers, ${developersWithImages} with images, ${developersWithLogo} with logo`);
+        }
+      } catch (err: any) {
+        console.error('❌ Failed to fetch developers:', err);
+        console.error('Error details:', {
+          message: err.message,
+          stack: err.stack,
+          response: err.response?.data,
+        });
+        setError(err.message || 'Failed to load developers');
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    loadDevelopers();
+  }, []);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -125,11 +115,47 @@ export default function DevelopersList() {
     setSelectedDeveloper(developer);
   };
 
+  const getLocalizedPath = (path: string) => {
+    return locale === 'en' ? path : `/${locale}${path}`;
+  };
+
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return '';
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString(locale === 'ru' ? 'ru-RU' : 'en-US');
+    } catch {
+      return '';
+    }
+  };
+
   if (loading) {
     return (
       <section className={styles.developersList}>
         <div className={styles.container}>
-          <div className={styles.loading}>{t('loading')}</div>
+          <div className={styles.loading}>{t('loading') || 'Loading...'}</div>
+        </div>
+      </section>
+    );
+  }
+
+  if (error) {
+    return (
+      <section className={styles.developersList}>
+        <div className={styles.container}>
+          <div className={styles.error}>{error}</div>
+        </div>
+      </section>
+    );
+  }
+
+  if (developers.length === 0 && !loading) {
+    return (
+      <section className={styles.developersList}>
+        <div className={styles.container}>
+          <div className={styles.noDevelopers}>
+            {t('noDevelopers') || 'No developers found'}
+          </div>
         </div>
       </section>
     );
@@ -141,7 +167,7 @@ export default function DevelopersList() {
         <div className={styles.content}>
           {/* Ліва частина - список девелоперів (60%) */}
           <div className={styles.developersGrid}>
-            {developers.map((developer) => (
+            {developers.length > 0 ? developers.map((developer) => (
               <div
                 key={developer.id}
                 className={`${styles.developerCard} ${
@@ -149,29 +175,32 @@ export default function DevelopersList() {
                 }`}
                 onClick={() => handleDeveloperSelect(developer)}
               >
-                {developer.logo ? (
-                  <div className={styles.logoContainer}>
-                    <Image
-                      src={developer.logo}
-                      alt={developer.name}
-                      width={60}
-                      height={60}
-                      className={styles.logo}
-                    />
-                  </div>
-                ) : (
-                  <div className={styles.logoPlaceholder}>
-                    <span className={styles.logoPlaceholderText}>
-                      {developer.name.charAt(0).toUpperCase()}
-                    </span>
-                  </div>
-                )}
+                <div className={styles.logoWrapper}>
+                  {developer.logo ? (
+                    <div className={styles.logoContainer}>
+                      <Image
+                        src={developer.logo}
+                        alt={developer.name}
+                        fill
+                        className={styles.logo}
+                        sizes="120px"
+                      />
+                    </div>
+                  ) : (
+                    <div className={styles.logoPlaceholder}>
+                      <span className={styles.logoPlaceholderText}>
+                        {developer.name.charAt(0).toUpperCase()}
+                      </span>
+                    </div>
+                  )}
+                </div>
                 <h3 className={styles.developerName}>{developer.name}</h3>
-                <button className={styles.viewButton}>
-                  {t('viewButton')}
-                </button>
               </div>
-            ))}
+            )) : (
+              <div className={styles.noDevelopers}>
+                {t('noDevelopers') || 'No developers found'}
+              </div>
+            )}
           </div>
 
           {/* Права частина - інформація по девелоперу (40%) */}
@@ -224,11 +253,13 @@ export default function DevelopersList() {
                   </div>
                 )}
 
-                <div className={styles.meta}>
-                  <p className={styles.createdAt}>
-                    {t('createdAt')}: {selectedDeveloper.createdAt.toLocaleDateString(locale === 'ru' ? 'ru-RU' : 'en-US')}
-                  </p>
-                </div>
+                {selectedDeveloper.createdAt && (
+                  <div className={styles.meta}>
+                    <p className={styles.createdAt}>
+                      {t('createdAt') || 'Created'}: {formatDate(selectedDeveloper.createdAt)}
+                    </p>
+                  </div>
+                )}
               </>
             ) : (
               <div className={styles.noSelection}>

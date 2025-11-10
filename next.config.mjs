@@ -30,6 +30,18 @@ const nextConfig = {
         protocol: 'https',
         hostname: 'cloudinary.com',
       },
+      {
+        protocol: 'https',
+        hostname: 'admin.foryou-realestate.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'www.propertyfinder.ae',
+      },
+      {
+        protocol: 'https',
+        hostname: 'propertyfinder.ae',
+      },
     ],
   },
 };

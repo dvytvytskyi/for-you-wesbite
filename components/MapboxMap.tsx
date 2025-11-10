@@ -257,8 +257,6 @@ export default function MapboxMap({ accessToken, properties = [] }: MapboxMapPro
         const feature = e.features[0];
         if (feature.geometry.type === 'Polygon') {
           const coordinates = feature.geometry.coordinates[0];
-          setDrawnPolygon(coordinates);
-          setIsDrawing(true);
           
           // Filter properties and update markers
           const filtered = properties.filter(property => {
@@ -279,69 +277,96 @@ export default function MapboxMap({ accessToken, properties = [] }: MapboxMapPro
             }
           }
           
+          // Update state
+          setDrawnPolygon(coordinates);
+          setIsDrawing(true);
           setFilteredProperties(filtered);
           updateUrlWithPolygon(coordinates);
           
-          // Force markers update
-          setTimeout(() => {
-            if (map.current) {
-              // Remove all existing markers
-              markersRef.current.forEach(marker => marker.remove());
-              markersRef.current = [];
-              markersMapRef.current.clear();
-              
-              // Add filtered markers
-              filtered.forEach(property => {
-                if (!property.coordinates || !Array.isArray(property.coordinates) || property.coordinates.length !== 2) {
-                  return;
-                }
-
-                const [lng, lat] = property.coordinates;
-                if (typeof lng !== 'number' || typeof lat !== 'number' || isNaN(lng) || isNaN(lat)) {
-                  return;
-                }
-
-                if (lng < 50 || lng > 60 || lat < 20 || lat > 30) {
-                  return;
-                }
-
-                const priceAED = property.price?.aed || 0;
-                const el = createMarkerElement(priceAED);
-                
-                const handleClick = (e: MouseEvent) => {
-                  e.stopPropagation();
-                  if (!map.current) return;
-                  
-                  const offsetX = 280;
-                  const offsetY = 100;
-                  
-                  map.current.flyTo({
-                    center: [lng, lat],
-                    zoom: 14,
-                    offset: [offsetX, offsetY],
-                    duration: 1000,
-                    essential: true
-                  });
-
-                  setSelectedProperty(property);
-                };
-                
-                el.addEventListener('click', handleClick);
-                
-                const marker = new mapboxgl.Marker({
-                  element: el,
-                  anchor: 'center',
-                  offset: [0, 0]
-                });
-                
-                marker.setLngLat([lng, lat]);
-                marker.addTo(map.current!);
-                
-                markersRef.current.push(marker);
-                markersMapRef.current.set(property.id, marker);
-              });
+          // Force markers update - wait for map to be ready
+          const updateMarkers = () => {
+            if (!map.current || !map.current.loaded()) {
+              setTimeout(updateMarkers, 100);
+              return;
             }
-          }, 100);
+            
+            // Remove all existing markers
+            markersRef.current.forEach(marker => marker.remove());
+            markersRef.current = [];
+            markersMapRef.current.clear();
+            
+            // Add filtered markers
+            filtered.forEach(property => {
+              if (!property.coordinates || !Array.isArray(property.coordinates) || property.coordinates.length !== 2) {
+                return;
+              }
+
+              const [lng, lat] = property.coordinates;
+              if (typeof lng !== 'number' || typeof lat !== 'number' || isNaN(lng) || isNaN(lat)) {
+                return;
+              }
+
+              if (lng < 50 || lng > 60 || lat < 20 || lat > 30) {
+                return;
+              }
+
+              const priceAED = property.price?.aed || 0;
+              const el = createMarkerElement(priceAED);
+              
+              const handleClick = (e: MouseEvent) => {
+                e.stopPropagation();
+                if (!map.current) return;
+                
+                const offsetX = 280;
+                const offsetY = 100;
+                
+                map.current.flyTo({
+                  center: [lng, lat],
+                  zoom: 14,
+                  offset: [offsetX, offsetY],
+                  duration: 1000,
+                  essential: true
+                });
+
+                setSelectedProperty(property);
+              };
+              
+              el.addEventListener('click', handleClick);
+              
+              const marker = new mapboxgl.Marker({
+                element: el,
+                anchor: 'center',
+                offset: [0, 0]
+              });
+              
+              marker.setLngLat([lng, lat]);
+              marker.addTo(map.current!);
+              
+              markersRef.current.push(marker);
+              markersMapRef.current.set(property.id, marker);
+            });
+            
+            if (process.env.NODE_ENV === 'development') {
+              console.log(`Markers updated: ${markersRef.current.length} markers added`);
+            }
+          };
+          
+          // Wait for map to be idle before updating markers
+          if (map.current.loaded()) {
+            map.current.once('idle', () => {
+              requestAnimationFrame(() => {
+                updateMarkers();
+              });
+            });
+          } else {
+            map.current.once('load', () => {
+              map.current!.once('idle', () => {
+                requestAnimationFrame(() => {
+                  updateMarkers();
+                });
+              });
+            });
+          }
         }
       });
 
@@ -350,6 +375,91 @@ export default function MapboxMap({ accessToken, properties = [] }: MapboxMapPro
         setIsDrawing(false);
         setFilteredProperties(properties);
         clearPolygonFromUrl();
+        
+        // Force markers update after clearing selection
+        const updateMarkers = () => {
+          if (!map.current || !map.current.loaded()) {
+            setTimeout(updateMarkers, 100);
+            return;
+          }
+          
+          // Remove all existing markers
+          markersRef.current.forEach(marker => marker.remove());
+          markersRef.current = [];
+          markersMapRef.current.clear();
+          
+          // Add all properties markers
+          properties.forEach(property => {
+            if (!property.coordinates || !Array.isArray(property.coordinates) || property.coordinates.length !== 2) {
+              return;
+            }
+
+            const [lng, lat] = property.coordinates;
+            if (typeof lng !== 'number' || typeof lat !== 'number' || isNaN(lng) || isNaN(lat)) {
+              return;
+            }
+
+            if (lng < 50 || lng > 60 || lat < 20 || lat > 30) {
+              return;
+            }
+
+            const priceAED = property.price?.aed || 0;
+            const el = createMarkerElement(priceAED);
+            
+            const handleClick = (e: MouseEvent) => {
+              e.stopPropagation();
+              if (!map.current) return;
+              
+              const offsetX = 280;
+              const offsetY = 100;
+              
+              map.current.flyTo({
+                center: [lng, lat],
+                zoom: 14,
+                offset: [offsetX, offsetY],
+                duration: 1000,
+                essential: true
+              });
+
+              setSelectedProperty(property);
+            };
+            
+            el.addEventListener('click', handleClick);
+            
+            const marker = new mapboxgl.Marker({
+              element: el,
+              anchor: 'center',
+              offset: [0, 0]
+            });
+            
+            marker.setLngLat([lng, lat]);
+            marker.addTo(map.current!);
+            
+            markersRef.current.push(marker);
+            markersMapRef.current.set(property.id, marker);
+          });
+          
+          if (process.env.NODE_ENV === 'development') {
+            console.log(`Markers updated after clear: ${markersRef.current.length} markers added`);
+          }
+        };
+        
+        // Wait for map to be idle before updating markers
+        if (map.current.loaded()) {
+          map.current.once('idle', () => {
+            requestAnimationFrame(() => {
+              updateMarkers();
+            });
+          });
+        } else {
+          map.current.once('load', () => {
+            map.current!.once('idle', () => {
+              requestAnimationFrame(() => {
+                updateMarkers();
+              });
+            });
+          });
+        }
       });
     } catch (error) {
       console.error('Error initializing map:', error);
@@ -392,6 +502,91 @@ export default function MapboxMap({ accessToken, properties = [] }: MapboxMapPro
       setIsDrawing(false);
       setFilteredProperties(properties);
       clearPolygonFromUrl();
+      
+      // Force markers update after clearing
+      const updateMarkers = () => {
+        if (!map.current || !map.current.loaded()) {
+          setTimeout(updateMarkers, 100);
+          return;
+        }
+        
+        // Remove all existing markers
+        markersRef.current.forEach(marker => marker.remove());
+        markersRef.current = [];
+        markersMapRef.current.clear();
+        
+        // Add all properties markers
+        properties.forEach(property => {
+          if (!property.coordinates || !Array.isArray(property.coordinates) || property.coordinates.length !== 2) {
+            return;
+          }
+
+          const [lng, lat] = property.coordinates;
+          if (typeof lng !== 'number' || typeof lat !== 'number' || isNaN(lng) || isNaN(lat)) {
+            return;
+          }
+
+          if (lng < 50 || lng > 60 || lat < 20 || lat > 30) {
+            return;
+          }
+
+          const priceAED = property.price?.aed || 0;
+          const el = createMarkerElement(priceAED);
+          
+          const handleClick = (e: MouseEvent) => {
+            e.stopPropagation();
+            if (!map.current) return;
+            
+            const offsetX = 280;
+            const offsetY = 100;
+            
+            map.current.flyTo({
+              center: [lng, lat],
+              zoom: 14,
+              offset: [offsetX, offsetY],
+              duration: 1000,
+              essential: true
+            });
+
+            setSelectedProperty(property);
+          };
+          
+          el.addEventListener('click', handleClick);
+          
+          const marker = new mapboxgl.Marker({
+            element: el,
+            anchor: 'center',
+            offset: [0, 0]
+          });
+          
+          marker.setLngLat([lng, lat]);
+          marker.addTo(map.current!);
+          
+          markersRef.current.push(marker);
+          markersMapRef.current.set(property.id, marker);
+        });
+        
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`Markers updated after clear button: ${markersRef.current.length} markers added`);
+        }
+      };
+      
+      // Wait for map to be idle before updating markers
+      if (map.current.loaded()) {
+        map.current.once('idle', () => {
+          requestAnimationFrame(() => {
+            updateMarkers();
+          });
+        });
+      } else {
+        map.current.once('load', () => {
+          map.current!.once('idle', () => {
+            requestAnimationFrame(() => {
+              updateMarkers();
+            });
+          });
+        });
+      }
     } else {
       // Start drawing
       drawRef.current.changeMode('draw_polygon');
@@ -510,22 +705,40 @@ export default function MapboxMap({ accessToken, properties = [] }: MapboxMapPro
       });
     };
 
-    // Wait for map to fully load
+    // Wait for map to fully load and render
     const loadMarkers = () => {
-      // Use a small delay to ensure map is fully ready
-      setTimeout(() => {
-        requestAnimationFrame(() => {
-          addMarkers();
-        });
-      }, 100);
+      if (!map.current) return;
+      
+      // Wait for map to be fully loaded and rendered
+      const tryLoadMarkers = () => {
+        if (map.current && map.current.loaded()) {
+          // Use requestAnimationFrame to ensure DOM is ready
+          requestAnimationFrame(() => {
+            setTimeout(() => {
+              addMarkers();
+            }, 100);
+          });
+        } else {
+          // If not loaded yet, wait a bit and try again
+          setTimeout(tryLoadMarkers, 100);
+        }
+      };
+      
+      tryLoadMarkers();
     };
 
     // Load markers when map is ready
     if (map.current.loaded()) {
-      loadMarkers();
-    } else {
-      map.current.once('load', () => {
+      // If map is already loaded, wait for idle event
+      map.current.once('idle', () => {
         loadMarkers();
+      });
+    } else {
+      // Wait for both 'load' and 'idle' events to ensure map is fully rendered
+      map.current.once('load', () => {
+        map.current!.once('idle', () => {
+          loadMarkers();
+        });
       });
     }
 
@@ -542,15 +755,19 @@ export default function MapboxMap({ accessToken, properties = [] }: MapboxMapPro
         (attribution as HTMLElement).style.display = 'none';
       }
 
-      // Reload markers after style change
-      loadMarkers();
+      // Wait for style to be fully loaded before reloading markers
+      map.current!.once('idle', () => {
+        loadMarkers();
+      });
     });
 
     // Cleanup function
     return () => {
       if (map.current) {
-        map.current.off('load', loadMarkers);
-        map.current.off('style.load', loadMarkers);
+        // Remove event listeners
+        map.current.off('load');
+        map.current.off('idle');
+        map.current.off('style.load');
       }
       // Note: Don't remove markers on cleanup here, only on unmount
     };
@@ -710,35 +927,6 @@ export default function MapboxMap({ accessToken, properties = [] }: MapboxMapPro
         gap: '12px',
         zIndex: 1000,
       }}>
-        {/* Draw on map button */}
-        <button
-          onClick={toggleDrawMode}
-          style={{
-            position: 'relative',
-            background: isDrawing && drawnPolygon ? '#dc2626' : '#003077',
-            color: '#ffffff',
-            border: 'none',
-            borderRadius: '8px',
-            padding: '10px 16px',
-            fontFamily: "'Inter', sans-serif",
-            fontSize: '14px',
-            fontWeight: '500',
-            cursor: 'pointer',
-            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)',
-            transition: 'all 0.2s ease',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = isDrawing && drawnPolygon ? '#b91c1c' : '#003f94';
-            e.currentTarget.style.transform = 'translateY(-1px)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = isDrawing && drawnPolygon ? '#dc2626' : '#003077';
-            e.currentTarget.style.transform = 'translateY(0)';
-          }}
-        >
-          {isDrawing && drawnPolygon ? 'Clear selection' : 'Draw on map'}
-        </button>
-
         {/* Satellite toggle button */}
         <button
           onClick={toggleMapStyle}

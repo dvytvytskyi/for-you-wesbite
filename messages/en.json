@@ -28,7 +28,12 @@
     "projects": "PROPERTIES",
     "pageTitle": "Areas",
     "pageDescription": "Explore all the amazing neighborhoods in Dubai. Each area offers unique opportunities for living and investment.",
-    "loading": "Loading areas..."
+    "loading": "Loading areas...",
+    "noAreas": "No areas found",
+    "page": "Page",
+    "of": "of",
+    "previous": "Previous",
+    "next": "Next"
   },
   "aboutUs": {
     "header": "ABOUT US",
@@ -82,6 +87,16 @@
     "partnersTitle": "We Partner With",
     "teamTitle": "Our Team",
     "teamDescription": "Meet the talented individuals who drive our company's success with their dedication, expertise, and passion for innovation.",
+    "teamMembers": {
+      "daniil": "Daniil",
+      "daniilRole": "Real Estate Expert",
+      "angelina": "Angelina",
+      "angelinaRole": "Property Expert",
+      "kamila": "Kamila",
+      "kamilaRole": "Real Estate Consultant",
+      "ekaterina": "Ekaterina",
+      "ekaterinaRole": "Property Consultant"
+    },
     "officeTitle": "Our Office",
     "officeDescription": "Visit us at our office in Dubai. Schedule a meeting to discuss your real estate needs with our expert team.",
     "officeForm": {
@@ -199,7 +214,7 @@
     }
   },
   "footer": {
-    "copyright": "© 2024 ForYou Real Estate. All rights reserved.",
+    "copyright": "© 2025 ForYou Real Estate. All rights reserved.",
     "language": "Language",
     "navigation": {
       "title": "Navigation",
@@ -352,7 +367,9 @@
     "loading": "Loading area details...",
     "notFound": "Area not found",
     "offPlanProperties": "Off Plan Properties",
-    "viewAllSecondary": "View All Secondary Properties"
+    "viewAllSecondary": "View All Secondary Properties",
+    "projects": "Projects",
+    "properties": "Properties"
   },
   "news": {
     "pageTitle": "News",

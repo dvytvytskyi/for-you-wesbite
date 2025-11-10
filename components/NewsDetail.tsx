@@ -4,17 +4,7 @@ import { useTranslations, useLocale } from 'next-intl';
 import Image from 'next/image';
 import { useState, useEffect } from 'react';
 import styles from './NewsDetail.module.css';
-
-interface NewsContent {
-  id: string;
-  newsId: string;
-  type: 'text' | 'image' | 'video';
-  title: string;
-  description: string | null;
-  imageUrl: string | null;
-  videoUrl: string | null;
-  order: number;
-}
+import { getNewsBySlug, NewsDetail as ApiNewsDetail, NewsContent } from '@/lib/api';
 
 interface NewsDetailData {
   id: string;
@@ -37,73 +27,45 @@ export default function NewsDetail({ slug }: NewsDetailProps) {
   const locale = useLocale();
   const [news, setNews] = useState<NewsDetailData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     // Prevent automatic scroll
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
     window.history.scrollRestoration = 'manual';
 
-    // Load mock data
-    const loadNews = () => {
-      // TODO: Replace with actual API call
-      // const response = await axios.get(`/api/news/${slug}`);
-      
-      // Mock data for testing
-      const mockNews: NewsDetailData = {
-        id: '1',
-        slug: slug,
-        title: 'Dubai Real Estate Market Sees Record Growth',
-        titleRu: 'Рынок недвижимости Дубая показывает рекордный рост',
-        description: 'The Dubai real estate market has experienced unprecedented growth in the first quarter, with property values increasing by 15% year-over-year.',
-        descriptionRu: 'Рынок недвижимости Дубая испытал беспрецедентный рост в первом квартале, стоимость недвижимости выросла на 15% в годовом исчислении.',
-        imageUrl: 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=1200&h=600&fit=crop',
-        publishedAt: new Date('2024-01-15'),
-        contents: [
-          {
-            id: '1',
-            newsId: '1',
-            type: 'text',
-            title: 'Market Overview',
-            description: 'The Dubai real estate sector continues to attract international investors, with luxury properties in areas like Palm Jumeirah and Downtown Dubai leading the market.',
-            imageUrl: null,
-            videoUrl: null,
-            order: 1
-          },
-          {
-            id: '2',
-            newsId: '1',
-            type: 'image',
-            title: 'Luxury Developments',
-            description: null,
-            imageUrl: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=1200&h=800&fit=crop',
-            videoUrl: null,
-            order: 2
-          },
-          {
-            id: '3',
-            newsId: '1',
-            type: 'video',
-            title: 'Investment Opportunities',
-            description: null,
-            imageUrl: null,
-            videoUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
-            order: 3
-          },
-          {
-            id: '4',
-            newsId: '1',
-            type: 'text',
-            title: 'Future Prospects',
-            description: 'Analysts predict continued growth in the Dubai real estate market, driven by infrastructure development and favorable government policies.',
-            imageUrl: null,
-            videoUrl: null,
-            order: 4
-          }
-        ]
-      };
+    const loadNews = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const apiNews = await getNewsBySlug(slug);
+        
+        if (!apiNews) {
+          setError('News article not found');
+          setLoading(false);
+          return;
+        }
 
-      setNews(mockNews);
-      setLoading(false);
+        // Convert API format to component format
+        const newsData: NewsDetailData = {
+          id: apiNews.id,
+          slug: apiNews.slug,
+          title: apiNews.title,
+          titleRu: apiNews.titleRu,
+          description: apiNews.description,
+          descriptionRu: apiNews.descriptionRu,
+          imageUrl: apiNews.image,
+          publishedAt: new Date(apiNews.publishedAt),
+          contents: apiNews.contents || [],
+        };
+
+        setNews(newsData);
+      } catch (err) {
+        console.error('Failed to fetch news article:', err);
+        setError('Failed to load news article. Please try again later.');
+      } finally {
+        setLoading(false);
+      }
     };
 
     loadNews();
@@ -152,11 +114,11 @@ export default function NewsDetail({ slug }: NewsDetailProps) {
     );
   }
 
-  if (!news) {
+  if (error || !news) {
     return (
       <div className={styles.newsDetail}>
         <div className={styles.container}>
-          <div className={styles.notFound}>{t('notFound')}</div>
+          <div className={styles.notFound}>{error || t('notFound')}</div>
         </div>
       </div>
     );

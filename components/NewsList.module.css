@@ -33,6 +33,22 @@
   color: #003077;
 }
 
+.error {
+  text-align: center;
+  padding: 100px 20px;
+  font-family: 'Inter', sans-serif;
+  font-size: 18px;
+  color: #d32f2f;
+}
+
+.noNews {
+  text-align: center;
+  padding: 100px 20px;
+  font-family: 'Inter', sans-serif;
+  font-size: 18px;
+  color: #666666;
+}
+
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));

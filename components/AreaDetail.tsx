@@ -2,10 +2,9 @@
 
 import { useTranslations, useLocale } from 'next-intl';
 import Image from 'next/image';
-import Link from 'next/link';
 import { useState, useEffect, useRef } from 'react';
+import { getAreaById, Area as ApiArea } from '@/lib/api';
 import styles from './AreaDetail.module.css';
-import PropertyCard from './PropertyCard';
 
 interface AreaDetailData {
   id: string;
@@ -22,111 +21,12 @@ interface AreaDetailData {
     description?: string;
   };
   images?: string[];
+  projectsCount?: {
+    total: number;
+    offPlan: number;
+    secondary: number;
+  };
 }
-
-interface Property {
-  id: string;
-  name: string;
-  nameRu: string;
-  location: {
-    area: string;
-    areaRu: string;
-    city: string;
-    cityRu: string;
-  };
-  price: {
-    usd: number;
-    aed: number;
-    eur: number;
-  };
-  developer: {
-    name: string;
-    nameRu: string;
-  };
-  bedrooms: number;
-  bathrooms: number;
-  size: {
-    sqm: number;
-    sqft: number;
-  };
-  images: string[];
-  type: 'new' | 'secondary';
-}
-
-// TODO: Замінити на реальний API запит
-// const fetchAreaDetail = async (slug: string): Promise<AreaDetailData | null> => {
-//   const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/areas/${slug}`);
-//   if (!response.ok) return null;
-//   return await response.json();
-// };
-
-// Mock data - замінити на реальні дані з API
-const mockAreaDetails: Record<string, AreaDetailData> = {
-  'palm': {
-    id: 'area-1',
-    cityId: 'dubai-1',
-    nameEn: 'Palm Jumeirah',
-    nameRu: 'Пальм Джумейра',
-    nameAr: 'نخلة جميرا',
-    description: {
-      title: 'About Palm Jumeirah',
-      description: 'Palm Jumeirah is an artificial archipelago in Dubai, United Arab Emirates, created using land reclamation by Nakheel. It is one of three planned islands in the Palm Islands trilogy. The Palm Jumeirah is home to a number of luxury hotels, residential properties, and entertainment venues. The island is shaped like a palm tree when viewed from above, with a trunk and 17 fronds.',
-    },
-    infrastructure: {
-      title: 'Infrastructure',
-      description: 'The Palm Jumeirah features world-class infrastructure including luxury hotels, shopping malls, restaurants, and entertainment facilities. The island is connected to the mainland by a monorail system and has its own private beaches, marinas, and parks. Residents enjoy access to premium amenities including spas, fitness centers, and exclusive beach clubs.',
-    },
-    images: [
-      'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=1200&h=900&fit=crop',
-      'https://images.unsplash.com/photo-1480714378408-67cf0d13bc1b?w=1200&h=900&fit=crop',
-      'https://images.unsplash.com/photo-1518684079-3c830dcef090?w=1200&h=900&fit=crop',
-      'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=1200&h=900&fit=crop',
-      'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1200&h=900&fit=crop',
-      'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=1200&h=900&fit=crop',
-      'https://images.unsplash.com/photo-1600607687644-c7171b42498b?w=1200&h=900&fit=crop',
-      'https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?w=1200&h=900&fit=crop',
-    ],
-  },
-  'business-bay': {
-    id: 'area-2',
-    cityId: 'dubai-1',
-    nameEn: 'Business Bay',
-    nameRu: 'Бізнес Бей',
-    nameAr: 'الخليج التجاري',
-    description: {
-      title: 'About Business Bay',
-      description: 'Business Bay is a rapidly developing business district in Dubai, United Arab Emirates. It is located along the Dubai Water Canal, near Downtown Dubai. The area is designed to be a mixed-use development featuring commercial, residential, and hospitality projects. Business Bay is home to numerous skyscrapers and serves as an extension of Dubai\'s central business district.',
-    },
-    infrastructure: {
-      title: 'Infrastructure',
-      description: 'Business Bay offers excellent infrastructure with modern office buildings, residential towers, hotels, and retail spaces. The area is well-connected with major highways and the Dubai Metro system. It features waterfront promenades, parks, and easy access to Downtown Dubai. The district includes various amenities such as shopping centers, restaurants, and recreational facilities.',
-    },
-    images: [
-      'https://images.unsplash.com/photo-1518684079-3c830dcef090?w=1200&h=900&fit=crop',
-      'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=1200&h=900&fit=crop',
-      'https://images.unsplash.com/photo-1480714378408-67cf0d13bc1b?w=1200&h=900&fit=crop',
-    ],
-  },
-  'downtown': {
-    id: 'area-3',
-    cityId: 'dubai-1',
-    nameEn: 'Downtown Dubai',
-    nameRu: 'Даунтаун Дубай',
-    nameAr: 'داون تاون دبي',
-    description: {
-      title: 'About Downtown Dubai',
-      description: 'Downtown Dubai is a large-scale, mixed-use development in Dubai, United Arab Emirates. It is known for being home to the Burj Khalifa, the world\'s tallest building, and the Dubai Mall, one of the world\'s largest shopping malls. The area features luxury residential properties, hotels, and entertainment venues.',
-    },
-    infrastructure: {
-      title: 'Infrastructure',
-      description: 'Downtown Dubai boasts world-class infrastructure including the Dubai Metro, extensive road networks, and pedestrian-friendly walkways. The area features premium residential towers, luxury hotels, fine dining restaurants, and entertainment venues. Residents have access to the Dubai Fountain, Dubai Opera, and numerous cultural attractions.',
-    },
-    images: [
-      'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=1200&h=900&fit=crop',
-      'https://images.unsplash.com/photo-1518684079-3c830dcef090?w=1200&h=900&fit=crop',
-    ],
-  },
-};
 
 interface AreaDetailProps {
   slug: string;
@@ -139,9 +39,9 @@ export default function AreaDetail({ slug }: AreaDetailProps) {
   const [isVisible, setIsVisible] = useState(false);
   const [area, setArea] = useState<AreaDetailData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [currentSlide, setCurrentSlide] = useState(0);
-  const [properties, setProperties] = useState<Property[]>([]);
 
   // Прибираємо автоматичне прокручування при завантаженні сторінки
   useEffect(() => {
@@ -160,155 +60,55 @@ export default function AreaDetail({ slug }: AreaDetailProps) {
     }
   }, []);
 
-  // TODO: Замінити на реальний API запит
-  // useEffect(() => {
-  //   const loadArea = async () => {
-  //     setLoading(true);
-  //     try {
-  //       const data = await fetchAreaDetail(slug);
-  //       setArea(data);
-  //     } catch (error) {
-  //       console.error('Failed to fetch area:', error);
-  //     } finally {
-  //       setLoading(false);
-  //     }
-  //   };
-  //   loadArea();
-  // }, [slug]);
-
-  // TODO: Замінити на реальний API запит
-  // const fetchAreaProperties = async (areaId: string): Promise<Property[]> => {
-  //   const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/properties?area=${areaId}&type=new`);
-  //   const data = await response.json();
-  //   return data.properties || [];
-  // };
-
-  // Mock properties для кожного району
-  const getMockPropertiesForArea = (areaSlug: string): Property[] => {
-    const areaName = mockAreaDetails[areaSlug]?.nameEn || '';
-    const areaNameRu = mockAreaDetails[areaSlug]?.nameRu || '';
-    
-    // Генеруємо mock дані для офф план проектів
-    const mockOffPlanProperties: Property[] = [
-      {
-        id: `prop-${areaSlug}-1`,
-        name: `Premium Apartment in ${areaName}`,
-        nameRu: `Премиум квартира в ${areaNameRu}`,
-        location: {
-          area: areaName,
-          areaRu: areaNameRu,
-          city: 'Dubai',
-          cityRu: 'Дубай',
-        },
-        price: {
-          usd: 500000,
-          aed: 1836500,
-          eur: 460000,
-        },
-        developer: {
-          name: 'Emaar',
-          nameRu: 'Эмаар',
-        },
-        bedrooms: 2,
-        bathrooms: 2,
-        size: {
-          sqm: 120,
-          sqft: 1292,
-        },
-        images: [
-          'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=800&h=600&fit=crop',
-          'https://images.unsplash.com/photo-1480714378408-67cf0d13bc1b?w=800&h=600&fit=crop',
-        ],
-        type: 'new',
-      },
-      {
-        id: `prop-${areaSlug}-2`,
-        name: `Luxury Residence in ${areaName}`,
-        nameRu: `Роскошная резиденция в ${areaNameRu}`,
-        location: {
-          area: areaName,
-          areaRu: areaNameRu,
-          city: 'Dubai',
-          cityRu: 'Дубай',
-        },
-        price: {
-          usd: 850000,
-          aed: 3122050,
-          eur: 782000,
-        },
-        developer: {
-          name: 'Damac',
-          nameRu: 'Дамак',
-        },
-        bedrooms: 3,
-        bathrooms: 2,
-        size: {
-          sqm: 180,
-          sqft: 1938,
-        },
-        images: [
-          'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800&h=600&fit=crop',
-          'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800&h=600&fit=crop',
-        ],
-        type: 'new',
-      },
-      {
-        id: `prop-${areaSlug}-3`,
-        name: `Modern Penthouse in ${areaName}`,
-        nameRu: `Современный пентхаус в ${areaNameRu}`,
-        location: {
-          area: areaName,
-          areaRu: areaNameRu,
-          city: 'Dubai',
-          cityRu: 'Дубай',
-        },
-        price: {
-          usd: 1200000,
-          aed: 4407600,
-          eur: 1104000,
-        },
-        developer: {
-          name: 'Emaar',
-          nameRu: 'Эмаар',
-        },
-        bedrooms: 4,
-        bathrooms: 3,
-        size: {
-          sqm: 250,
-          sqft: 2691,
-        },
-        images: [
-          'https://images.unsplash.com/photo-1518684079-3c830dcef090?w=800&h=600&fit=crop',
-        ],
-        type: 'new',
-      },
-    ];
-    
-    return mockOffPlanProperties;
-  };
-
   useEffect(() => {
-    // Прибираємо автоматичне прокручування
-    window.scrollTo(0, 0);
-    
-    // Mock data loading
-    if (!slug) {
-      setLoading(false);
-      return;
-    }
-    
-    const areaData = mockAreaDetails[slug] || null;
-    setArea(areaData);
-    
-    // Завантажуємо проекти для району (тільки офф план)
-    if (areaData) {
-      const areaProperties = getMockPropertiesForArea(slug);
-      setProperties(areaProperties);
-    }
-    
-    setLoading(false);
-    setCurrentSlide(0); // Скидаємо слайд при зміні району
-  }, [slug]);
+    const loadAreaData = async () => {
+      if (!slug) {
+        setLoading(false);
+        return;
+      }
+
+      setLoading(true);
+      setError(null);
+      
+      try {
+        // Load area data
+        const apiArea = await getAreaById(slug);
+        
+        if (!apiArea) {
+          setError('Area not found');
+          setLoading(false);
+          return;
+        }
+
+        // Convert API area to component format
+        const areaData: AreaDetailData = {
+          id: apiArea.id,
+          cityId: apiArea.cityId,
+          nameEn: apiArea.nameEn,
+          nameRu: apiArea.nameRu,
+          nameAr: apiArea.nameAr,
+          description: apiArea.description || undefined,
+          infrastructure: apiArea.infrastructure || undefined,
+          images: apiArea.images || undefined,
+          projectsCount: apiArea.projectsCount,
+        };
+
+        setArea(areaData);
+        setCurrentSlide(0);
+
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`Loaded area ${apiArea.nameEn}`);
+        }
+      } catch (err: any) {
+        console.error('Failed to fetch area:', err);
+        setError(err.message || 'Failed to load area');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadAreaData();
+  }, [slug, locale]);
 
   const getLocalizedPath = (path: string) => {
     return locale === 'en' ? path : `/${locale}${path}`;
@@ -354,12 +154,12 @@ export default function AreaDetail({ slug }: AreaDetailProps) {
     );
   }
 
-  if (!area) {
+  if (error || !area) {
     return (
       <section className={styles.areaDetail}>
         <div className={styles.container}>
           <div className={styles.notFound}>
-            <h1>{t('notFound')}</h1>
+            <h1>{error || t('notFound')}</h1>
           </div>
         </div>
       </section>
@@ -372,6 +172,12 @@ export default function AreaDetail({ slug }: AreaDetailProps) {
         {/* Заголовок */}
         <div className={styles.header}>
           <h1 className={styles.title}>{getAreaName()}</h1>
+          {area.projectsCount && (
+            <div className={styles.projectsCount}>
+              <span className={styles.countNumber}>{area.projectsCount.total}</span>
+              <span className={styles.countLabel}>{t('projects')}</span>
+            </div>
+          )}
         </div>
 
         {/* Галерея зображень - слайд-шоу */}
@@ -470,23 +276,6 @@ export default function AreaDetail({ slug }: AreaDetailProps) {
             {area.infrastructure.description && (
               <p className={styles.descriptionText}>{area.infrastructure.description}</p>
             )}
-          </div>
-        )}
-
-        {/* Список проектів (тільки офф план) */}
-        {properties.length > 0 && (
-          <div className={styles.propertiesSection}>
-            <div className={styles.propertiesHeader}>
-              <h2 className={styles.propertiesTitle}>{t('offPlanProperties')}</h2>
-              <Link href={getLocalizedPath(`/properties?area=${slug}&type=secondary`)} className={styles.secondaryButton}>
-                {t('viewAllSecondary')}
-              </Link>
-            </div>
-            <div className={styles.propertiesGrid}>
-              {properties.map((property) => (
-                <PropertyCard key={property.id} property={property} />
-              ))}
-            </div>
           </div>
         )}
 
