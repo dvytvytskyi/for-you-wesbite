@@ -12,6 +12,17 @@ interface Area {
   nameRu: string;
   nameAr: string;
   cityId: string;
+  city?: {
+    id: string;
+    nameEn: string;
+    nameRu: string;
+    nameAr: string;
+  };
+  projectsCount?: {
+    total: number;
+    offPlan: number;
+    secondary: number;
+  };
 }
 
 export default function Hero() {
@@ -29,19 +40,27 @@ export default function Hero() {
 
   const bedroomsOptions = ['all', '1', '2', '3', '4', '5+'];
 
-  // Load areas from API - оптимізовано: завантажуємо тільки areas, а не всі дані
+  // Load areas from API - фільтруємо тільки райони Дубаю та беремо топ 20
   useEffect(() => {
     const loadAreas = async () => {
       try {
         const apiAreas = await getAreas();
         if (apiAreas && Array.isArray(apiAreas)) {
-          setAreas(apiAreas);
-          if (process.env.NODE_ENV === 'development') {
-            console.log(`✅ Hero: Loaded ${apiAreas.length} areas (optimized - only areas, not all public data)`);
-          }
+          // Фільтруємо тільки райони Дубаю
+          const dubaiAreas = apiAreas.filter(area => 
+            area.city?.nameEn?.toLowerCase() === 'dubai' || 
+            area.city?.nameRu?.toLowerCase() === 'дубай'
+          );
+          
+          // Сортуємо за кількістю проектів (за спаданням) та беремо топ 20
+          const topAreas = dubaiAreas
+            .sort((a, b) => (b.projectsCount?.total || 0) - (a.projectsCount?.total || 0))
+            .slice(0, 20);
+          
+          setAreas(topAreas);
         }
       } catch (error) {
-        console.error('Error loading areas:', error);
+        // Error handling removed for performance
       } finally {
         setLoading(false);
       }
@@ -51,15 +70,23 @@ export default function Hero() {
   }, []);
 
   const handleSearch = () => {
-    if (!selectedArea) return;
+    const localePrefix = locale === 'en' ? '' : `/${locale}`;
+    
+    // Якщо нічого не вибрано, просто переходимо на /properties
+    if (!selectedArea && selectedBedrooms === 'all') {
+      router.push(`${localePrefix}/properties`);
+      return;
+    }
 
+    // Якщо є вибрані фільтри, додаємо їх до URL
     const params = new URLSearchParams();
-    params.set('areaId', selectedArea.id);
+    if (selectedArea) {
+      params.set('areaId', selectedArea.id);
+    }
     if (selectedBedrooms !== 'all') {
       params.set('bedrooms', selectedBedrooms);
     }
 
-    const localePrefix = locale === 'en' ? '' : `/${locale}`;
     router.push(`${localePrefix}/properties?${params.toString()}`);
   };
 
@@ -107,7 +134,7 @@ export default function Hero() {
           playsInline
           className={styles.video}
         >
-          <source src="/dubai-hero-video.mp4" type="video/mp4" />
+          <source src="https://res.cloudinary.com/dgv0rxd60/video/upload/v1762957287/3ea514df-18e3-4c44-8177-fdc048fca302_fldvse.mp4" type="video/mp4" />
         </video>
         <div className={styles.gradientTop}></div>
         <div className={styles.overlay}></div>
@@ -235,7 +262,6 @@ export default function Hero() {
           <button 
             onClick={handleSearch} 
             className={styles.searchButton}
-            disabled={!selectedArea}
           >
             {t('search.searchButton')}
           </button>

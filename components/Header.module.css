@@ -142,6 +142,70 @@
   flex-shrink: 0;
 }
 
+.languageSwitcher {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.languageButton {
+  padding: 8px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: #ffffff;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-width: 40px;
+  text-align: center;
+}
+
+.languageButton:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.languageButtonActive {
+  background: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.5);
+  font-weight: 500;
+}
+
+.languageButtonActive:hover {
+  background: rgba(255, 255, 255, 0.35);
+}
+
+.header.scrolled .languageButton,
+.header.alwaysWhite .languageButton {
+  border: 1px solid rgba(0, 48, 119, 0.2);
+  background: transparent;
+  color: var(--accent-color, #003077);
+}
+
+.header.scrolled .languageButton:hover,
+.header.alwaysWhite .languageButton:hover {
+  background: rgba(0, 48, 119, 0.05);
+  border-color: rgba(0, 48, 119, 0.3);
+}
+
+.header.scrolled .languageButtonActive,
+.header.alwaysWhite .languageButtonActive {
+  background: #003077;
+  border-color: #003077;
+  color: #ffffff;
+}
+
+.header.scrolled .languageButtonActive:hover,
+.header.alwaysWhite .languageButtonActive:hover {
+  background: #003f94;
+  border-color: #003f94;
+}
+
 .glassButton {
   background: rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(10px);
@@ -229,6 +293,10 @@
   }
 
   .authNav {
+    display: none;
+  }
+
+  .languageSwitcher {
     display: none;
   }
 
@@ -418,12 +486,64 @@
   padding-left: 8px;
 }
 
+.mobileLanguageSwitcher {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 24px 20px;
+  border-top: 1px solid rgba(0, 48, 119, 0.1);
+}
+
+.mobileLanguageLabel {
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--accent-color, #003077);
+}
+
+.mobileLanguageButtons {
+  display: flex;
+  gap: 12px;
+}
+
+.mobileLanguageButton {
+  flex: 1;
+  padding: 12px 20px;
+  border: 1px solid rgba(0, 48, 119, 0.2);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--accent-color, #003077);
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-align: center;
+}
+
+.mobileLanguageButton:hover {
+  background: rgba(0, 48, 119, 0.05);
+  border-color: rgba(0, 48, 119, 0.3);
+}
+
+.mobileLanguageButtonActive {
+  background: #003077;
+  border-color: #003077;
+  color: #ffffff;
+  font-weight: 500;
+}
+
+.mobileLanguageButtonActive:hover {
+  background: #003f94;
+  border-color: #003f94;
+}
+
 .mobileAuth {
   display: flex;
   flex-direction: column;
   gap: 12px;
   padding: 24px 20px;
-  margin-top: 24px;
+  margin-top: 0;
   border-top: 1px solid rgba(0, 48, 119, 0.1);
 }
 

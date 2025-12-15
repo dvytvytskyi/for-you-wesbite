@@ -26,9 +26,7 @@ export function saveScrollState(page: number): void {
   
   try {
     sessionStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  } catch (error) {
-    console.warn('Failed to save scroll state:', error);
-  }
+  } catch (error) {}
 }
 
 /**
@@ -62,9 +60,7 @@ export function restoreScrollState(): { page: number; scrollPosition: number } |
       page: state.currentPage,
       scrollPosition: state.scrollPosition,
     };
-  } catch (error) {
-    console.warn('Failed to restore scroll state:', error);
-    sessionStorage.removeItem(STORAGE_KEY);
+  } catch (error) {sessionStorage.removeItem(STORAGE_KEY);
     return null;
   }
 }
@@ -76,8 +72,6 @@ export function clearScrollState(): void {
   if (typeof window === 'undefined') return;
   try {
     sessionStorage.removeItem(STORAGE_KEY);
-  } catch (error) {
-    console.warn('Failed to clear scroll state:', error);
-  }
+  } catch (error) {}
 }
 

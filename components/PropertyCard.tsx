@@ -204,6 +204,12 @@ function PropertyCard({ property, currentPage = 1 }: PropertyCardProps) {
     return formatNumber(Math.round(pricePerSqm));
   };
 
+  // Limit to first 5 photos for performance
+  const MAX_PHOTOS_TO_LOAD = 5;
+  const visiblePhotos = property.photos?.slice(0, MAX_PHOTOS_TO_LOAD) || [];
+  const hasMorePhotos = (property.photos?.length || 0) > MAX_PHOTOS_TO_LOAD;
+  const totalPhotos = property.photos?.length || 0;
+
   const handleImageChange = (dir: 'prev' | 'next') => {
     if (!property.photos || property.photos.length <= 1 || isTransitioning) return;
     
@@ -229,16 +235,7 @@ function PropertyCard({ property, currentPage = 1 }: PropertyCardProps) {
     setCurrentImageIndex(0);
     
     // Debug: Log photos data
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`🖼️ PropertyCard photos for ${property.name}:`, {
-        photosType: typeof property.photos,
-        photosIsArray: Array.isArray(property.photos),
-        photosLength: Array.isArray(property.photos) ? property.photos.length : 'N/A',
-        photosValue: property.photos,
-        firstPhoto: Array.isArray(property.photos) && property.photos.length > 0 ? property.photos[0] : 'N/A',
-      });
-    }
-  }, [property.id, property.photos, property.name]);
+    }, [property.id, property.photos, property.name]);
 
   const handleClick = () => {
     // Save scroll position and page before navigating
@@ -261,45 +258,70 @@ function PropertyCard({ property, currentPage = 1 }: PropertyCardProps) {
         {/* Ensure photos is an array and has at least one valid URL */}
         {Array.isArray(property.photos) && property.photos.length > 0 && property.photos[0] && (
           <div className={styles.imageWrapper} style={{ opacity: imageLoading ? 0 : 1, transition: 'opacity 0.3s ease' }}>
-            {/* Previous image - sliding out */}
-            {isTransitioning && prevImageIndex !== currentImageIndex && property.photos[prevImageIndex] && (
-              <Image
-                key={`prev-${prevImageIndex}`}
-                src={property.photos[prevImageIndex]}
-                alt={getName()}
-                fill
-                style={{ objectFit: 'cover' }}
-                sizes="(max-width: 1200px) 50vw, (max-width: 900px) 100vw, 33vw"
-                className={`${styles.cardImage} ${styles.prevImage} ${direction === 'right' ? styles.slideOutLeft : styles.slideOutRight}`}
-                unoptimized
-              />
-            )}
-            {/* Current image - sliding in */}
-            {property.photos[currentImageIndex] && (
-              <Image
-                key={`current-${currentImageIndex}`}
-                src={property.photos[currentImageIndex]}
-                alt={getName()}
-                fill
-                style={{ objectFit: 'cover' }}
-                sizes="(max-width: 1200px) 50vw, (max-width: 900px) 100vw, 33vw"
-                className={`${styles.cardImage} ${styles.currentImage} ${isTransitioning && direction === 'right' ? styles.slideInRight : isTransitioning && direction === 'left' ? styles.slideInLeft : ''}`}
-                unoptimized
-                onLoad={() => {
-                  setImageLoading(false);
-                  if (process.env.NODE_ENV === 'development') {
-                    console.log(`✅ Image loaded for property ${property.name}:`, property.photos[currentImageIndex]);
-                  }
-                }}
-                onError={(e) => {
-                  console.error(`❌ Failed to load image for property ${property.name}:`, {
-                    imageUrl: property.photos[currentImageIndex],
-                    error: e,
-                    photosArray: property.photos,
-                  });
-                  setImageLoading(false);
-                }}
-              />
+            {/* Show blur placeholder for 6th photo and beyond */}
+            {currentImageIndex >= MAX_PHOTOS_TO_LOAD ? (
+              <div className={styles.blurredPlaceholder}>
+                <div className={styles.blurredImage}>
+                  {visiblePhotos[0] && (
+                    <Image
+                      src={visiblePhotos[0]}
+                      alt={getName()}
+                      fill
+                      style={{ objectFit: 'cover', filter: 'blur(10px)', transform: 'scale(1.1)' }}
+                      sizes="(max-width: 1200px) 50vw, (max-width: 900px) 100vw, 33vw"
+                      loading="lazy"
+                      unoptimized
+                    />
+                  )}
+                </div>
+                <div className={styles.viewAllOverlay}>
+                  <button 
+                    className={styles.viewAllButton}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      // Navigate to property detail page
+                      window.location.href = getLocalizedPath(`/properties/${property.id}`);
+                    }}
+                  >
+                    View All
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                {/* Previous image - sliding out */}
+                {isTransitioning && prevImageIndex !== currentImageIndex && prevImageIndex < MAX_PHOTOS_TO_LOAD && visiblePhotos[prevImageIndex] && (
+                  <Image
+                    key={`prev-${prevImageIndex}`}
+                    src={visiblePhotos[prevImageIndex]}
+                    alt={getName()}
+                    fill
+                    style={{ objectFit: 'cover' }}
+                    sizes="(max-width: 1200px) 50vw, (max-width: 900px) 100vw, 33vw"
+                    className={`${styles.cardImage} ${styles.prevImage} ${direction === 'right' ? styles.slideOutLeft : styles.slideOutRight}`}
+                    loading="lazy"
+                  />
+                )}
+                {/* Current image - sliding in */}
+                {visiblePhotos[currentImageIndex] && (
+                  <Image
+                    key={`current-${currentImageIndex}`}
+                    src={visiblePhotos[currentImageIndex]}
+                    alt={getName()}
+                    fill
+                    style={{ objectFit: 'cover' }}
+                    sizes="(max-width: 1200px) 50vw, (max-width: 900px) 100vw, 33vw"
+                    className={`${styles.cardImage} ${styles.currentImage} ${isTransitioning && direction === 'right' ? styles.slideInRight : isTransitioning && direction === 'left' ? styles.slideInLeft : ''}`}
+                    loading="lazy"
+                    onLoad={() => {
+                      setImageLoading(false);
+                      }}
+                    onError={(e) => {setImageLoading(false);
+                    }}
+                  />
+                )}
+              </>
             )}
           </div>
         )}
@@ -340,7 +362,7 @@ function PropertyCard({ property, currentPage = 1 }: PropertyCardProps) {
               </svg>
             </button>
             <div className={styles.imageIndicator}>
-              {currentImageIndex + 1} / {property.photos?.length || 0}
+              {currentImageIndex + 1} / {totalPhotos}
             </div>
           </>
         )}

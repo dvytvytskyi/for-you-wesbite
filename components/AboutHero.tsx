@@ -185,8 +185,13 @@ export default function AboutHero() {
       <div className={styles.imageSectionWrapper}>
         <div className={styles.imageSection}>
           <Image
-            src="https://images.unsplash.com/photo-1480714378408-67cf0d13bc1b?w=1400&h=800&fit=crop"
+            src="https://images.pexels.com/photos/10549888/pexels-photo-10549888.jpeg"
             alt={t('heroImageAlt')}
+            unoptimized
+            onError={(e) => {
+              const target = e.target as HTMLImageElement;
+              target.style.display = 'none';
+            }}
             fill
             style={{ objectFit: 'cover' }}
             sizes="100vw"
@@ -216,68 +221,6 @@ export default function AboutHero() {
         </div>
       </div>
 
-      {/* Milestones Section */}
-      <div 
-        className={`${styles.milestonesSection} ${isMilestonesVisible ? styles.visible : ''}`}
-        ref={milestonesRef}
-      >
-        <div className={styles.milestonesContainer}>
-          <h2 className={styles.milestonesTitle}>{t('milestonesTitle')}</h2>
-          <p className={styles.milestonesDescription}>{t('milestonesDescription')}</p>
-          
-          <div className={styles.timeline}>
-            <div className={styles.timelineLine}></div>
-            
-            <div className={styles.milestoneItem}>
-              <div className={styles.milestoneMarker}>
-                <div className={styles.milestoneCircle}></div>
-                <div className={styles.milestoneYear}>{t('milestone2022.year')}</div>
-              </div>
-              <div className={styles.milestoneContent}>
-                <div className={styles.milestoneShortTitle}>{t('milestone2022.shortTitle')}</div>
-                <div className={styles.milestoneBoldTitle}>{t('milestone2022.boldTitle')}</div>
-                <div className={styles.milestoneDescription}>{t('milestone2022.description')}</div>
-              </div>
-            </div>
-
-            <div className={styles.milestoneItem}>
-              <div className={styles.milestoneMarker}>
-                <div className={styles.milestoneCircle}></div>
-                <div className={styles.milestoneYear}>{t('milestone2023.year')}</div>
-              </div>
-              <div className={styles.milestoneContent}>
-                <div className={styles.milestoneShortTitle}>{t('milestone2023.shortTitle')}</div>
-                <div className={styles.milestoneBoldTitle}>{t('milestone2023.boldTitle')}</div>
-                <div className={styles.milestoneDescription}>{t('milestone2023.description')}</div>
-              </div>
-            </div>
-
-            <div className={styles.milestoneItem}>
-              <div className={styles.milestoneMarker}>
-                <div className={styles.milestoneCircle}></div>
-                <div className={styles.milestoneYear}>{t('milestone2024.year')}</div>
-              </div>
-              <div className={styles.milestoneContent}>
-                <div className={styles.milestoneShortTitle}>{t('milestone2024.shortTitle')}</div>
-                <div className={styles.milestoneBoldTitle}>{t('milestone2024.boldTitle')}</div>
-                <div className={styles.milestoneDescription}>{t('milestone2024.description')}</div>
-              </div>
-            </div>
-
-            <div className={styles.milestoneItem}>
-              <div className={styles.milestoneMarker}>
-                <div className={styles.milestoneCircle}></div>
-                <div className={styles.milestoneYear}>{t('milestone2025.year')}</div>
-              </div>
-              <div className={styles.milestoneContent}>
-                <div className={styles.milestoneShortTitle}>{t('milestone2025.shortTitle')}</div>
-                <div className={styles.milestoneBoldTitle}>{t('milestone2025.boldTitle')}</div>
-                <div className={styles.milestoneDescription}>{t('milestone2025.description')}</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
 
       {/* Partners Section */}
       <div className={styles.partnersSection}>
@@ -285,24 +228,58 @@ export default function AboutHero() {
           <h2 className={styles.partnersTitle}>{t('partnersTitle')}</h2>
           <div className={styles.partnersScroll}>
             <div className={styles.partnersList}>
-              {/* Placeholder logos - will be replaced with actual logos */}
-              <div className={styles.partnerLogo}>Emaar</div>
-              <div className={styles.partnerLogo}>Damac</div>
-              <div className={styles.partnerLogo}>Nakheel</div>
-              <div className={styles.partnerLogo}>Dubai Properties</div>
-              <div className={styles.partnerLogo}>Meraas</div>
-              <div className={styles.partnerLogo}>Sobha</div>
-              <div className={styles.partnerLogo}>MAG</div>
-              <div className={styles.partnerLogo}>Azizi</div>
+              {/* Banks and financial institutions from foryou-cb.com/about */}
+              {[
+                { name: 'TBC BANK', logo: 'https://static.tildacdn.com/tild3536-6263-4862-a136-393839396365/tbc.png' },
+                { name: 'SOVCOMBANK WEALTH MANAGEMENT', logo: 'https://static.tildacdn.com/tild6332-6237-4237-b534-396137623233/Group_1597880355.png' },
+                { name: 'CENTERCREDIT', logo: 'https://static.tildacdn.com/tild3134-3762-4138-b037-326633656431/image_2.png' },
+                { name: 'Уралсиб', logo: 'https://static.tildacdn.com/tild6361-6530-4031-b237-616634306338/image_4.png' },
+                { name: 'FREEDOM BANK PRIO', logo: 'https://static.tildacdn.com/tild6261-6465-4966-b733-333364393637/image_5.png' },
+                { name: 'center home', logo: 'https://static.tildacdn.com/tild3637-6466-4433-a331-353137353864/Clip_path_group.svg' },
+                { name: 'СБЕР', logo: 'https://static.tildacdn.com/tild3863-6130-4135-b138-653236663639/Clip_path_group.svg' },
+                { name: 'А Клуб', logo: 'https://static.tildacdn.com/tild6435-3537-4064-a337-353763663232/Clip_path_group.svg' },
+                { name: 'МТС БАНК', logo: 'https://static.tildacdn.com/tild6439-3131-4264-a239-656336656331/image_1808.png' },
+                { name: 'Raiffeisen BANK', logo: 'https://static.tildacdn.com/tild3363-3334-4431-b337-313037376138/image_6.png' },
+                { name: 'AT', logo: 'https://static.tildacdn.com/tild6536-6166-4731-a137-316139653139/Group_1597880269-rem.png' },
+                { name: 'Береке', logo: 'https://static.tildacdn.com/tild3832-3534-4633-a332-353330333064/bereke.png' }
+              ].map((bank, index) => (
+                <div key={`partner-${index}`} className={styles.partnerLogo}>
+                  <Image
+                    src={bank.logo}
+                    alt={bank.name}
+                    width={200}
+                    height={80}
+                    style={{ objectFit: 'contain', maxHeight: '80px', width: 'auto' }}
+                    unoptimized
+                  />
+                </div>
+              ))}
               {/* Duplicate for seamless infinite loop */}
-              <div className={styles.partnerLogo}>Emaar</div>
-              <div className={styles.partnerLogo}>Damac</div>
-              <div className={styles.partnerLogo}>Nakheel</div>
-              <div className={styles.partnerLogo}>Dubai Properties</div>
-              <div className={styles.partnerLogo}>Meraas</div>
-              <div className={styles.partnerLogo}>Sobha</div>
-              <div className={styles.partnerLogo}>MAG</div>
-              <div className={styles.partnerLogo}>Azizi</div>
+              {[
+                { name: 'TBC BANK', logo: 'https://static.tildacdn.com/tild3536-6263-4862-a136-393839396365/tbc.png' },
+                { name: 'SOVCOMBANK WEALTH MANAGEMENT', logo: 'https://static.tildacdn.com/tild6332-6237-4237-b534-396137623233/Group_1597880355.png' },
+                { name: 'CENTERCREDIT', logo: 'https://static.tildacdn.com/tild3134-3762-4138-b037-326633656431/image_2.png' },
+                { name: 'Уралсиб', logo: 'https://static.tildacdn.com/tild6361-6530-4031-b237-616634306338/image_4.png' },
+                { name: 'FREEDOM BANK PRIO', logo: 'https://static.tildacdn.com/tild6261-6465-4966-b733-333364393637/image_5.png' },
+                { name: 'center home', logo: 'https://static.tildacdn.com/tild3637-6466-4433-a331-353137353864/Clip_path_group.svg' },
+                { name: 'СБЕР', logo: 'https://static.tildacdn.com/tild3863-6130-4135-b138-653236663639/Clip_path_group.svg' },
+                { name: 'А Клуб', logo: 'https://static.tildacdn.com/tild6435-3537-4064-a337-353763663232/Clip_path_group.svg' },
+                { name: 'МТС БАНК', logo: 'https://static.tildacdn.com/tild6439-3131-4264-a239-656336656331/image_1808.png' },
+                { name: 'Raiffeisen BANK', logo: 'https://static.tildacdn.com/tild3363-3334-4431-b337-313037376138/image_6.png' },
+                { name: 'AT', logo: 'https://static.tildacdn.com/tild6536-6166-4731-a137-316139653139/Group_1597880269-rem.png' },
+                { name: 'Береке', logo: 'https://static.tildacdn.com/tild3832-3534-4633-a332-353330333064/bereke.png' }
+              ].map((bank, index) => (
+                <div key={`partner-duplicate-${index}`} className={styles.partnerLogo}>
+                  <Image
+                    src={bank.logo}
+                    alt={bank.name}
+                    width={200}
+                    height={80}
+                    style={{ objectFit: 'contain', maxHeight: '80px', width: 'auto' }}
+                    unoptimized
+                  />
+                </div>
+              ))}
             </div>
           </div>
         </div>
@@ -351,18 +328,24 @@ export function TeamSection({ t }: { t: any }) {
           <div className={styles.teamMember}>
             <div className={styles.teamPhoto}>
               <Image
-                src="/IMG_9331.JPG"
-                alt={t('teamMembers.angelina')}
+                src="https://res.cloudinary.com/dgv0rxd60/image/upload/v1765715854/photo_2025-12-14_15-36-43_jn55hm.jpg"
+                alt={t('teamMembers.ruslan')}
                 fill
                 style={{ objectFit: 'cover' }}
                 sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
                 loading="lazy"
                 unoptimized
+                onError={(e) => {
+                  if (process.env.NODE_ENV === 'development') {
+                  }
+                  const target = e.target as HTMLImageElement;
+                  target.style.display = 'none';
+                }}
               />
             </div>
             <div className={styles.teamInfo}>
-              <div className={styles.teamName}>{t('teamMembers.angelina')}</div>
-              <div className={styles.teamRole}>{t('teamMembers.angelinaRole')}</div>
+              <div className={styles.teamName}>{t('teamMembers.ruslan')}</div>
+              <div className={styles.teamRole}>{t('teamMembers.ruslanRole')}</div>
             </div>
           </div>
           <div className={styles.teamMember}>
@@ -408,7 +391,6 @@ export function TeamSection({ t }: { t: any }) {
 export function OfficeSection({ t }: { t: any }) {
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedTime, setSelectedTime] = useState('');
-  const [selectedSpecialist, setSelectedSpecialist] = useState('');
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [message, setMessage] = useState('');
@@ -416,82 +398,87 @@ export function OfficeSection({ t }: { t: any }) {
   const mapRef = useRef<any>(null);
   const markerRef = useRef<any>(null);
 
-  // Lazy load Mapbox only when map container becomes visible (оптимізація: не завантажуємо Mapbox до появи в viewport)
+  // Load Mapbox when component mounts
   useEffect(() => {
     if (!mapContainerRef.current || mapRef.current) return;
 
-    // Use Intersection Observer to load Mapbox only when visible
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting && !mapRef.current) {
-            // Map container is visible, load Mapbox
-            const loadMapbox = async () => {
-              if (process.env.NODE_ENV === 'development') {
-                console.log('🗺️ Loading Mapbox (map container is now visible)');
-              }
-              
-              const mapboxgl = (await import('mapbox-gl')).default;
-              // CSS is imported globally in app/globals.css
-              
-              const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || '';
+    const loadMapbox = async () => {
+      try {
+        const mapboxgl = (await import('mapbox-gl')).default;
+        // CSS is imported globally in app/globals.css
+        
+        // Get token from environment variable (available on client side)
+        const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || '';
 
-              if (!token) {
-                console.warn('Mapbox token is not set');
-                return;
-              }
+        if (!token || token.trim() === '') {
+          if (mapContainerRef.current) {
+            mapContainerRef.current.innerHTML = '<div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #666; font-family: Inter, sans-serif; padding: 20px; text-align: center;">Mapbox token не налаштований</div>';
+          }
+          return;
+        }
 
-              mapboxgl.accessToken = token;
+        if (process.env.NODE_ENV === 'development') {
+        }
 
-              const map = new mapboxgl.Map({
-                container: mapContainerRef.current!,
-                style: 'mapbox://styles/abiespana/cmcxiep98004r01quhxspf3w9',
-                center: [55.2708, 25.2048], // Dubai office coordinates
-                zoom: 15,
-                interactive: true,
-                // Optimize Mapbox loading - обмежуємо область та zoom для зменшення кількості тайлів
-                maxZoom: 18,
-                minZoom: 10,
-                maxBounds: [
-                  [54.0, 24.0], // Southwest coordinates (Dubai area)
-                  [56.0, 26.0], // Northeast coordinates (Dubai area)
-                ],
-              });
+        mapboxgl.accessToken = token;
 
-              map.on('load', () => {
-                map.addControl(new mapboxgl.NavigationControl(), 'top-right');
+        const map = new mapboxgl.Map({
+          container: mapContainerRef.current!,
+          style: 'mapbox://styles/abiespana/cmcxiep98004r01quhxspf3w9',
+          center: [55.2708, 25.2048], // Dubai office coordinates
+          zoom: 15,
+          interactive: true,
+          accessToken: token, // Also pass as parameter
+          // Optimize Mapbox loading - обмежуємо область та zoom для зменшення кількості тайлів
+          maxZoom: 18,
+          minZoom: 10,
+          maxBounds: [
+            [54.0, 24.0], // Southwest coordinates (Dubai area)
+            [56.0, 26.0], // Northeast coordinates (Dubai area)
+          ],
+        });
 
-                // Add office marker
-                const marker = new mapboxgl.Marker({
-                  color: '#003077',
-                })
-                  .setLngLat([55.2708, 25.2048])
-                  .addTo(map);
+        map.on('load', () => {
+          try {
+            map.addControl(new mapboxgl.NavigationControl(), 'top-right');
 
-                markerRef.current = marker;
-                
-                if (process.env.NODE_ENV === 'development') {
-                  console.log('✅ Mapbox loaded successfully');
-                }
-              });
+            // Add office marker
+            const marker = new mapboxgl.Marker({
+              color: '#003077',
+            })
+              .setLngLat([55.2708, 25.2048])
+              .addTo(map);
 
-              mapRef.current = map;
-            };
-
-            loadMapbox();
+            markerRef.current = marker;
             
-            // Unobserve after loading to avoid reloading
-            observer.unobserve(entry.target);
+            } catch (error) {}
+        });
+
+        map.on('error', (e: any) => {
+          if (mapContainerRef.current) {
+            const errorMsg = e.error?.message || 'Помилка завантаження карти';
+            mapContainerRef.current.innerHTML = `<div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #d32f2f; font-family: Inter, sans-serif; padding: 20px; text-align: center;">${errorMsg}</div>`;
           }
         });
-      },
-      { threshold: 0.1 } // Load when 10% of map container is visible
-    );
 
-    observer.observe(mapContainerRef.current);
+        map.on('style.load', () => {
+          });
+
+        mapRef.current = map;
+      } catch (error) {
+        if (mapContainerRef.current) {
+          mapContainerRef.current.innerHTML = '<div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #666; font-family: Inter, sans-serif;">Помилка завантаження карти</div>';
+        }
+      }
+    };
+
+    // Small delay to ensure container is rendered
+    const timer = setTimeout(() => {
+      loadMapbox();
+    }, 100);
 
     return () => {
-      observer.disconnect();
+      clearTimeout(timer);
       if (markerRef.current) {
         markerRef.current.remove();
       }
@@ -504,7 +491,6 @@ export function OfficeSection({ t }: { t: any }) {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     // Handle form submission
-    console.log({ selectedDate, selectedTime, selectedSpecialist, name, phone, message });
   };
 
   // Generate time slots (9 AM to 6 PM, every hour)
@@ -512,14 +498,6 @@ export function OfficeSection({ t }: { t: any }) {
   for (let hour = 9; hour <= 18; hour++) {
     timeSlots.push(`${hour.toString().padStart(2, '0')}:00`);
   }
-
-  // Get specialists list (can be from API or static)
-  const specialists = [
-    t('leaders.artem.name'),
-    t('leaders.nikita.name'),
-    t('leaders.antony.name'),
-    t('leaders.gulnoza.name'),
-  ];
 
   return (
     <div className={styles.officeSection}>
@@ -560,21 +538,6 @@ export function OfficeSection({ t }: { t: any }) {
                     ))}
                   </select>
                 </div>
-              </div>
-
-              <div className={styles.formField}>
-                <label>{t('officeForm.specialistLabel')}</label>
-                <select
-                  value={selectedSpecialist}
-                  onChange={(e) => setSelectedSpecialist(e.target.value)}
-                >
-                  <option value="">{t('officeForm.specialistPlaceholder')}</option>
-                  {specialists.map((specialist) => (
-                    <option key={specialist} value={specialist}>
-                      {specialist}
-                    </option>
-                  ))}
-                </select>
               </div>
 
               <div className={styles.formRow}>

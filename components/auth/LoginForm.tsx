@@ -51,11 +51,7 @@ export default function LoginForm() {
       //   window.location.href = getLocalizedPath('/investor');
       // } else {
       //   window.location.href = getLocalizedPath('/');
-      // }
-      
-      console.log('Login data:', data);
-      
-      // Simulate API call
+      // }// Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1000));
       
       // For testing: redirect to broker dashboard

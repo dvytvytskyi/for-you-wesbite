@@ -25,19 +25,13 @@ export default function DevelopersList() {
   const [selectedDeveloper, setSelectedDeveloper] = useState<Developer | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const loadDevelopers = async () => {
       setLoading(true);
       setError(null);
-      try {
-        console.log('🔄 Loading developers...');
-        const apiDevelopers = await getDevelopers();
-        console.log('✅ Received developers from API:', apiDevelopers.length);
-        
-        if (!Array.isArray(apiDevelopers)) {
-          console.error('❌ API returned non-array:', apiDevelopers);
-          setError('Invalid data format from API');
+      try {const apiDevelopers = await getDevelopers();if (!Array.isArray(apiDevelopers)) {setError('Invalid data format from API');
           setLoading(false);
           return;
         }
@@ -60,26 +54,19 @@ export default function DevelopersList() {
           };
         });
         
-        console.log('✅ Converted developers:', convertedDevelopers.length);
-        setDevelopers(convertedDevelopers);
+        // Filter out developers without logos
+        const developersWithLogos = convertedDevelopers.filter(dev => {
+          return dev.logo && dev.logo.trim() !== '';
+        });
+        setDevelopers(developersWithLogos);
         
-        if (convertedDevelopers.length > 0) {
-          setSelectedDeveloper(convertedDevelopers[0]);
+        if (developersWithLogos.length > 0) {
+          setSelectedDeveloper(developersWithLogos[0]);
         }
         
         if (process.env.NODE_ENV === 'development') {
-          const developersWithImages = convertedDevelopers.filter(d => d.images && d.images.length > 0).length;
-          const developersWithLogo = convertedDevelopers.filter(d => d.logo).length;
-          console.log(`✅ Loaded ${convertedDevelopers.length} developers, ${developersWithImages} with images, ${developersWithLogo} with logo`);
-        }
-      } catch (err: any) {
-        console.error('❌ Failed to fetch developers:', err);
-        console.error('Error details:', {
-          message: err.message,
-          stack: err.stack,
-          response: err.response?.data,
-        });
-        setError(err.message || 'Failed to load developers');
+          const developersWithImages = developersWithLogos.filter(d => d.images && d.images.length > 0).length;}
+      } catch (err: any) {setError(err.message || 'Failed to load developers');
       } finally {
         setLoading(false);
       }
@@ -113,6 +100,8 @@ export default function DevelopersList() {
 
   const handleDeveloperSelect = (developer: Developer) => {
     setSelectedDeveloper(developer);
+    // Reset failed images when switching developers
+    setFailedImages(new Set());
   };
 
   const getLocalizedPath = (path: string) => {
@@ -238,28 +227,52 @@ export default function DevelopersList() {
                   <div className={styles.images}>
                     <h3 className={styles.imagesTitle}>{t('images')}</h3>
                     <div className={styles.imagesGrid}>
-                      {selectedDeveloper.images.map((image, index) => (
-                        <div key={index} className={styles.imageItem}>
-                          <Image
-                            src={image}
-                            alt={`${selectedDeveloper.name} - Image ${index + 1}`}
-                            fill
-                            style={{ objectFit: 'cover' }}
-                            sizes="(max-width: 1200px) 50vw, 33vw"
-                          />
-                        </div>
-                      ))}
+                      {selectedDeveloper.images
+                        .filter((image) => {
+                          // Filter out placeholder or invalid images
+                          const isPlaceholder = image && (
+                            image.includes('unsplash.com') ||
+                            image.includes('placeholder') ||
+                            image.includes('via.placeholder.com') ||
+                            image.includes('dummyimage.com') ||
+                            image.includes('placehold.it') ||
+                            image.includes('fakeimg.pl')
+                          );
+                          
+                          const isValidUrl = image && (image.startsWith('http://') || image.startsWith('https://'));
+                          
+                          // Filter out images that failed to load
+                          const hasFailed = failedImages.has(image);
+                          
+                          return isValidUrl && !isPlaceholder && !hasFailed;
+                        })
+                        .map((image, index) => (
+                          <div key={index} className={styles.imageItem}>
+                            <Image
+                              src={image}
+                              alt={`${selectedDeveloper.name} - Image ${index + 1}`}
+                              fill
+                              style={{ objectFit: 'cover' }}
+                              sizes="(max-width: 1200px) 50vw, 33vw"
+                              unoptimized
+                              onError={(e) => {
+                                // Add to failed images set
+                                setFailedImages(prev => new Set(prev).add(image));
+                                // Hide the image and its wrapper
+                                const target = e.target as HTMLImageElement;
+                                target.style.display = 'none';
+                                const wrapper = target.closest(`.${styles.imageItem}`);
+                                if (wrapper) {
+                                  (wrapper as HTMLElement).style.display = 'none';
+                                }
+                              }}
+                            />
+                          </div>
+                        ))}
                     </div>
                   </div>
                 )}
 
-                {selectedDeveloper.createdAt && (
-                  <div className={styles.meta}>
-                    <p className={styles.createdAt}>
-                      {t('createdAt') || 'Created'}: {formatDate(selectedDeveloper.createdAt)}
-                    </p>
-                  </div>
-                )}
               </>
             ) : (
               <div className={styles.noSelection}>

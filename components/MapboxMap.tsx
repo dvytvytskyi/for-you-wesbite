@@ -246,9 +246,7 @@ export default function MapboxMap({ accessToken, properties = [] }: MapboxMapPro
 
     const token = accessToken || process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
     
-    if (!token) {
-      console.warn('Mapbox access token is not set. Please set NEXT_PUBLIC_MAPBOX_TOKEN in your .env.local file');
-      return;
+    if (!token) {return;
     }
 
     if (map.current) return; // Initialize map only once
@@ -314,9 +312,7 @@ export default function MapboxMap({ accessToken, properties = [] }: MapboxMapPro
               setIsDrawing(true);
               filterPropertiesByPolygon(polygon);
             }
-          } catch (e) {
-            console.error('Error parsing polygon from URL:', e);
-          }
+          } catch (e) {}
         }
       });
 
@@ -336,12 +332,7 @@ export default function MapboxMap({ accessToken, properties = [] }: MapboxMapPro
             return isInside;
           });
           
-          if (process.env.NODE_ENV === 'development') {
-            console.log('Polygon drawn with coordinates:', coordinates);
-            console.log(`Total properties: ${properties.length}`);
-            console.log(`Properties inside polygon: ${filtered.length}`);
-            if (filtered.length > 0) {
-              console.log('Filtered properties:', filtered.map(p => ({ id: p.id, coordinates: p.coordinates })));
+          if (process.env.NODE_ENV === 'development') {if (filtered.length > 0) {
             }
           }
           
@@ -397,10 +388,7 @@ export default function MapboxMap({ accessToken, properties = [] }: MapboxMapPro
               markersMapRef.current.set(property.id, marker);
             });
             
-            if (process.env.NODE_ENV === 'development') {
-              console.log(`Markers updated: ${markersRef.current.length} markers added`);
-            }
-          };
+            };
           
           // Wait for map to be idle before updating markers
           if (map.current && map.current.loaded()) {
@@ -475,10 +463,7 @@ export default function MapboxMap({ accessToken, properties = [] }: MapboxMapPro
             markersMapRef.current.set(property.id, marker);
           });
           
-          if (process.env.NODE_ENV === 'development') {
-            console.log(`Markers updated after clear: ${markersRef.current.length} markers added`);
-          }
-        };
+          };
         
         // Wait for map to be idle before updating markers
         if (map.current) {
@@ -501,9 +486,7 @@ export default function MapboxMap({ accessToken, properties = [] }: MapboxMapPro
           }
         }
       });
-    } catch (error) {
-      console.error('Error initializing map:', error);
-    }
+    } catch (error) {}
 
     // Cleanup
     return () => {
@@ -589,10 +572,7 @@ export default function MapboxMap({ accessToken, properties = [] }: MapboxMapPro
           markersMapRef.current.set(property.id, marker);
         });
         
-        if (process.env.NODE_ENV === 'development') {
-          console.log(`Markers updated after clear button: ${markersRef.current.length} markers added`);
-        }
-      };
+        };
       
       // Wait for map to be idle before updating markers
       if (map.current) {
@@ -632,16 +612,6 @@ export default function MapboxMap({ accessToken, properties = [] }: MapboxMapPro
       // Use filtered properties if polygon is drawn, otherwise use all properties
       const propsToShow = drawnPolygon ? filteredProperties : properties;
 
-      if (process.env.NODE_ENV === 'development') {
-        console.log('Adding markers:', {
-          totalProperties: properties.length,
-          filteredProperties: filteredProperties.length,
-          drawnPolygon: !!drawnPolygon,
-          propsToShow: propsToShow.length,
-          mapLoaded: map.current ? map.current.loaded() : false
-        });
-      }
-
       if (propsToShow.length === 0) {
         // Remove all markers if no properties
         markersRef.current.forEach(marker => marker.remove());
@@ -665,51 +635,73 @@ export default function MapboxMap({ accessToken, properties = [] }: MapboxMapPro
         }
       });
 
-      // Add or update markers for current properties
-      propsToShow.forEach(property => {
+      // Add or update markers for current properties in batches to avoid blocking UI
+      const propertiesToAdd = propsToShow.filter(property => {
         // Skip if marker already exists
         if (markersMapRef.current.has(property.id)) {
-          return;
+          return false;
         }
         // Validate coordinates
         if (!property.coordinates || !Array.isArray(property.coordinates) || property.coordinates.length !== 2) {
-          console.warn('Invalid coordinates format for property:', property.id, property.coordinates);
-          return;
+          return false;
         }
 
         const [lng, lat] = property.coordinates;
         if (typeof lng !== 'number' || typeof lat !== 'number' || isNaN(lng) || isNaN(lat)) {
-          console.warn('Invalid coordinates for property:', property.id, property.coordinates);
-          return;
+          return false;
         }
 
         // Validate coordinate ranges (Dubai area approximately: lng 54-56, lat 24-26)
         if (lng < 50 || lng > 60 || lat < 20 || lat > 30) {
-          console.warn('Coordinates out of Dubai range for property:', property.id, { lng, lat });
-          return;
+          return false;
         }
-
-        const priceAED = property.price?.aed || 0;
-        const el = createMarkerElement(priceAED);
         
-        // Add universal click handler (works for both desktop and mobile)
-        addMarkerClickHandler(el, property, map.current, setSelectedProperty);
-        
-        // Create marker with center anchor for stable positioning
-        // This prevents markers from moving during zoom
-        const marker = new mapboxgl.Marker({
-          element: el,
-          anchor: 'center',
-          offset: [0, 0]
-        });
-        
-        // Set coordinates using the exact values
-        marker.setLngLat([lng, lat]);
-        marker.addTo(map.current!);
-        
-        markersRef.current.push(marker);
-        markersMapRef.current.set(property.id, marker);
+        return true;
       });
+
+      // Add markers in batches of 50 to avoid blocking UI
+      const BATCH_SIZE = 50;
+      let currentIndex = 0;
+
+      const addBatch = () => {
+        if (!map.current) return;
+        
+        const batch = propertiesToAdd.slice(currentIndex, currentIndex + BATCH_SIZE);
+        
+        batch.forEach(property => {
+          const [lng, lat] = property.coordinates;
+          const priceAED = property.price?.aed || 0;
+          const el = createMarkerElement(priceAED);
+          
+          // Add universal click handler (works for both desktop and mobile)
+          addMarkerClickHandler(el, property, map.current, setSelectedProperty);
+          
+          // Create marker with center anchor for stable positioning
+          const marker = new mapboxgl.Marker({
+            element: el,
+            anchor: 'center',
+            offset: [0, 0]
+          });
+          
+          marker.setLngLat([lng, lat]);
+          marker.addTo(map.current!);
+          
+          markersRef.current.push(marker);
+          markersMapRef.current.set(property.id, marker);
+        });
+
+        currentIndex += BATCH_SIZE;
+
+        // Continue with next batch if there are more properties
+        if (currentIndex < propertiesToAdd.length) {
+          requestAnimationFrame(addBatch);
+        }
+      };
+
+      // Start adding markers in batches
+      if (propertiesToAdd.length > 0) {
+        requestAnimationFrame(addBatch);
+      }
     };
 
     // Wait for map to fully load and render
@@ -845,25 +837,37 @@ export default function MapboxMap({ accessToken, properties = [] }: MapboxMapPro
             markersRef.current = [];
             markersMapRef.current.clear();
             
-            // Re-add markers
-            properties.forEach(property => {
-              if (!property.coordinates || !Array.isArray(property.coordinates) || property.coordinates.length !== 2) {
-                return;
-              }
+          // Re-add markers in batches to avoid blocking UI
+          const validProperties = properties.filter(property => {
+            if (!property.coordinates || !Array.isArray(property.coordinates) || property.coordinates.length !== 2) {
+              return false;
+            }
 
+            const [lng, lat] = property.coordinates;
+            if (typeof lng !== 'number' || typeof lat !== 'number' || isNaN(lng) || isNaN(lat)) {
+              return false;
+            }
+
+            if (lng < 50 || lng > 60 || lat < 20 || lat > 30) {
+              return false;
+            }
+            
+            return true;
+          });
+
+          const BATCH_SIZE = 50;
+          let currentIndex = 0;
+
+          const addBatch = () => {
+            if (!map.current) return;
+            
+            const batch = validProperties.slice(currentIndex, currentIndex + BATCH_SIZE);
+            
+            batch.forEach(property => {
               const [lng, lat] = property.coordinates;
-              if (typeof lng !== 'number' || typeof lat !== 'number' || isNaN(lng) || isNaN(lat)) {
-                return;
-              }
-
-              if (lng < 50 || lng > 60 || lat < 20 || lat > 30) {
-                return;
-              }
-
               const priceAED = property.price?.aed || 0;
               const el = createMarkerElement(priceAED);
               
-              // Add universal click handler (works for both desktop and mobile)
               addMarkerClickHandler(el, property, map.current!, setSelectedProperty);
               
               const marker = new mapboxgl.Marker({
@@ -878,6 +882,17 @@ export default function MapboxMap({ accessToken, properties = [] }: MapboxMapPro
               markersRef.current.push(marker);
               markersMapRef.current.set(property.id, marker);
             });
+
+            currentIndex += BATCH_SIZE;
+
+            if (currentIndex < validProperties.length) {
+              requestAnimationFrame(addBatch);
+            }
+          };
+
+          if (validProperties.length > 0) {
+            requestAnimationFrame(addBatch);
+          }
           }
         }
       });

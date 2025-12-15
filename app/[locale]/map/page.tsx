@@ -139,22 +139,11 @@ function convertPropertyToMapFormat(property: ApiProperty, locale: string): any 
 
   // Skip if coordinates are invalid
   if (lng === null || lat === null || isNaN(lng) || isNaN(lat) || lng === 0 || lat === 0) {
-    if (process.env.NODE_ENV === 'development') {
-      console.warn(`Skipping property ${property.id} - invalid coordinates:`, { 
-        longitude: property.longitude, 
-        latitude: property.latitude,
-        parsedLng: lng,
-        parsedLat: lat
-      });
-    }
     return null;
   }
 
   // Validate coordinate ranges (Dubai area approximately: lng 54-56, lat 24-26)
   if (lng < 50 || lng > 60 || lat < 20 || lat > 30) {
-    if (process.env.NODE_ENV === 'development') {
-      console.warn(`Skipping property ${property.id} - coordinates out of Dubai range:`, { lng, lat });
-    }
     return null;
   }
 
@@ -184,8 +173,9 @@ function convertPropertyToMapFormat(property: ApiProperty, locale: string): any 
 export default function MapPage() {
   const locale = useLocale();
   const [properties, setProperties] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   useEffect(() => {
     const loadProperties = async () => {
@@ -199,17 +189,7 @@ export default function MapPage() {
         const apiProperties = result.properties || [];
         
         if (process.env.NODE_ENV === 'development') {
-          console.log(`Map: Loaded ${apiProperties.length} properties (total available: ${result.total})`);
-          if (apiProperties.length > 0) {
-            console.log('Sample property:', {
-              id: apiProperties[0].id,
-              name: apiProperties[0].name,
-              longitude: apiProperties[0].longitude,
-              latitude: apiProperties[0].latitude,
-              propertyType: apiProperties[0].propertyType
-            });
           }
-        }
         
         // Convert to map format and filter out invalid ones
         const mapProperties = apiProperties
@@ -217,70 +197,65 @@ export default function MapPage() {
           .filter((p): p is NonNullable<typeof p> => p !== null);
 
         setProperties(mapProperties);
+        setIsInitialLoad(false);
         
         if (process.env.NODE_ENV === 'development') {
-          console.log(`Loaded ${mapProperties.length} properties with valid coordinates for map (out of ${apiProperties.length} total)`);
-          if (mapProperties.length === 0 && apiProperties.length > 0) {
-            console.warn('No properties with valid coordinates found. Sample invalid property:', {
-              id: apiProperties[0].id,
-              longitude: apiProperties[0].longitude,
-              latitude: apiProperties[0].latitude
-            });
           }
-        }
       } catch (err: any) {
-        console.error('Error loading properties for map:', err);
         setError(err.message || 'Failed to load properties');
+        setIsInitialLoad(false);
       } finally {
         setLoading(false);
       }
     };
 
+    // Load properties asynchronously - don't block map rendering
     loadProperties();
   }, [locale]);
-
-  if (loading) {
-    return (
-      <div className={styles.mapPageContainer}>
-        <Header />
-        <div className={styles.mapPage}>
-          <div style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'center', 
-            height: '100%',
-            color: '#fff'
-          }}>
-            Loading map...
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className={styles.mapPageContainer}>
-        <Header />
-        <div className={styles.mapPage}>
-          <div style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'center', 
-            height: '100%',
-            color: '#fff'
-          }}>
-            Error: {error}
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className={styles.mapPageContainer}>
       <Header />
       <div className={styles.mapPage}>
+        {/* Show loading indicator only while loading properties, not blocking map */}
+        {isInitialLoad && (
+          <div style={{ 
+            position: 'absolute',
+            top: '80px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 1000,
+            background: 'rgba(0, 48, 119, 0.9)',
+            color: '#fff',
+            padding: '12px 24px',
+            borderRadius: '8px',
+            fontSize: '14px',
+            fontWeight: '500',
+            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)',
+            pointerEvents: 'none'
+          }}>
+            Loading properties...
+          </div>
+        )}
+        {error && (
+          <div style={{ 
+            position: 'absolute',
+            top: '80px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 1000,
+            background: 'rgba(220, 38, 38, 0.9)',
+            color: '#fff',
+            padding: '12px 24px',
+            borderRadius: '8px',
+            fontSize: '14px',
+            fontWeight: '500',
+            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)',
+            pointerEvents: 'none'
+          }}>
+            Error: {error}
+          </div>
+        )}
         <MapboxMap properties={properties} />
       </div>
     </div>

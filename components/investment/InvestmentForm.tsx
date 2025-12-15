@@ -22,7 +22,6 @@ interface InvestmentFormProps {
 // Unified schema - all fields, but user fields are optional for authenticated users
 const investmentSchema = z.object({
   amount: z.number().min(1, 'Amount must be greater than 0'),
-  date: z.string().min(1, 'Date is required'),
   notes: z.string().optional(),
   userEmail: z.string().email('Invalid email address').optional(),
   userPhone: z.string().min(10, 'Phone number must be at least 10 characters').optional(),
@@ -68,7 +67,6 @@ export default function InvestmentForm({
     resolver: zodResolver(schema),
     defaultValues: {
       amount: defaultAmount,
-      date: new Date().toISOString().split('T')[0],
       notes: '',
     },
   });
@@ -89,7 +87,6 @@ export default function InvestmentForm({
       const requestData = {
         propertyId,
         amount: amountUSD,
-        date: new Date(data.date).toISOString(),
         notes: data.notes || undefined,
         ...(authenticated ? {} : {
           userEmail: data.userEmail!,
@@ -99,25 +96,11 @@ export default function InvestmentForm({
         }),
       };
 
-      if (process.env.NODE_ENV === 'development') {
-        console.log('Submitting investment form:', {
-          propertyId,
-          amountAED: data.amount,
-          amountUSD,
-          date: requestData.date,
-          authenticated,
-        });
-      }
-
       let result;
       if (authenticated) {
         result = await submitInvestment(requestData);
       } else {
         result = await submitInvestmentPublic(requestData);
-      }
-
-      if (process.env.NODE_ENV === 'development') {
-        console.log('Investment submitted successfully:', result);
       }
 
       setSuccess(true);
@@ -126,10 +109,7 @@ export default function InvestmentForm({
         setSuccess(false);
         // Optionally redirect or show success message
       }, 3000);
-    } catch (err: any) {
-      console.error('Error submitting investment form:', err);
-      
-      // Extract error message
+    } catch (err: any) {// Extract error message
       let errorMessage = t('submitError') || 'Failed to submit investment';
       
       if (err.message) {
@@ -178,11 +158,15 @@ export default function InvestmentForm({
       <div className={styles.agentSection}>
         <div className={styles.agentAvatar}>
           <Image
-            src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&h=400&fit=crop&crop=face"
+            src="https://res.cloudinary.com/dgv0rxd60/image/upload/v1765715854/photo_2025-12-14_15-36-43_jn55hm.jpg"
             alt={t('agentName') || 'Agent'}
             fill
             style={{ objectFit: 'cover' }}
+            sizes="(max-width: 768px) 100vw, 50px"
+            unoptimized
             onError={(e) => {
+              if (process.env.NODE_ENV === 'development') {
+              }
               // Fallback to initials if image fails
               const target = e.target as HTMLImageElement;
               target.style.display = 'none';
@@ -305,21 +289,6 @@ export default function InvestmentForm({
           />
           {errors.amount && (
             <span className={styles.errorMessage}>{errors.amount.message}</span>
-          )}
-        </div>
-
-        <div className={styles.formField}>
-          <label htmlFor="date" className={styles.label}>
-            {t('date') || 'Investment Date'}
-          </label>
-          <input
-            id="date"
-            type="date"
-            {...register('date')}
-            className={`${styles.input} ${errors.date ? styles.inputError : ''}`}
-          />
-          {errors.date && (
-            <span className={styles.errorMessage}>{errors.date.message}</span>
           )}
         </div>
 

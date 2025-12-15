@@ -203,10 +203,67 @@
   margin: 0;
 }
 
+.propertiesSection {
+  margin-top: 60px;
+  margin-bottom: 40px;
+}
+
 .propertiesGrid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
   gap: 32px;
+  margin-top: 24px;
+}
+
+.propertiesCount {
+  font-family: 'Inter', sans-serif;
+  font-size: 18px;
+  font-weight: 300;
+  color: #666666;
+  margin-left: 12px;
+}
+
+.loadMoreContainer {
+  display: flex;
+  justify-content: center;
+  margin-top: 40px;
+  padding-top: 40px;
+  border-top: 1px solid rgba(0, 48, 119, 0.1);
+}
+
+.loadMoreButton {
+  padding: 14px 32px;
+  background: #003077;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  font-family: 'Inter', sans-serif;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.loadMoreButton:hover:not(:disabled) {
+  background: #003f94;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 48, 119, 0.2);
+}
+
+.loadMoreButton:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.loadMoreButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+@media (max-width: 768px) {
+  .propertiesGrid {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
 }
 
 /* Кнопка для secondary properties */

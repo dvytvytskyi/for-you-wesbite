@@ -62,10 +62,7 @@ export default function ForgotPasswordForm() {
     
     try {
       // TODO: Replace with actual API call
-      // await axios.post('/api/auth/forgot-password', data);
-      
-      console.log('Forgot password email:', data.email);
-      setEmail(data.email);
+      // await axios.post('/api/auth/forgot-password', data);setEmail(data.email);
       
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1000));
@@ -97,11 +94,7 @@ export default function ForgotPasswordForm() {
     try {
       // TODO: Replace with actual API call
       // const response = await axios.post('/api/auth/verify-reset-code', data);
-      // setResetToken(response.data.data.resetToken);
-      
-      console.log('Verify code:', data);
-      
-      // Simulate API call
+      // setResetToken(response.data.data.resetToken);// Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1000));
       setResetToken('mock-reset-token');
       
@@ -131,11 +124,7 @@ export default function ForgotPasswordForm() {
       // await axios.post('/api/auth/reset-password', {
       //   resetToken,
       //   newPassword: data.newPassword,
-      // });
-      
-      console.log('Reset password:', { resetToken, newPassword: data.newPassword });
-      
-      // Simulate API call
+      // });// Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1000));
       
       setSuccess(true);

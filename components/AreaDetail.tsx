@@ -2,8 +2,10 @@
 
 import { useTranslations, useLocale } from 'next-intl';
 import Image from 'next/image';
+import Link from 'next/link';
 import { useState, useEffect, useRef } from 'react';
-import { getAreaById, Area as ApiArea } from '@/lib/api';
+import { getAreaById, Area as ApiArea, getProperties, Property } from '@/lib/api';
+import PropertyCard from '@/components/PropertyCard';
 import styles from './AreaDetail.module.css';
 
 interface AreaDetailData {
@@ -42,6 +44,10 @@ export default function AreaDetail({ slug }: AreaDetailProps) {
   const [error, setError] = useState<string | null>(null);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [properties, setProperties] = useState<Property[]>([]);
+  const [loadingProperties, setLoadingProperties] = useState(false);
+  const [totalProperties, setTotalProperties] = useState(0);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   // Прибираємо автоматичне прокручування при завантаженні сторінки
   useEffect(() => {
@@ -80,6 +86,52 @@ export default function AreaDetail({ slug }: AreaDetailProps) {
           return;
         }
 
+        // Normalize images to always be an array
+        let normalizedImages: string[] = [];
+        if (apiArea.images) {
+          if (Array.isArray(apiArea.images)) {
+            // Already an array - filter valid URLs
+            normalizedImages = apiArea.images
+              .filter(img => img && typeof img === 'string' && img.trim() !== '')
+              .map(img => {
+                // Handle comma-separated URLs
+                const trimmed = img.trim();
+                return trimmed.includes(',') ? trimmed.split(',')[0].trim() : trimmed;
+              })
+              .filter(img => img && img.startsWith('http'));
+          } else if (typeof apiArea.images === 'string') {
+            // Single string - check if it contains comma
+            const trimmed = apiArea.images.trim();
+            if (trimmed.includes(',')) {
+              // Split by comma and take first valid URL
+              const urls = trimmed.split(',').map(url => url.trim()).filter(url => url && url.startsWith('http'));
+              normalizedImages = urls.length > 0 ? [urls[0]] : [];
+            } else if (trimmed.startsWith('http')) {
+              normalizedImages = [trimmed];
+            }
+          } else if (typeof apiArea.images === 'object' && apiArea.images !== null) {
+            // Try to extract from object
+            const imagesValue = (apiArea.images as any).images || (apiArea.images as any).data || apiArea.images;
+            if (Array.isArray(imagesValue)) {
+              normalizedImages = imagesValue
+                .filter(img => img && typeof img === 'string' && img.trim() !== '')
+                .map(img => {
+                  const trimmed = img.trim();
+                  return trimmed.includes(',') ? trimmed.split(',')[0].trim() : trimmed;
+                })
+                .filter(img => img && img.startsWith('http'));
+            } else if (typeof imagesValue === 'string') {
+              const trimmed = imagesValue.trim();
+              if (trimmed.includes(',')) {
+                const urls = trimmed.split(',').map(url => url.trim()).filter(url => url && url.startsWith('http'));
+                normalizedImages = urls.length > 0 ? [urls[0]] : [];
+              } else if (trimmed.startsWith('http')) {
+                normalizedImages = [trimmed];
+              }
+            }
+          }
+        }
+
         // Convert API area to component format
         const areaData: AreaDetailData = {
           id: apiArea.id,
@@ -89,19 +141,25 @@ export default function AreaDetail({ slug }: AreaDetailProps) {
           nameAr: apiArea.nameAr,
           description: apiArea.description || undefined,
           infrastructure: apiArea.infrastructure || undefined,
-          images: apiArea.images || undefined,
+          images: normalizedImages.length > 0 ? normalizedImages : undefined,
           projectsCount: apiArea.projectsCount,
         };
 
         setArea(areaData);
         setCurrentSlide(0);
 
-        if (process.env.NODE_ENV === 'development') {
-          console.log(`Loaded area ${apiArea.nameEn}`);
+        // Load properties for this area - initially load 36 for better performance
+        setLoadingProperties(true);
+        try {
+          const propertiesResult = await getProperties({ areaId: apiArea.id, limit: 36 }, true);
+          setProperties(propertiesResult.properties || []);
+          setTotalProperties(propertiesResult.total || 0);
+        } catch (err) {setProperties([]);
+          setTotalProperties(0);
+        } finally {
+          setLoadingProperties(false);
         }
-      } catch (err: any) {
-        console.error('Failed to fetch area:', err);
-        setError(err.message || 'Failed to load area');
+      } catch (err: any) {setError(err.message || 'Failed to load area');
       } finally {
         setLoading(false);
       }
@@ -112,6 +170,30 @@ export default function AreaDetail({ slug }: AreaDetailProps) {
 
   const getLocalizedPath = (path: string) => {
     return locale === 'en' ? path : `/${locale}${path}`;
+  };
+
+  const loadMoreProperties = async () => {
+    if (!area || loadingMore) return;
+    
+    setLoadingMore(true);
+    try {
+      // Load all remaining properties - use totalProperties or a large number
+      const limitToLoad = totalProperties > 0 ? totalProperties : 1000;
+      const propertiesResult = await getProperties({ 
+        areaId: area.id, 
+        limit: limitToLoad
+      }, true);
+      
+      // Replace all properties with the full list
+      setProperties(propertiesResult.properties || []);
+      
+      // Update total if we got more accurate count
+      if (propertiesResult.total && propertiesResult.total > totalProperties) {
+        setTotalProperties(propertiesResult.total);
+      }
+    } catch (err) {} finally {
+      setLoadingMore(false);
+    }
   };
 
   useEffect(() => {
@@ -181,7 +263,7 @@ export default function AreaDetail({ slug }: AreaDetailProps) {
         </div>
 
         {/* Галерея зображень - слайд-шоу */}
-        {area.images && area.images.length > 0 && (
+        {area.images && Array.isArray(area.images) && area.images.length > 0 && (
           <div className={styles.imagesSection}>
             <div className={styles.sliderContainer}>
               <div className={styles.sliderWrapper}>
@@ -209,7 +291,7 @@ export default function AreaDetail({ slug }: AreaDetailProps) {
               </div>
               
               {/* Навігаційні кнопки */}
-              {area.images.length > 1 && (
+              {Array.isArray(area.images) && area.images.length > 1 && (
                 <>
                   <button
                     className={`${styles.sliderButton} ${styles.prevButton}`}
@@ -276,6 +358,42 @@ export default function AreaDetail({ slug }: AreaDetailProps) {
             )}
             {area.infrastructure.description && (
               <p className={styles.descriptionText}>{area.infrastructure.description}</p>
+            )}
+          </div>
+        )}
+
+        {/* Список проектів */}
+        {properties.length > 0 && (
+          <div className={styles.propertiesSection}>
+            <h2 className={styles.sectionTitle}>
+              {locale === 'ru' ? 'Проекты в этом районе' : 'Properties in this area'}
+              {totalProperties > 0 && (
+                <span className={styles.propertiesCount}>
+                  {' '}({properties.length} {locale === 'ru' ? 'из' : 'of'} {totalProperties})
+                </span>
+              )}
+            </h2>
+            <div className={styles.propertiesGrid}>
+              {properties.map((property) => (
+                <PropertyCard key={property.id} property={property} />
+              ))}
+            </div>
+            {totalProperties > properties.length && (
+              <div className={styles.loadMoreContainer}>
+                <button 
+                  className={styles.loadMoreButton}
+                  onClick={loadMoreProperties}
+                  disabled={loadingMore}
+                >
+                  {loadingMore 
+                    ? (locale === 'ru' ? 'Загрузка...' : 'Loading...')
+                    : (locale === 'ru' 
+                        ? `Загрузить еще (${totalProperties - properties.length} ${totalProperties - properties.length === 1 ? 'проект' : totalProperties - properties.length < 5 ? 'проекта' : 'проектов'})`
+                        : `Load more (${totalProperties - properties.length} ${totalProperties - properties.length === 1 ? 'property' : 'properties'})`
+                      )
+                  }
+                </button>
+              </div>
             )}
           </div>
         )}

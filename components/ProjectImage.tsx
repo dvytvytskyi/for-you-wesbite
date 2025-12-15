@@ -1,14 +1,20 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import Image from 'next/image';
 import styles from './ProjectImage.module.css';
 
 export default function ProjectImage() {
   const t = useTranslations('projectImage');
+  const locale = useLocale();
+  const router = useRouter();
   const sectionRef = useRef<HTMLDivElement>(null);
+  const modalRef = useRef<HTMLDivElement>(null);
   const [isVisible, setIsVisible] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
@@ -37,10 +43,48 @@ export default function ProjectImage() {
     };
   }, []);
 
+  const getLocalizedPath = (path: string) => {
+    return locale === 'en' ? path : `/${locale}${path}`;
+  };
+
+  const handleContactClick = () => {
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+  };
+
+  // Close modal on Escape key
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isModalOpen) {
+        handleCloseModal();
+      }
+    };
+
+    if (isModalOpen) {
+      window.addEventListener('keydown', handleEscape);
+      document.body.style.overflow = 'hidden';
+    }
+
+    return () => {
+      window.removeEventListener('keydown', handleEscape);
+      document.body.style.overflow = '';
+    };
+  }, [isModalOpen]);
+
+  // Close on backdrop click
+  const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (e.target === e.currentTarget) {
+      handleCloseModal();
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: Implement form submission
-    console.log('Form submitted:', formData);
+    // TODO: Implement form submission// Optionally close modal after submission
+    // handleCloseModal();
   };
 
   return (
@@ -104,8 +148,18 @@ export default function ProjectImage() {
             </div>
 
             <div className={styles.actions}>
-              <button className={styles.readMoreButton}>{t('readMore')}</button>
-              <button className={styles.contactButton}>{t('contactUs')}</button>
+              <Link 
+                href={getLocalizedPath('/properties/3ec6a3be-02d4-460c-947c-cda4314e591b')}
+                className={styles.readMoreButton}
+              >
+                {t('readMore')}
+              </Link>
+              <button 
+                className={styles.contactButton}
+                onClick={handleContactClick}
+              >
+                {t('contactUs')}
+              </button>
             </div>
           </div>
 
@@ -142,6 +196,89 @@ export default function ProjectImage() {
           </div>
         </div>
       </div>
+
+      {/* Contact Modal */}
+      {isModalOpen && (
+        <div 
+          className={styles.modalOverlay}
+          onClick={handleBackdropClick}
+        >
+          <div 
+            className={styles.modalContent}
+            ref={modalRef}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button 
+              className={styles.modalCloseButton}
+              onClick={handleCloseModal}
+              aria-label="Close modal"
+            >
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </button>
+
+            <div className={styles.modalGrid}>
+              {/* Left Column - Form */}
+              <div className={styles.modalLeft}>
+                <h2 className={styles.modalTitle}>{t('form.title')}</h2>
+                <p className={styles.modalDescription}>{t('form.description')}</p>
+                
+                <form className={styles.modalForm} onSubmit={handleSubmit}>
+                  <input
+                    type="text"
+                    placeholder={t('form.name')}
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    className={styles.modalInput}
+                    required
+                  />
+                  <div className={styles.modalPhoneWrapper}>
+                    <span className={styles.modalPhonePrefix}>+</span>
+                    <input
+                      type="tel"
+                      placeholder={t('form.phone')}
+                      value={formData.phone}
+                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                      className={styles.modalInput}
+                      required
+                    />
+                  </div>
+                  <button type="submit" className={styles.modalSubmitButton}>
+                    {t('form.send')}
+                  </button>
+                  
+                  <p className={styles.modalNote}>{t('form.note')}</p>
+                </form>
+              </div>
+
+              {/* Right Column - Agent Info */}
+              <div className={styles.modalRight}>
+                <div className={styles.agentImageWrapper}>
+                  <Image
+                    src="/IMG_9341.JPG"
+                    alt="Камила - Консультант по недвижимости"
+                    fill
+                    style={{ objectFit: 'cover' }}
+                    sizes="(max-width: 768px) 100vw, 400px"
+                    unoptimized
+                    onError={(e) => {
+                      if (process.env.NODE_ENV === 'development') {
+                      }
+                      const target = e.target as HTMLImageElement;
+                      target.style.display = 'none';
+                    }}
+                  />
+                </div>
+                <div className={styles.agentInfo}>
+                  <h3 className={styles.agentName}>Камила</h3>
+                  <p className={styles.agentTitle}>Консультант по недвижимости</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

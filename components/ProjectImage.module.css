@@ -167,6 +167,9 @@
   cursor: pointer;
   transition: all 0.3s ease;
   border: none;
+  text-decoration: none;
+  display: inline-block;
+  text-align: center;
 }
 
 .readMoreButton {
@@ -384,6 +387,272 @@
 
   .contactForm {
     padding: 24px;
+  }
+}
+
+/* Modal Styles */
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.modalContent {
+  position: relative;
+  background: #ffffff;
+  border-radius: 16px;
+  max-width: 900px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(30px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.modalCloseButton {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.05);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  z-index: 10;
+  color: #333333;
+}
+
+.modalCloseButton:hover {
+  background: rgba(0, 0, 0, 0.1);
+  transform: rotate(90deg);
+}
+
+.modalGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  min-height: 500px;
+}
+
+.modalLeft {
+  padding: 60px 40px;
+  display: flex;
+  flex-direction: column;
+}
+
+.modalTitle {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 36px;
+  font-weight: 400;
+  color: #003077;
+  margin: 0 0 12px 0;
+  line-height: 1.2;
+}
+
+.modalDescription {
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 300;
+  color: #666666;
+  line-height: 1.6;
+  margin: 0 0 32px 0;
+}
+
+.modalForm {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  flex: 1;
+}
+
+.modalPhoneWrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.modalPhonePrefix {
+  position: absolute;
+  left: 20px;
+  top: 0;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  color: #666666;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.modalPhoneWrapper .modalInput {
+  padding-left: 32px;
+}
+
+.modalInput {
+  width: 100%;
+  padding: 14px 20px;
+  background: #f5f5f5;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  color: #333333;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 300;
+  outline: none;
+  transition: all 0.3s ease;
+}
+
+.modalInput::placeholder {
+  color: #999999;
+}
+
+.modalInput:focus {
+  background: #ffffff;
+  border-color: #003077;
+}
+
+.modalSubmitButton {
+  padding: 14px 28px;
+  background: #003077;
+  border: 1px solid #003077;
+  border-radius: 8px;
+  color: #ffffff;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-top: 8px;
+}
+
+.modalSubmitButton:hover {
+  background: #003f94;
+  border-color: #003f94;
+  transform: translateY(-1px);
+}
+
+.modalSubmitButton:active {
+  transform: translateY(0);
+}
+
+.modalNote {
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  font-weight: 300;
+  color: #999999;
+  line-height: 1.5;
+  margin: 0;
+  margin-top: -8px;
+  text-align: left;
+}
+
+.modalRight {
+  background: #f8f8f8;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 40px;
+  position: relative;
+}
+
+.agentImageWrapper {
+  position: relative;
+  width: 200px;
+  height: 200px;
+  border-radius: 50%;
+  overflow: hidden;
+  margin-bottom: 24px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+.agentInfo {
+  text-align: center;
+}
+
+.agentName {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 28px;
+  font-weight: 400;
+  color: #003077;
+  margin: 0 0 8px 0;
+  line-height: 1.2;
+}
+
+.agentTitle {
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 300;
+  color: #666666;
+  margin: 0;
+  line-height: 1.5;
+}
+
+@media (max-width: 768px) {
+  .modalGrid {
+    grid-template-columns: 1fr;
+    min-height: auto;
+  }
+
+  .modalLeft {
+    padding: 40px 30px;
+  }
+
+  .modalRight {
+    padding: 40px 30px;
+    order: -1;
+  }
+
+  .agentImageWrapper {
+    width: 150px;
+    height: 150px;
+    margin-bottom: 20px;
+  }
+
+  .modalTitle {
+    font-size: 28px;
+  }
+
+  .agentName {
+    font-size: 24px;
   }
 }
 

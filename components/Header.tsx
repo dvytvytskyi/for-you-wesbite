@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { useLocale } from 'next-intl';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import styles from './Header.module.css';
 
@@ -11,6 +11,7 @@ export default function Header() {
   const t = useTranslations('header');
   const locale = useLocale();
   const pathname = usePathname();
+  const router = useRouter();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
@@ -100,6 +101,13 @@ export default function Header() {
     return locale === 'en' ? path : `/${locale}${path}`;
   };
 
+  const switchLanguage = (newLocale: string) => {
+    const segments = pathname.split('/');
+    const pathWithoutLocale = segments.slice(2).join('/') || '';
+    const newPath = pathWithoutLocale ? `/${newLocale}/${pathWithoutLocale}` : `/${newLocale}`;
+    router.push(newPath);
+  };
+
   return (
     <header className={`${styles.header} ${isScrolled ? styles.scrolled : ''} ${!isHomePage ? styles.alwaysWhite : ''}`}>
       <div className={styles.container}>
@@ -122,8 +130,21 @@ export default function Header() {
         </nav>
         
         <nav className={styles.authNav}>
-          <Link href={getLocalizedPath('/login')} className={styles.glassButton}>{t('signIn')}</Link>
           <Link href={getLocalizedPath('/register')} className={`${styles.glassButton} ${styles.register}`}>{t('register')}</Link>
+          <div className={styles.languageSwitcher}>
+            <button
+              onClick={() => switchLanguage('en')}
+              className={`${styles.languageButton} ${locale === 'en' ? styles.languageButtonActive : ''}`}
+            >
+              EN
+            </button>
+            <button
+              onClick={() => switchLanguage('ru')}
+              className={`${styles.languageButton} ${locale === 'ru' ? styles.languageButtonActive : ''}`}
+            >
+              RU
+            </button>
+          </div>
         </nav>
 
         {/* Hamburger menu button for mobile */}
@@ -182,14 +203,31 @@ export default function Header() {
             ))}
         </nav>
         
+        <div className={styles.mobileLanguageSwitcher}>
+          <span className={styles.mobileLanguageLabel}>{locale === 'ru' ? 'Язык' : 'Language'}:</span>
+          <div className={styles.mobileLanguageButtons}>
+            <button
+              onClick={() => {
+                switchLanguage('en');
+                setIsMobileMenuOpen(false);
+              }}
+              className={`${styles.mobileLanguageButton} ${locale === 'en' ? styles.mobileLanguageButtonActive : ''}`}
+            >
+              EN
+            </button>
+            <button
+              onClick={() => {
+                switchLanguage('ru');
+                setIsMobileMenuOpen(false);
+              }}
+              className={`${styles.mobileLanguageButton} ${locale === 'ru' ? styles.mobileLanguageButtonActive : ''}`}
+            >
+              RU
+            </button>
+          </div>
+        </div>
+        
         <div className={styles.mobileAuth}>
-          <Link 
-            href={getLocalizedPath('/login')} 
-            className={styles.mobileAuthButton}
-            onClick={() => setIsMobileMenuOpen(false)}
-          >
-            {t('signIn')}
-          </Link>
           <Link 
             href={getLocalizedPath('/register')} 
             className={`${styles.mobileAuthButton} ${styles.mobileAuthButtonRegister}`}

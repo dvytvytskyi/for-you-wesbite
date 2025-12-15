@@ -7,24 +7,26 @@ import Link from 'next/link';
 import Image from 'next/image';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
-import { getProperty, Property } from '@/lib/api';
+import { getProperty, Property, getProperties } from '@/lib/api';
 import { formatNumber } from '@/lib/utils';
 import InvestmentForm from '@/components/investment/InvestmentForm';
 import PropertyDetailSkeleton from '@/components/PropertyDetailSkeleton';
+import PropertyCard from '@/components/PropertyCard';
 import styles from './PropertyDetail.module.css';
 
 interface PropertyDetailProps {
   propertyId: string;
+  initialProperty?: Property | null;
 }
 
-export default function PropertyDetail({ propertyId }: PropertyDetailProps) {
+export default function PropertyDetail({ propertyId, initialProperty = null }: PropertyDetailProps) {
   const t = useTranslations('propertyDetail');
   const tFilters = useTranslations('filters.type');
   const tHeader = useTranslations('header.nav');
   const locale = useLocale();
   const router = useRouter();
-  const [property, setProperty] = useState<Property | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [property, setProperty] = useState<Property | null>(initialProperty);
+  const [loading, setLoading] = useState(!initialProperty);
   const [error, setError] = useState<string | null>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [prevImageIndex, setPrevImageIndex] = useState(0);
@@ -33,7 +35,11 @@ export default function PropertyDetail({ propertyId }: PropertyDetailProps) {
   const [isFavorite, setIsFavorite] = useState(false);
   const [unitImagesLoading, setUnitImagesLoading] = useState<Set<string>>(new Set());
   const [heroImageLoading, setHeroImageLoading] = useState(true);
+  const [otherProperties, setOtherProperties] = useState<Property[]>([]);
+  const [loadingOtherProperties, setLoadingOtherProperties] = useState(false);
   const unitsScrollRef = useRef<HTMLDivElement>(null);
+  const otherPropertiesScrollRef = useRef<HTMLDivElement>(null);
+  const otherPropertiesCardsRef = useRef<HTMLDivElement>(null);
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const markerRef = useRef<mapboxgl.Marker | null>(null);
@@ -41,6 +47,26 @@ export default function PropertyDetail({ propertyId }: PropertyDetailProps) {
   const touchEndRef = useRef<{ x: number; y: number } | null>(null);
 
   useEffect(() => {
+    // If we have initialProperty, skip fetching
+    if (initialProperty) {
+      setProperty(initialProperty);
+      setLoading(false);
+      
+      // Initialize hero image as loading
+      if (initialProperty.photos && initialProperty.photos.length > 0) {
+        setHeroImageLoading(true);
+      }
+      
+      // Initialize unit images as loading
+      if (initialProperty.units && initialProperty.units.length > 0) {
+        const unitsWithImages = initialProperty.units
+          .filter(unit => unit.planImage)
+          .map(unit => unit.id);
+        setUnitImagesLoading(new Set(unitsWithImages));
+      }
+      return;
+    }
+
     const fetchProperty = async () => {
       try {
         setLoading(true);
@@ -48,6 +74,7 @@ export default function PropertyDetail({ propertyId }: PropertyDetailProps) {
         const data = await getProperty(propertyId);
         setProperty(data);
         
+        // Log area images for debugging
         // Initialize hero image as loading
         if (data.photos && data.photos.length > 0) {
           setHeroImageLoading(true);
@@ -60,16 +87,14 @@ export default function PropertyDetail({ propertyId }: PropertyDetailProps) {
             .map(unit => unit.id);
           setUnitImagesLoading(new Set(unitsWithImages));
         }
-      } catch (err: any) {
-        console.error('Error fetching property:', err);
-        setError(err.message || t('notFound') || 'Property not found');
+      } catch (err: any) {setError(err.message || t('notFound') || 'Property not found');
       } finally {
         setLoading(false);
       }
     };
 
     fetchProperty();
-  }, [propertyId, t]);
+  }, [propertyId, t, initialProperty]);
   
   // Reset hero image loading when image index changes
   // Note: If image was prefetched, it should load quickly from cache
@@ -152,20 +177,81 @@ export default function PropertyDetail({ propertyId }: PropertyDetailProps) {
     }
   }, [currentImageIndex, property]);
 
-  // Initialize map when property is loaded
+  // Load other properties (25 random, excluding current) - lazy load when section is visible
+  const otherPropertiesSectionRef = useRef<HTMLDivElement>(null);
+  const [shouldLoadOtherProperties, setShouldLoadOtherProperties] = useState(false);
+
+  useEffect(() => {
+    if (!property || !otherPropertiesSectionRef.current) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting && !shouldLoadOtherProperties) {
+            setShouldLoadOtherProperties(true);
+          }
+        });
+      },
+      { threshold: 0.1, rootMargin: '200px' } // Start loading 200px before section is visible
+    );
+
+    observer.observe(otherPropertiesSectionRef.current);
+
+    return () => {
+      if (otherPropertiesSectionRef.current) {
+        observer.unobserve(otherPropertiesSectionRef.current);
+      }
+    };
+  }, [property, shouldLoadOtherProperties]);
+
+  useEffect(() => {
+    if (!property || !shouldLoadOtherProperties) return;
+    
+    const loadOtherProperties = async () => {
+      setLoadingOtherProperties(true);
+      try {
+        if (process.env.NODE_ENV === 'development') {
+        }
+        
+        // Load fewer properties to reduce load - 25 instead of 50 for faster loading
+        const result = await getProperties({ limit: 25 }, true);
+        const allProperties = result.properties || [];
+        
+        // Filter out current property and shuffle
+        const filtered = allProperties.filter(p => p.id !== property.id);
+        const shuffled = [...filtered].sort(() => Math.random() - 0.5);
+        
+        // Take 12 random properties (reduced for faster loading)
+        const randomProperties = shuffled.slice(0, 12);
+        setOtherProperties(randomProperties);
+        
+        } catch (err) {setOtherProperties([]);
+      } finally {
+        setLoadingOtherProperties(false);
+      }
+    };
+
+    loadOtherProperties();
+  }, [property, shouldLoadOtherProperties]);
+
+  // Initialize map when property is loaded - lazy load to avoid blocking render
   useEffect(() => {
     if (!property || !mapContainer.current) return;
 
     const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
     
-    if (!token) {
-      console.warn('Mapbox access token is not set');
-      return;
+    if (!token) {return;
     }
 
     if (map.current) return; // Map already initialized
 
-    try {
+    // Delay map initialization to avoid blocking initial render
+    const initMap = () => {
+      if (!mapContainer.current || map.current) return;
+
+      let cleanup: (() => void) | null = null;
+
+      try {
       // Check if mobile device based on screen width
       const checkIsMobile = () => {
         if (typeof window === 'undefined') return false;
@@ -271,7 +357,7 @@ export default function PropertyDetail({ propertyId }: PropertyDetailProps) {
         .addTo(map.current);
 
       // Cleanup function
-      return () => {
+      cleanup = () => {
         window.removeEventListener('resize', handleResize);
         if (markerRef.current) {
           markerRef.current.remove();
@@ -283,11 +369,25 @@ export default function PropertyDetail({ propertyId }: PropertyDetailProps) {
         }
       };
 
-    } catch (error) {
-      console.error('Error initializing map:', error);
-      // Return empty cleanup function if initialization failed
-      return () => {};
-    }
+      } catch (error) {
+        cleanup = () => {};
+      }
+    };
+
+    // Delay map initialization to avoid blocking initial render
+    const timeoutId = setTimeout(initMap, 100);
+    
+    return () => {
+      clearTimeout(timeoutId);
+      if (map.current) {
+        map.current.remove();
+        map.current = null;
+      }
+      if (markerRef.current) {
+        markerRef.current.remove();
+        markerRef.current = null;
+      }
+    };
   }, [property]);
 
   if (loading) {
@@ -302,6 +402,10 @@ export default function PropertyDetail({ propertyId }: PropertyDetailProps) {
       </div>
     );
   }
+
+  const getLocalizedPath = (path: string) => {
+    return locale === 'en' ? path : `/${locale}${path}`;
+  };
 
   const getName = () => property.name;
   const getDescription = () => property.description;
@@ -407,16 +511,6 @@ export default function PropertyDetail({ propertyId }: PropertyDetailProps) {
     if (property.propertyType === 'off-plan') {
       // For off-plan: use priceFromAED
       const priceFromAED = property.priceFromAED;
-      if (process.env.NODE_ENV === 'development') {
-        console.log('🔍 PropertyDetail - Off-plan price check:', {
-          priceFromAED,
-          priceFromAEDType: typeof priceFromAED,
-          priceFrom: property.priceFrom,
-          priceFromType: typeof property.priceFrom,
-          isPriceFromAEDValid: priceFromAED !== null && priceFromAED !== undefined && Number(priceFromAED) > 0,
-        });
-      }
-      
       // Check if priceFromAED exists and is valid
       if (priceFromAED !== null && priceFromAED !== undefined) {
         const priceValue = typeof priceFromAED === 'string' ? parseFloat(priceFromAED) : Number(priceFromAED);
@@ -430,25 +524,12 @@ export default function PropertyDetail({ propertyId }: PropertyDetailProps) {
         const priceFrom = typeof property.priceFrom === 'string' ? parseFloat(property.priceFrom) : Number(property.priceFrom);
         if (!isNaN(priceFrom) && priceFrom > 0) {
           const calculatedPriceFromAED = Math.round(priceFrom * 3.673);
-          if (process.env.NODE_ENV === 'development') {
-            console.log(`💱 PropertyDetail - Calculated priceFromAED from priceFrom: ${priceFrom} USD * 3.673 = ${calculatedPriceFromAED} AED`);
-          }
           return `${t('from')} ${formatPrice(calculatedPriceFromAED)} AED`;
         }
       }
     } else {
       // For secondary: use priceAED
       const priceAED = property.priceAED;
-      if (process.env.NODE_ENV === 'development') {
-        console.log('🔍 PropertyDetail - Secondary price check:', {
-          priceAED,
-          priceAEDType: typeof priceAED,
-          price: property.price,
-          priceType: typeof property.price,
-          isPriceAEDValid: priceAED !== null && priceAED !== undefined && Number(priceAED) > 0,
-        });
-      }
-      
       // Check if priceAED exists and is valid
       if (priceAED !== null && priceAED !== undefined) {
         const priceValue = typeof priceAED === 'string' ? parseFloat(priceAED) : Number(priceAED);
@@ -462,22 +543,9 @@ export default function PropertyDetail({ propertyId }: PropertyDetailProps) {
         const price = typeof property.price === 'string' ? parseFloat(property.price) : Number(property.price);
         if (!isNaN(price) && price > 0) {
           const calculatedPriceAED = Math.round(price * 3.673);
-          if (process.env.NODE_ENV === 'development') {
-            console.log(`💱 PropertyDetail - Calculated priceAED from price: ${price} USD * 3.673 = ${calculatedPriceAED} AED`);
-          }
           return `${formatPrice(calculatedPriceAED)} AED`;
         }
       }
-    }
-    
-    if (process.env.NODE_ENV === 'development') {
-      console.warn('⚠️ PropertyDetail - No valid price found, showing "On request"', {
-        propertyType: property.propertyType,
-        priceFromAED: property.priceFromAED,
-        priceFrom: property.priceFrom,
-        priceAED: property.priceAED,
-        price: property.price,
-      });
     }
     
     return t('priceOnRequest') || 'On request';
@@ -603,7 +671,7 @@ export default function PropertyDetail({ propertyId }: PropertyDetailProps) {
                     style={{ objectFit: 'cover' }}
                     sizes="100vw"
                     className={`${styles.heroImage} ${styles.prevImage} ${direction === 'right' ? styles.slideOutLeft : styles.slideOutRight}`}
-                    unoptimized
+                    loading="lazy"
                   />
                 )}
                 {/* Current image - sliding in */}
@@ -620,7 +688,6 @@ export default function PropertyDetail({ propertyId }: PropertyDetailProps) {
                   }}
                   sizes="100vw"
                   className={`${styles.heroImage} ${styles.currentImage} ${direction === 'right' ? styles.slideInRight : direction === 'left' ? styles.slideInLeft : ''}`}
-                  unoptimized
                   onLoad={() => {
                     setHeroImageLoading(false);
                   }}
@@ -779,19 +846,53 @@ export default function PropertyDetail({ propertyId }: PropertyDetailProps) {
 
         {typeof property.area === 'object' && property.area.images && property.area.images.length > 0 && (
           <div className={styles.areaImagesSection}>
-            <h2 className={styles.sectionTitle}>{locale === 'ru' ? 'Фото района' : 'Area Photos'}</h2>
+            <div className={styles.areaImagesHeader}>
+              <h2 className={styles.sectionTitle}>{locale === 'ru' ? 'Фото района' : 'Area Photos'}</h2>
+              {property.area.id && (
+                <Link 
+                  href={getLocalizedPath(`/areas/${property.area.id}`)}
+                  className={styles.viewAllButton}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {locale === 'ru' ? 'Посмотреть все фото' : 'View all photos'}
+                </Link>
+              )}
+            </div>
             <div className={styles.areaImagesGrid}>
-              {property.area.images.map((image, index) => (
-                <div key={index} className={styles.areaImageWrapper}>
-                  <Image
-                    src={image}
-                    alt={`${getAreaName()} - ${index + 1}`}
-                    fill
-                    style={{ objectFit: 'cover' }}
-                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                  />
-                </div>
-              ))}
+              {property.area.images
+                .filter((image) => {
+                  // Filter out placeholder or invalid images
+                  const isPlaceholder = image && (
+                    image.includes('unsplash.com') ||
+                    image.includes('placeholder') ||
+                    image.includes('via.placeholder.com') ||
+                    image.includes('dummyimage.com') ||
+                    image.includes('placehold.it') ||
+                    image.includes('fakeimg.pl')
+                  );
+                  
+                  const isValidUrl = image && (image.startsWith('http://') || image.startsWith('https://'));
+                  
+                  return isValidUrl && !isPlaceholder;
+                })
+                .slice(0, 2)
+                .map((image, index) => (
+                  <div key={index} className={styles.areaImageWrapper}>
+                    <Image
+                      src={image}
+                      alt={`${getAreaName()} - ${index + 1}`}
+                      fill
+                      style={{ objectFit: 'cover' }}
+                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                      loading="lazy"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = 'none';
+                      }}
+                    />
+                  </div>
+                ))}
             </div>
           </div>
         )}
@@ -802,36 +903,64 @@ export default function PropertyDetail({ propertyId }: PropertyDetailProps) {
             <h2 className={styles.sectionTitle}>
               {locale === 'ru' ? 'О девелопере' : 'About Developer'}
             </h2>
-            {property.developer.logo && (
-              <div className={styles.developerLogoWrapper}>
-                <Image
-                  src={property.developer.logo}
-                  alt={property.developer.name || 'Developer'}
-                  width={200}
-                  height={100}
-                  style={{ objectFit: 'contain' }}
-                />
-              </div>
-            )}
             <p className={styles.description}>{property.developer.description}</p>
           </div>
         )}
 
         {property.developer && property.developer.images && property.developer.images.length > 0 && (
           <div className={styles.developerImagesSection}>
-            <h2 className={styles.sectionTitle}>{locale === 'ru' ? 'Фото девелопера' : 'Developer Photos'}</h2>
+            <div className={styles.developerImagesHeader}>
+              <h2 className={styles.sectionTitle}>{locale === 'ru' ? 'Фото девелопера' : 'Developer Photos'}</h2>
+              {property.developer.id && (
+                <Link 
+                  href={getLocalizedPath(`/developers`)}
+                  className={styles.viewAllButton}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {locale === 'ru' ? 'Посмотреть все фото' : 'View all photos'}
+                </Link>
+              )}
+            </div>
             <div className={styles.developerImagesGrid}>
-              {property.developer.images.map((image, index) => (
-                <div key={index} className={styles.developerImageWrapper}>
-                  <Image
-                    src={image}
-                    alt={`${property.developer?.name || 'Developer'} - ${index + 1}`}
-                    fill
-                    style={{ objectFit: 'cover' }}
-                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                  />
-                </div>
-              ))}
+              {property.developer.images
+                .filter((image) => {
+                  // Filter out placeholder or invalid images
+                  const isPlaceholder = image && (
+                    image.includes('unsplash.com') ||
+                    image.includes('placeholder') ||
+                    image.includes('via.placeholder.com') ||
+                    image.includes('dummyimage.com') ||
+                    image.includes('placehold.it') ||
+                    image.includes('fakeimg.pl')
+                  );
+                  
+                  const isValidUrl = image && (image.startsWith('http://') || image.startsWith('https://'));
+                  
+                  return isValidUrl && !isPlaceholder;
+                })
+                .slice(0, 2)
+                .map((image, index) => (
+                  <div key={index} className={styles.developerImageWrapper}>
+                    <Image
+                      src={image}
+                      alt={`${property.developer?.name || 'Developer'} - ${index + 1}`}
+                      fill
+                      style={{ objectFit: 'cover' }}
+                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                      loading="lazy"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = 'none';
+                        // Hide the wrapper if image fails
+                        const wrapper = target.closest(`.${styles.developerImageWrapper}`);
+                        if (wrapper) {
+                          (wrapper as HTMLElement).style.display = 'none';
+                        }
+                      }}
+                    />
+                  </div>
+                ))}
             </div>
           </div>
         )}
@@ -897,7 +1026,7 @@ export default function PropertyDetail({ propertyId }: PropertyDetailProps) {
                             zIndex: isImageLoading ? 0 : 2
                           }}
                           sizes="(max-width: 768px) 100vw, 300px"
-                          unoptimized
+                          loading="lazy"
                           onLoad={() => {
                             setUnitImagesLoading(prev => {
                               const next = new Set(prev);
@@ -982,7 +1111,81 @@ export default function PropertyDetail({ propertyId }: PropertyDetailProps) {
           </div>
         </div>
       </div>
+
+      {/* Other Properties Section */}
+      <div className={styles.otherPropertiesSection} ref={otherPropertiesSectionRef}>
+        {(otherProperties.length > 0 || loadingOtherProperties || shouldLoadOtherProperties) && (
+          <>
+            <div className={styles.otherPropertiesHeader}>
+            <h2 className={styles.otherPropertiesTitle}>
+              {locale === 'ru' ? 'Другие объекты' : 'Other Properties'}
+            </h2>
+            <div className={styles.scrollButtons}>
+              <button 
+                className={`${styles.scrollButton} ${styles.left}`}
+                onClick={() => {
+                  if (otherPropertiesScrollRef.current && otherPropertiesCardsRef.current) {
+                    const firstCard = otherPropertiesCardsRef.current.firstElementChild as HTMLElement;
+                    if (firstCard) {
+                      const cardWidth = firstCard.offsetWidth;
+                      const gap = 24;
+                      const scrollAmount = cardWidth + gap;
+                      otherPropertiesScrollRef.current.scrollBy({
+                        left: -scrollAmount,
+                        behavior: 'smooth',
+                      });
+                    }
+                  }
+                }}
+                aria-label="Scroll left"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M15 19L8 12L15 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
+              <button 
+                className={`${styles.scrollButton} ${styles.right}`}
+                onClick={() => {
+                  if (otherPropertiesScrollRef.current && otherPropertiesCardsRef.current) {
+                    const firstCard = otherPropertiesCardsRef.current.firstElementChild as HTMLElement;
+                    if (firstCard) {
+                      const cardWidth = firstCard.offsetWidth;
+                      const gap = 24;
+                      const scrollAmount = cardWidth + gap;
+                      otherPropertiesScrollRef.current.scrollBy({
+                        left: scrollAmount,
+                        behavior: 'smooth',
+                      });
+                    }
+                  }
+                }}
+                aria-label="Scroll right"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M9 5L16 12L9 19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+          
+          <div className={styles.otherPropertiesScrollWrapper}>
+            <div className={styles.otherPropertiesScrollContainer} ref={otherPropertiesScrollRef}>
+              <div className={styles.otherPropertiesCardsWrapper} ref={otherPropertiesCardsRef}>
+                {loadingOtherProperties ? (
+                  <div className={styles.loadingOtherProperties}>Loading...</div>
+                ) : (
+                  otherProperties.map((prop) => (
+                    <div key={prop.id} className={styles.otherPropertyCardWrapper}>
+                      <PropertyCard property={prop} />
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+          </>
+        )}
+      </div>
     </div>
   );
 }
-

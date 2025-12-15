@@ -60,9 +60,7 @@ export default function NewsDetail({ slug }: NewsDetailProps) {
         };
 
         setNews(newsData);
-      } catch (err) {
-        console.error('Failed to fetch news article:', err);
-        setError('Failed to load news article. Please try again later.');
+      } catch (err) {setError('Failed to load news article. Please try again later.');
       } finally {
         setLoading(false);
       }

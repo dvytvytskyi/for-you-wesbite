@@ -57,6 +57,14 @@ const nextConfig = {
         protocol: 'https',
         hostname: 'propertyfinder.ae',
       },
+      {
+        protocol: 'https',
+        hostname: 'static.tildacdn.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'foryou-realestate.com',
+      },
     ],
   },
 };

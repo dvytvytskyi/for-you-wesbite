@@ -65,11 +65,7 @@ export default function RegisterForm() {
     try {
       // TODO: Replace with actual API call
       const { confirmPassword, ...submitData } = data;
-      // const response = await axios.post('/api/auth/register', submitData);
-      
-      console.log('Register data:', submitData);
-      
-      // Simulate API call
+      // const response = await axios.post('/api/auth/register', submitData);// Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1000));
       
       // BROKER or INVESTOR - show pending message

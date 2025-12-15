@@ -124,7 +124,7 @@ export default function PropertyPopup({ property, onClose }: PropertyPopupProps)
                   style={{ objectFit: 'cover' }}
                   sizes="560px"
                   className={`${styles.cardImage} ${styles.prevImage} ${direction === 'right' ? styles.slideOutLeft : styles.slideOutRight}`}
-                  unoptimized
+                  loading="lazy"
                 />
               )}
               {/* Current image - sliding in */}
@@ -136,7 +136,7 @@ export default function PropertyPopup({ property, onClose }: PropertyPopupProps)
                 style={{ objectFit: 'cover' }}
                 sizes="560px"
                 className={`${styles.cardImage} ${styles.currentImage} ${isTransitioning && direction === 'right' ? styles.slideInRight : isTransitioning && direction === 'left' ? styles.slideInLeft : ''}`}
-                unoptimized
+                priority
               />
             </div>
           )}

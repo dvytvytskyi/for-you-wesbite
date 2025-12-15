@@ -46,9 +46,7 @@ export default function NewsList() {
         }));
         
         setNews(convertedNews);
-      } catch (err) {
-        console.error('Failed to fetch news:', err);
-        setError('Failed to load news. Please try again later.');
+      } catch (err) {setError('Failed to load news. Please try again later.');
         setNews([]);
       } finally {
         setLoading(false);

@@ -80,7 +80,7 @@ export default function AboutUs() {
                 <div className={styles.imageWrapper}>
                   <div className={`${styles.imageContent} ${styles.image1} ${isVisible ? styles.revealFromTop : ''}`}>
                     <Image
-                      src="https://images.unsplash.com/photo-1613977257363-707ba9348227?w=800&h=600&fit=crop"
+                      src="https://images.pexels.com/photos/33761821/pexels-photo-33761821.jpeg"
                       alt={t('image1Alt')}
                       fill
                       style={{ objectFit: 'cover' }}
@@ -91,7 +91,7 @@ export default function AboutUs() {
                   </div>
                 </div>
                 <div className={`${styles.statItem} ${isVisible ? styles.fadeInUp : ''}`}>
-                  <div className={styles.statValue}>100%</div>
+                  <div className={styles.statValue}>4</div>
                   <div className={styles.statLabel}>{t('stat1')}</div>
                 </div>
               </div>
@@ -99,7 +99,7 @@ export default function AboutUs() {
                 <div className={styles.imageWrapper}>
                   <div className={`${styles.imageContent} ${styles.image2} ${isVisible ? styles.revealFromBottom : ''}`}>
                     <Image
-                      src="https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=800&h=600&fit=crop"
+                      src="https://images.pexels.com/photos/35172413/pexels-photo-35172413.jpeg"
                       alt={t('image2Alt')}
                       fill
                       style={{ objectFit: 'cover' }}
@@ -110,7 +110,7 @@ export default function AboutUs() {
                   </div>
                 </div>
                 <div className={`${styles.statItem} ${isVisible ? styles.fadeInUp : ''}`}>
-                  <div className={styles.statValue}>12+</div>
+                  <div className={styles.statValue}>500+</div>
                   <div className={styles.statLabel}>{t('stat2')}</div>
                 </div>
               </div>

@@ -184,9 +184,6 @@ export default function PropertiesList() {
     setFilters(prevFilters => {
       // Only update if filters actually changed
       if (JSON.stringify(prevFilters) !== JSON.stringify(urlFilters)) {
-        if (process.env.NODE_ENV === 'development') {
-          console.log('🔄 Syncing filters from URL:', urlFilters);
-        }
         return urlFilters;
       }
       return prevFilters;
@@ -216,9 +213,7 @@ export default function PropertiesList() {
     const urlPage = searchParams.get('page') ? parseInt(searchParams.get('page') || '1', 10) : 1;
     setCurrentPage((prevPage) => {
       // Only update if URL page is different from current page
-      if (urlPage !== prevPage && urlPage >= 1) {
-        console.log('Syncing page from URL:', urlPage, 'prev:', prevPage);
-        return urlPage;
+      if (urlPage !== prevPage && urlPage >= 1) {return urlPage;
       }
       return prevPage;
     });
@@ -244,12 +239,6 @@ export default function PropertiesList() {
       }
       
       if (process.env.NODE_ENV === 'development') {
-        console.log('Loading properties (server-side pagination):', {
-          propertyType: apiFilters.propertyType,
-          page: apiFilters.page,
-          limit: apiFilters.limit,
-          currentPage,
-        });
       }
       
       // Request only the current page from API (36 items)
@@ -261,10 +250,7 @@ export default function PropertiesList() {
         const { clearPropertiesCache, clearPublicDataCache } = await import('@/lib/api');
         clearPropertiesCache();
         clearPublicDataCache();
-        if (process.env.NODE_ENV === 'development') {
-          console.log('🔄 Cache cleared due to ?refresh=true parameter');
         }
-      }
       
       const result = await getProperties(apiFilters, !refreshCache);
       const loadedProperties = Array.isArray(result.properties) ? result.properties : [];
@@ -278,16 +264,10 @@ export default function PropertiesList() {
         // For secondary properties, estimate conservatively (26K+)
         if (apiFilters.propertyType === 'secondary') {
           total = 26000; // Conservative estimate for secondary
-          if (process.env.NODE_ENV === 'development') {
-            console.warn('⚠️ API total is 0 or equals loaded count for secondary. Using estimated total:', total);
-          }
-        } else {
+          } else {
           // For off-plan, estimate 1000
           total = 1000;
-          if (process.env.NODE_ENV === 'development') {
-            console.warn('⚠️ API total is 0 or equals loaded count for off-plan. Using estimated total:', total);
           }
-        }
       }
       
       setTotalProperties(total);
@@ -295,17 +275,7 @@ export default function PropertiesList() {
       // Set properties directly (no slicing needed - API returns only this page)
       setProperties(loadedProperties);
       
-      if (process.env.NODE_ENV === 'development') {
-        console.log('Properties loaded:', {
-          loaded: loadedProperties.length,
-          totalFromAPI: total,
-          currentPage,
-          totalPages: Math.ceil(total / ITEMS_PER_PAGE),
-        });
-      }
-    } catch (err: any) {
-      console.error('Error loading properties:', err);
-      setError(err.message || t('errorLoading') || 'Error loading properties');
+      } catch (err: any) {setError(err.message || t('errorLoading') || 'Error loading properties');
     } finally {
       setLoading(false);
     }
@@ -316,11 +286,7 @@ export default function PropertiesList() {
     isUpdatingUrlRef.current = true; // Mark that we're updating URL ourselves
     const params = createSearchParams(newFilters, page);
     const queryString = params.toString();
-    const newUrl = queryString ? `${pathname}?${queryString}` : pathname;
-    
-    console.log('updateUrl called:', { page, newUrl, params: queryString, currentUrl: window.location.href });
-    
-    // Use router.replace with the full URL including query string
+    const newUrl = queryString ? `${pathname}?${queryString}` : pathname;// Use router.replace with the full URL including query string
     // Next.js App Router should handle this correctly
     const urlWithQuery = queryString ? `${pathname}?${queryString}` : pathname;
     
@@ -426,33 +392,17 @@ export default function PropertiesList() {
   // Ensure currentPage is within valid range
   const validPage = totalPages > 0 ? Math.min(Math.max(1, currentPage), totalPages) : 1;
   
-  if (process.env.NODE_ENV === 'development') {
-    console.log('Pagination info:', {
-      totalProperties,
-      propertiesCount: propertiesArray.length,
-      totalPages,
-      currentPage,
-      validPage,
-    });
-  }
-  
   // Sync currentPage if it's out of bounds
   useEffect(() => {
     if (totalPages > 0 && currentPage > totalPages) {
-      console.log(`Current page ${currentPage} is out of bounds (total: ${totalPages}), resetting to 1`);
       setCurrentPage(1);
       updateUrl(filters, 1);
     }
   }, [totalPages, currentPage, filters, updateUrl]);
   
   const handlePageChange = (page: number) => {
-    if (page < 1 || page > totalPages) {
-      console.warn('Invalid page number:', page, 'Total pages:', totalPages);
-      return; // Validate page number
-    }
-    
-    console.log('handlePageChange called with page:', page, 'Total pages:', totalPages);
-    setCurrentPage(page);
+    if (page < 1 || page > totalPages) {return; // Validate page number
+    }setCurrentPage(page);
     setScrollRestored(false); // Reset scroll restoration when manually changing page
     updateUrl(filters, page); // Update URL with new page
     window.scrollTo({ top: 0, behavior: 'smooth' });

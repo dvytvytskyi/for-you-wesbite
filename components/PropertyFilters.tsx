@@ -111,24 +111,8 @@ export default function PropertyFilters({ filters, onFilterChange, isModal = fal
         
         setAreas(areasWithProjects);
         setDevelopers(sortedDevelopers);
-        
-        if (process.env.NODE_ENV === 'development') {
-          console.log(`✅ PropertyFilters: Loaded ${areasWithProjects.length} areas with projects (filtered from ${areasData.length} total)`);
-          console.log(`✅ PropertyFilters: Sample areas:`, areasWithProjects.slice(0, 5).map(a => ({
-            id: a.id,
-            nameEn: a.nameEn,
-            projectsCount: a.projectsCount?.total || 0
-          })));
-          console.log(`✅ PropertyFilters: Loaded ${sortedDevelopers.length} developers`);
-          console.log(`✅ PropertyFilters: Sample developers:`, sortedDevelopers.slice(0, 5).map(d => ({
-            id: d.id,
-            name: d.name
-          })));
-        }
-        
         setLoadingData(false);
       } catch (error) {
-        console.error('Error loading filter data:', error);
         setLoadingData(false);
       }
     };

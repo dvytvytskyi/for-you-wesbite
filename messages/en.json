@@ -13,8 +13,8 @@
     }
   },
   "hero": {
-    "title": "Finding Spaces That Inspire Modern World in Dubai",
-    "subtitle": "With years of experience in the market, we specialize in helping clients sell their properties quickly and at the best possible price, ensuring a smooth and successful transaction from start to finish",
+    "title": "Discover Homes That Inspire the Modern World in Dubai",
+    "subtitle": "WE TAKE CARE OF THE ENTIRE DEAL PROCESS FROM PURCHASE TO SALE, MARKETING PLACEMENT AND RENTAL",
     "search": {
       "placeholder": "Search by area name",
       "bedrooms": "Bedrooms",
@@ -38,26 +38,26 @@
   "aboutUs": {
     "header": "ABOUT US",
     "title": "Discover Our Journey to Real Estate Excellence",
-    "description1": "ForYou Real Estate has evolved from a small local agency into a leading real estate firm known for its innovative approach and exceptional service in Dubai's luxury property market.",
-    "description2": "Our team combines extensive market experience with a passion for excellence, aiming to exceed expectations while maintaining a strong commitment to our clients' success and satisfaction.",
+    "description1": "\"For You Real Estate\" - a real estate agency in Dubai, which is part of For You Group, a financial concierge.",
+    "description2": "We use the one-stop-shop principle for our clients. Just save a few contacts in your phone and almost any financial question will be solved, from asset management to helping you find great apartments abroad.",
     "cta": "ABOUT US",
     "image1Alt": "Modern Dubai property",
     "image2Alt": "Real estate team",
-    "stat1": "Properties successfully sold this year",
-    "stat2": "Years of expertise in Dubai real estate market",
-    "heroTitle1": "ForYou the",
+    "stat1": "Years of real estate experience",
+    "stat2": "Apartments",
+    "heroTitle1": "FOR YOU the",
     "heroTitle2": "Real Estate story.",
     "heroDescription": "We believe that real estate is more than just creating buildings it's about shaping experiences, fostering connections & enhancing communities.",
     "heroSubDescription": "Here's what we're all about",
     "heroImageAlt": "Modern real estate buildings",
-    "stat1Number": "840+",
-    "stat1Label": "SUCCESSFUL PROJECT",
-    "stat2Number": "12+",
-    "stat2Label": "YEARS OF EXPERIENCE",
-    "stat3Number": "98%",
-    "stat3Label": "CLIENTS SATISFACTION",
-    "stat4Number": "04",
-    "stat4Label": "AWARDS ACHIEVEMENTS",
+    "stat1Number": "4",
+    "stat1Label": "Years of real estate experience",
+    "stat2Number": "500+",
+    "stat2Label": "Apartments",
+    "stat3Number": "1000+",
+    "stat3Label": "Clients",
+    "stat4Number": "99%",
+    "stat4Label": "Customer satisfaction rate",
     "milestonesTitle": "Our Historical Milestones",
     "milestonesDescription": "At ForYou, our journey reflects vision, growth, and a steadfast commitment to excellence.",
     "milestone2022": {
@@ -90,8 +90,8 @@
     "teamMembers": {
       "daniil": "Daniil",
       "daniilRole": "Real Estate Expert",
-      "angelina": "Angelina",
-      "angelinaRole": "Property Expert",
+      "ruslan": "Ruslan",
+      "ruslanRole": "Real Estate Consultant",
       "kamila": "Kamila",
       "kamilaRole": "Real Estate Consultant",
       "ekaterina": "Ekaterina",
@@ -197,27 +197,29 @@
   },
   "statistics": {
     "yearsExperience": {
-      "title": "Years experience",
-      "description": "Providing expert real estate services in Dubai's luxury property market"
+      "title": "Years of real estate experience",
+      "description": ""
     },
     "propertiesSold": {
-      "title": "Properties sold",
-      "description": "Successfully completed sales transactions across Dubai's premium neighborhoods"
+      "title": "Apartments",
+      "description": ""
     },
     "happyClients": {
-      "title": "Happy clients",
-      "description": "Trusted by clients seeking their dream properties in Dubai"
+      "title": "Clients",
+      "description": ""
     },
-    "clientSatisfaction": {
-      "title": "Client satisfaction",
-      "description": "Dedicated to ensuring exceptional service and results for every client"
+    "customerSatisfaction": {
+      "title": "Customer satisfaction rate",
+      "description": ""
     }
   },
   "footer": {
     "copyright": "© 2025 ForYou Real Estate. All rights reserved.",
     "language": "Language",
+    "tagline": "Discover Homes That Inspire the Modern World in Dubai",
+    "contactUs": "Contact Us",
     "navigation": {
-      "title": "Navigation",
+      "title": "Quick Search",
       "home": "Home",
       "properties": "Properties",
       "map": "Map",
@@ -235,7 +237,11 @@
     "download": {
       "title": "Download App",
       "appStore": "Download on the App Store",
-      "googlePlay": "Get it on Google Play"
+      "appStoreSubtext": "Download on the",
+      "appStoreMaintext": "App Store",
+      "googlePlay": "Get it on Google Play",
+      "googlePlaySubtext": "GET IT ON",
+      "googlePlayMaintext": "Google Play"
     },
     "followUs": "Follow Us",
     "login": "Login"
@@ -334,8 +340,8 @@
   "investment": {
     "title": "Submit Investment Request",
     "description": "Fill out the form below to submit your investment request.",
-    "agentName": "Gulnoza",
-    "agentRole": "Real Estate Specialist",
+    "agentName": "Ruslan",
+    "agentRole": "Real Estate Consultant",
     "firstName": "First Name",
     "firstNamePlaceholder": "Name",
     "lastName": "Last Name",

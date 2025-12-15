@@ -5,14 +5,7 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://admin.foryou-re
 const API_KEY = process.env.NEXT_PUBLIC_API_KEY || 'fyr_8f968d115244e76d209a26f5177c5c998aca0e8dbce4a6e9071b2bc43b78f6d2';
 const API_SECRET = process.env.NEXT_PUBLIC_API_SECRET || '5c8335f9c7e476cbe77454fd32532cc68f57baf86f7f96e6bafcf682f98b275bc579d73484cf5bada7f4cd7d071b122778b71f414fb96b741c5fe60394d1795f';
 
-// Log API configuration on startup (in development)
-if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
-  console.log('🔧 API Configuration:');
-  console.log('  API_BASE_URL:', API_BASE_URL);
-  console.log('  API_KEY present:', !!API_KEY);
-  console.log('  API_SECRET present:', !!API_SECRET);
-  console.log('  ⚠️ If API_BASE_URL points to production, ensure production backend is updated!');
-}
+// API configuration logging removed for performance
 
 // Create axios instance
 const apiClient: AxiosInstance = axios.create({
@@ -28,9 +21,7 @@ apiClient.interceptors.request.use(
     
     // Ensure API key and secret are set
     if (!API_KEY || !API_SECRET) {
-      console.error('❌ CRITICAL: API_KEY or API_SECRET is missing!');
-      console.error('API_KEY:', API_KEY ? 'present' : 'missing');
-      console.error('API_SECRET:', API_SECRET ? 'present' : 'missing');
+      // API keys validation - errors handled silently for performance
     }
     
     config.headers['X-Api-Key'] = API_KEY;
@@ -44,32 +35,7 @@ apiClient.interceptors.request.use(
       }
     }
     
-    // Debug logging (remove in production)
-    if (process.env.NODE_ENV === 'development') {
-      const apiKeyValue = config.headers['X-Api-Key'] as string;
-      const apiSecretValue = config.headers['X-Api-Secret'] as string;
-      
-      console.log('API Request:', {
-        url: `${config.baseURL}${config.url}`,
-        method: config.method,
-        headers: {
-          'Content-Type': config.headers['Content-Type'],
-          'X-Api-Key': apiKeyValue ? `${apiKeyValue.substring(0, 20)}...` : 'missing',
-          'X-Api-Secret': apiSecretValue ? `${apiSecretValue.substring(0, 20)}...` : 'missing',
-          'Authorization': config.headers.Authorization ? '***' : 'missing',
-        },
-        apiKeyLength: apiKeyValue?.length || 0,
-        apiSecretLength: apiSecretValue?.length || 0,
-        apiKeyStartsWith: apiKeyValue ? apiKeyValue.substring(0, 4) : 'N/A',
-        apiSecretStartsWith: apiSecretValue ? apiSecretValue.substring(0, 4) : 'N/A',
-      });
-      
-      // Validate API keys format
-      if (apiKeyValue && !apiKeyValue.startsWith('fyr_')) {
-        console.warn('⚠️ API Key does not start with "fyr_" - might be invalid format');
-      }
-      // Note: API Secret doesn't have a prefix, it's just a hash
-    }
+    // Debug logging removed for performance
     
     return config;
   },
@@ -83,47 +49,7 @@ apiClient.interceptors.response.use(
   (response) => response,
   (error: AxiosError) => {
     if (error.response) {
-      // Log detailed error info in development
-      if (process.env.NODE_ENV === 'development') {
-        const errorData = error.response.data as any;
-        const errorMessage = errorData?.message || errorData?.error || 'Unknown error';
-        
-        console.error('❌ API Error Response:', {
-          status: error.response.status,
-          statusText: error.response.statusText,
-          message: errorMessage,
-          data: error.response.data,
-          requestUrl: error.config?.url,
-          requestMethod: error.config?.method,
-          requestHeaders: {
-            'x-api-key': error.config?.headers?.['x-api-key'] ? 'present' : 'missing',
-            'x-api-secret': error.config?.headers?.['x-api-secret'] ? 'present' : 'missing',
-          },
-        });
-        
-        // Special handling for 403 errors
-        if (error.response.status === 403) {
-          console.error('❌ 403 Forbidden - Possible causes:');
-          console.error('   1. API Key/Secret are incorrect');
-          console.error('   2. API Key/Secret are not active in the database');
-          console.error('   3. Backend middleware is not properly checking API Key/Secret');
-          console.error('   4. API Key/Secret format is incorrect');
-          
-          const apiKeyValue = error.config?.headers?.['x-api-key'] as string;
-          const apiSecretValue = error.config?.headers?.['x-api-secret'] as string;
-          
-          if (apiKeyValue) {
-            console.error('   API Key sent:', apiKeyValue.substring(0, 30) + '...');
-            console.error('   API Key starts with:', apiKeyValue.substring(0, 4));
-            console.error('   Expected: "fyr_"');
-          }
-          if (apiSecretValue) {
-            console.error('   API Secret sent:', apiSecretValue.substring(0, 30) + '...');
-            console.error('   API Secret length:', apiSecretValue.length);
-            console.error('   Note: API Secret is a hash without prefix');
-          }
-        }
-      }
+      // Error logging removed for performance
       
       if (error.response.status === 401) {
         // Unauthorized - clear token and redirect to login
@@ -373,11 +299,11 @@ export async function getProperties(filters?: PropertyFilters, useCache: boolean
       const cached = propertiesCache.get(cacheKey);
       if (cached && (Date.now() - cached.timestamp) < PROPERTIES_CACHE_DURATION) {
         if (process.env.NODE_ENV === 'development') {
-          console.log('✅ Using cached properties');
-          console.log('  Cache key:', cacheKey);
-          console.log('  Cached total:', cached.result.total);
-          console.log('  Cached properties count:', cached.result.properties.length);
-          console.log('  Cache age:', Math.round((Date.now() - cached.timestamp) / 1000), 'seconds');
+          
+          
+          
+          
+          
           // Check if cached data has old photo sources
           if (cached.result.properties.length > 0) {
             const firstProp = cached.result.properties[0];
@@ -385,8 +311,8 @@ export async function getProperties(filters?: PropertyFilters, useCache: boolean
               const hasAlnair = firstProp.photos.some((p: string) => p.includes('alnair'));
               const hasReelly = firstProp.photos.some((p: string) => p.includes('reelly'));
               if (hasAlnair && !hasReelly) {
-                console.warn('⚠️ WARNING: Cached data contains OLD photos from alnair!');
-                console.warn('⚠️ Clearing cache and fetching fresh data...');
+                
+                
                 propertiesCache.delete(cacheKey);
                 // Don't return cached result, fetch fresh data instead
               } else {
@@ -434,64 +360,48 @@ export async function getProperties(filters?: PropertyFilters, useCache: boolean
     
     // Debug: log the sort parameters and headers
     if (process.env.NODE_ENV === 'development') {
-      console.log('🔍 API Request Details:');
-      console.log('  Endpoint:', url);
-      console.log('  Full URL:', fullUrl);
-      console.log('  Property Type:', filters?.propertyType);
-      console.log('  Page:', filters?.page || 1);
-      console.log('  Limit:', filters?.limit || 100);
-      console.log('  Sort By:', filters?.sortBy || 'createdAt');
-      console.log('  Sort Order:', filters?.sortOrder || 'DESC');
-      console.log('  All Params:', Object.fromEntries(params.entries()));
-      console.log('  API Base URL:', API_BASE_URL);
-      console.log('  API Key present:', !!API_KEY);
-      console.log('  API Secret present:', !!API_SECRET);
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
       
       // Validate URL is properly encoded
       try {
         new URL(fullUrl);
-        console.log('✅ URL is valid');
+        
       } catch (e) {
-        console.error('❌ Invalid URL:', fullUrl, e);
+        
       }
     }
     
     // Try regular endpoint first (should work with API Key/Secret now)
     try {
-      if (process.env.NODE_ENV === 'development') {
-        console.log('📡 Making API request to:', fullUrl);
-        console.log('📡 Request method: GET');
-        console.log('📡 Request headers:', {
-          'X-Api-Key': API_KEY ? 'present' : 'missing',
-          'X-Api-Secret': API_SECRET ? 'present' : 'missing',
-        });
-        console.log('📡 API Base URL:', API_BASE_URL);
-        console.log('📡 Endpoint path:', url);
-      }
-      
       const response = await apiClient.get<ApiResponse<Property[]>>(url);
       
       if (process.env.NODE_ENV === 'development') {
-        console.log('✅ Successfully got response from /api/properties endpoint');
-        console.log('  Status:', response.status);
-        console.log('  Response URL:', response.config.url);
-        console.log('  Request URL:', fullUrl);
-        console.log('  Success:', response.data.success);
-        console.log('  Data type:', typeof response.data.data);
-        console.log('  Is array:', Array.isArray(response.data.data));
+        
+        
+        
+        
+        
+        
+        
         
         // Log FULL response structure to understand what backend returns
-        console.log('🔍 FULL API RESPONSE STRUCTURE:');
-        console.log('  Response keys:', Object.keys(response.data));
+        
+        
         if (response.data.data && typeof response.data.data === 'object') {
-          console.log('  Data keys:', Object.keys(response.data.data));
-          if ('pagination' in response.data.data) {
-            console.log('  📊 PAGINATION INFO:', response.data.data.pagination);
-            console.log('    ⚠️ TOTAL FROM BACKEND:', response.data.data.pagination.total);
-            console.log('    ⚠️ If this is 959, backend is returning OLD data!');
-          }
+          
           if ('data' in response.data.data && Array.isArray(response.data.data.data)) {
-            console.log('  📦 Properties array length:', response.data.data.data.length);
+            
             
             // Check photo sources in ALL properties
             const propertiesWithAlnairPhotos = response.data.data.data.filter((p: any) => 
@@ -501,77 +411,52 @@ export async function getProperties(filters?: PropertyFilters, useCache: boolean
               p.photos && Array.isArray(p.photos) && p.photos.some((photo: string) => photo && photo.includes('reelly'))
             );
             
-            console.log('  📸 PHOTO SOURCES:');
-            console.log('    Properties with alnair photos:', propertiesWithAlnairPhotos.length, propertiesWithAlnairPhotos.length > 0 ? '❌ OLD DATA' : '✅ OK');
-            console.log('    Properties with reelly photos:', propertiesWithReellyPhotos.length, propertiesWithReellyPhotos.length > 0 ? '✅ NEW DATA' : '❌ NO NEW DATA');
-            if (propertiesWithAlnairPhotos.length > 0) {
-              console.error('    ❌❌❌ BACKEND IS RETURNING OLD DATA WITH alnair.ae PHOTOS! ❌❌❌');
-              console.error('    ❌ Backend database needs to be updated!');
-            }
+            
+            
             
             // Check bathroomsFrom/To for off-plan properties
             const offPlanProperties = response.data.data.data.filter((p: any) => p.propertyType === 'off-plan');
             const offPlanWithBathrooms = offPlanProperties.filter((p: any) => 
               p.bathroomsFrom !== null || p.bathroomsTo !== null
             );
-            console.log('  🛁 BATHROOMS FOR OFF-PLAN:');
-            console.log('    Off-plan properties:', offPlanProperties.length);
-            console.log('    Off-plan with bathroomsFrom/To:', offPlanWithBathrooms.length, offPlanWithBathrooms.length > 0 ? '❌ OLD DATA' : '✅ OK');
-            if (offPlanWithBathrooms.length > 0) {
-              console.error('    ❌❌❌ BACKEND IS RETURNING OLD DATA (bathroomsFrom/To should be null for off-plan)! ❌❌❌');
-              console.error('    ❌ Backend database needs to be updated!');
-            }
+            
+            
             
             // Check priceFromAED for off-plan properties
             const offPlanWithNullPriceFromAED = offPlanProperties.filter((p: any) => 
               p.priceFrom !== null && p.priceFrom !== undefined && p.priceFrom > 0 &&
               (p.priceFromAED === null || p.priceFromAED === undefined || p.priceFromAED === 0)
             );
-            console.log('  💰 PRICE_FROM_AED FOR OFF-PLAN:');
-            console.log('    Off-plan with priceFrom but null priceFromAED:', offPlanWithNullPriceFromAED.length, offPlanWithNullPriceFromAED.length > 0 ? '❌ NOT CALCULATED' : '✅ OK');
-            if (offPlanWithNullPriceFromAED.length > 0) {
-              console.error('    ❌❌❌ BACKEND IS NOT CALCULATING priceFromAED AUTOMATICALLY! ❌❌❌');
-              console.error('    ❌ Backend needs to calculate priceFromAED = priceFrom * 3.673');
-            }
             
-            // Summary
-            console.log('  📋 SUMMARY:');
-            console.log('    Total properties from backend:', response.data.data.data.length);
-            console.log('    Total in pagination:', response.data.data.pagination?.total);
-            if (propertiesWithAlnairPhotos.length > 0 || offPlanWithBathrooms.length > 0 || offPlanWithNullPriceFromAED.length > 0) {
-              console.error('    ❌❌❌ BACKEND IS RETURNING OLD DATA! ❌❌❌');
-              console.error('    ❌ Frontend cannot fix this - backend database needs to be updated!');
-              console.error('    ❌ Please check backend database and ensure it contains only NEW properties!');
-        } else {
-              console.log('    ✅ Backend data looks correct!');
-            }
+            
+            // Summary removed for performance
             
             // Log first property in detail
             if (response.data.data.data.length > 0) {
               const firstProperty = response.data.data.data[0];
-              console.log('🔍 RAW FIRST PROPERTY FROM API (before normalization):');
-              console.log('  ID:', firstProperty.id);
-              console.log('  Name:', firstProperty.name);
-              console.log('  Property Type:', firstProperty.propertyType);
-              console.log('  Photos:', firstProperty.photos);
-              console.log('  Photos count:', Array.isArray(firstProperty.photos) ? firstProperty.photos.length : 'not an array');
+              
+              
+              
+              
+              
+              
               if (Array.isArray(firstProperty.photos) && firstProperty.photos.length > 0) {
-                console.log('  First photo URL:', firstProperty.photos[0]);
-                console.log('  Photo source (alnair/reelly):', firstProperty.photos[0]?.includes('alnair') ? 'alnair ❌ OLD DATA' : firstProperty.photos[0]?.includes('reelly') ? 'reelly ✅ NEW DATA' : 'unknown');
+                
+                
               }
-              console.log('  Price From:', firstProperty.priceFrom);
-              console.log('  Price From AED:', firstProperty.priceFromAED, firstProperty.priceFromAED === null ? '❌ NULL (should be calculated)' : '✅ OK');
-              console.log('  Size From:', firstProperty.sizeFrom);
-              console.log('  Size To:', firstProperty.sizeTo);
-              console.log('  Size From Sqft:', firstProperty.sizeFromSqft, firstProperty.sizeFromSqft === null ? '❌ NULL (should be calculated)' : '✅ OK');
-              console.log('  Size To Sqft:', firstProperty.sizeToSqft, firstProperty.sizeToSqft === null ? '❌ NULL (should be calculated)' : '✅ OK');
-              console.log('  Area:', firstProperty.area);
-              console.log('  Bedrooms From:', firstProperty.bedroomsFrom);
-              console.log('  Bedrooms To:', firstProperty.bedroomsTo);
-              console.log('  Bathrooms From:', firstProperty.bathroomsFrom, firstProperty.propertyType === 'off-plan' && firstProperty.bathroomsFrom !== null ? '❌ Should be NULL for off-plan' : '✅ OK');
-              console.log('  Bathrooms To:', firstProperty.bathroomsTo, firstProperty.propertyType === 'off-plan' && firstProperty.bathroomsTo !== null ? '❌ Should be NULL for off-plan' : '✅ OK');
-              console.log('  Created At:', firstProperty.createdAt);
-              console.log('  Updated At:', firstProperty.updatedAt);
+              
+              
+              
+              
+              
+              
+              
+              
+              
+              
+              
+              
+              
             }
           }
         }
@@ -597,30 +482,21 @@ export async function getProperties(filters?: PropertyFilters, useCache: boolean
           }
           
               if (process.env.NODE_ENV === 'development') {
-            console.log('✅ Using paginated response structure');
-            console.log(`  Properties count: ${data.length}`);
-            console.log(`  Total from pagination: ${totalCount}`);
-            console.log(`  ⚠️⚠️⚠️ BACKEND RETURNS ${totalCount} PROPERTIES ⚠️⚠️⚠️`);
-            console.log(`  ⚠️ If this is 959, backend database contains OLD data!`);
-            console.log(`  ⚠️ Frontend cannot fix this - backend needs to update its database!`);
-            if (response.data.data.pagination) {
-              console.log(`  Page: ${response.data.data.pagination.page}`);
-              console.log(`  Limit: ${response.data.data.pagination.limit}`);
-              console.log(`  Total pages: ${response.data.data.pagination.totalPages}`);
-            }
+            
+            
+            
+            
+            
+            
           }
         } else if (Array.isArray(response.data.data)) {
           // Old structure: { data: Property[] } (direct array)
           data = response.data.data;
           totalCount = data.length;
           
-          if (process.env.NODE_ENV === 'development') {
-            console.log('⚠️ Using direct array response structure (old format)');
-            console.log(`  Properties count: ${data.length}`);
-          }
         } else {
-          console.error('❌ Unexpected response structure from /api/properties');
-          console.error('  Response data:', response.data);
+          
+          
           throw new Error('Unexpected response structure from /api/properties endpoint');
         }
       }
@@ -628,17 +504,8 @@ export async function getProperties(filters?: PropertyFilters, useCache: boolean
       // Ensure data is always an array
       if (!Array.isArray(data)) {
         if (data === null || data === undefined) {
-          if (process.env.NODE_ENV === 'development') {
-            console.warn('⚠️ API returned null/undefined data, using empty array');
-          }
           data = [];
         } else {
-          if (process.env.NODE_ENV === 'development') {
-            console.error('❌ API returned non-array data after parsing:', {
-              type: typeof data,
-              value: data,
-            });
-          }
           data = [];
         }
       }
@@ -649,39 +516,6 @@ export async function getProperties(filters?: PropertyFilters, useCache: boolean
         const propertyWithPhotos = data.find((p: any) => p.photos && Array.isArray(p.photos) && p.photos.length > 0);
         const propertyWithoutPhotos = data.find((p: any) => !p.photos || !Array.isArray(p.photos) || p.photos.length === 0);
         
-        if (propertyWithPhotos) {
-          console.log(`🔍 RAW property WITH photos from API (BEFORE normalization):`, {
-            propertyId: propertyWithPhotos.id,
-            propertyName: propertyWithPhotos.name,
-            photosType: typeof propertyWithPhotos.photos,
-            photosIsArray: Array.isArray(propertyWithPhotos.photos),
-            photosValue: propertyWithPhotos.photos,
-            photosLength: Array.isArray(propertyWithPhotos.photos) ? propertyWithPhotos.photos.length : 'N/A',
-            firstPhoto: Array.isArray(propertyWithPhotos.photos) && propertyWithPhotos.photos.length > 0 ? propertyWithPhotos.photos[0] : 'N/A',
-          });
-        }
-        
-        if (propertyWithoutPhotos) {
-          console.log(`🔍 RAW property WITHOUT photos from API (BEFORE normalization):`, {
-            propertyId: propertyWithoutPhotos.id,
-            propertyName: propertyWithoutPhotos.name,
-            hasPhotosField: 'photos' in propertyWithoutPhotos,
-            photosType: typeof propertyWithoutPhotos.photos,
-            photosValue: propertyWithoutPhotos.photos,
-            photosIsArray: Array.isArray(propertyWithoutPhotos.photos),
-            photosLength: Array.isArray(propertyWithoutPhotos.photos) ? propertyWithoutPhotos.photos.length : 'N/A',
-            allKeys: Object.keys(propertyWithoutPhotos),
-            // Check for alternative photo fields
-            hasImage: 'image' in propertyWithoutPhotos,
-            hasImageUrl: 'imageUrl' in propertyWithoutPhotos,
-            hasGallery: 'gallery' in propertyWithoutPhotos,
-            hasImages: 'images' in propertyWithoutPhotos,
-            imageValue: (propertyWithoutPhotos as any).image,
-            imageUrlValue: (propertyWithoutPhotos as any).imageUrl,
-            galleryValue: (propertyWithoutPhotos as any).gallery,
-            imagesValue: (propertyWithoutPhotos as any).images,
-          });
-        }
       }
       
       // Normalize photos array for each property
@@ -761,20 +595,11 @@ export async function getProperties(filters?: PropertyFilters, useCache: boolean
           if ((property.priceFromAED === null || property.priceFromAED === undefined || property.priceFromAED === 0) && 
               property.priceFrom !== null && property.priceFrom !== undefined && property.priceFrom > 0) {
             property.priceFromAED = Math.round(property.priceFrom * 3.673);
-            if (process.env.NODE_ENV === 'development') {
-              console.log(`💱 Calculated priceFromAED for ${property.name}: ${property.priceFrom} USD * 3.673 = ${property.priceFromAED} AED`);
-            }
           }
           
           // For off-plan properties, bathroomsFrom/To should always be null according to new schema
           // If API returns values, set them to null
           if (property.bathroomsFrom !== null || property.bathroomsTo !== null) {
-            if (process.env.NODE_ENV === 'development') {
-              console.warn(`⚠️ Property ${property.name} (off-plan) has bathroomsFrom/To values, setting to null:`, {
-                bathroomsFrom: property.bathroomsFrom,
-                bathroomsTo: property.bathroomsTo
-              });
-            }
             property.bathroomsFrom = null;
             property.bathroomsTo = null;
           }
@@ -797,9 +622,6 @@ export async function getProperties(filters?: PropertyFilters, useCache: boolean
             const cityName = property.city.nameEn || property.city.nameRu;
             if (cityName) {
               property.area = `${property.area}, ${cityName}`;
-              if (process.env.NODE_ENV === 'development') {
-                console.warn(`⚠️ Fixed incomplete area for ${property.name}: "${property.area}"`);
-              }
             }
           }
         }
@@ -808,80 +630,42 @@ export async function getProperties(filters?: PropertyFilters, useCache: boolean
       });
       
       if (process.env.NODE_ENV === 'development') {
-        console.log(`✅ Successfully loaded ${data.length} properties from /api/properties endpoint`);
-        console.log(`📊 Total from API: ${totalCount || 'not provided'}`);
-        console.log(`📄 Requested page: ${filters?.page || 1}, limit: ${filters?.limit || 100}`);
-        if (filters?.propertyType) {
-          console.log(`Property type filter: ${filters.propertyType}`);
-        }
+        
+        
+        
         // Log sample property to check photos (after normalization)
         if (data.length > 0) {
           const sampleProperty = data[0];
-          console.log(`📸 Sample property photos (after normalization):`, {
-            propertyId: sampleProperty.id,
-            propertyName: sampleProperty.name,
-            photosIsArray: Array.isArray(sampleProperty.photos),
-            photosLength: Array.isArray(sampleProperty.photos) ? sampleProperty.photos.length : 'N/A',
-            firstPhoto: Array.isArray(sampleProperty.photos) && sampleProperty.photos.length > 0 ? sampleProperty.photos[0] : 'N/A',
-            allPhotos: sampleProperty.photos,
-          });
+          
           
           // Check if photos are valid URLs
           if (Array.isArray(sampleProperty.photos) && sampleProperty.photos.length > 0) {
             sampleProperty.photos.forEach((photo: string, index: number) => {
               if (photo && !photo.startsWith('http://') && !photo.startsWith('https://') && !photo.startsWith('/')) {
-                console.warn(`⚠️ Photo ${index} for property ${sampleProperty.name} is not a valid URL:`, photo);
+                
               }
             });
           } else {
-            console.warn(`⚠️ Property ${sampleProperty.name} has no photos after normalization`);
+            
           }
           
           // Count properties with and without photos
           const propertiesWithPhotos = data.filter((p: any) => Array.isArray(p.photos) && p.photos.length > 0).length;
           const propertiesWithoutPhotos = data.length - propertiesWithPhotos;
-          console.log(`📊 Properties with photos: ${propertiesWithPhotos} / ${data.length}, without photos: ${propertiesWithoutPhotos}`);
+          
           
           // Log full property data for first 3 properties to diagnose issues
           if (data.length > 0) {
-            console.log(`🔍 FULL PROPERTY DATA FROM API (first 3 properties):`);
+            
             data.slice(0, 3).forEach((prop: any, index: number) => {
-              console.log(`\n📋 Property ${index + 1} - ${prop.name}:`);
-              console.log('  ID:', prop.id);
-              console.log('  Property Type:', prop.propertyType);
-              console.log('  Bedrooms:', {
-                bedroomsFrom: prop.bedroomsFrom,
-                bedroomsFromType: typeof prop.bedroomsFrom,
-                bedroomsTo: prop.bedroomsTo,
-                bedroomsToType: typeof prop.bedroomsTo,
-                bedrooms: prop.bedrooms,
-              });
-              console.log('  Size:', {
-                sizeFrom: prop.sizeFrom,
-                sizeFromType: typeof prop.sizeFrom,
-                sizeTo: prop.sizeTo,
-                sizeToType: typeof prop.sizeTo,
-                sizeFromSqft: prop.sizeFromSqft,
-                sizeFromSqftType: typeof prop.sizeFromSqft,
-                sizeToSqft: prop.sizeToSqft,
-                sizeToSqftType: typeof prop.sizeToSqft,
-                size: prop.size,
-                sizeSqft: prop.sizeSqft,
-              });
-              console.log('  Price:', {
-                priceFrom: prop.priceFrom,
-                priceFromType: typeof prop.priceFrom,
-                priceFromAED: prop.priceFromAED,
-                priceFromAEDType: typeof prop.priceFromAED,
-                price: prop.price,
-                priceAED: prop.priceAED,
-              });
-              console.log('  Area:', {
-                area: prop.area,
-                areaType: typeof prop.area,
-                areaValue: JSON.stringify(prop.area).substring(0, 100),
-              });
-              console.log('  All Keys:', Object.keys(prop).sort());
+              
+              
+              
+              
+              
+              
+              
+              
               
               // Check for alternative field names
               const altFields = [
@@ -890,9 +674,6 @@ export async function getProperties(filters?: PropertyFilters, useCache: boolean
                 'priceFromUSD', 'priceUSD',
               ];
               altFields.forEach(field => {
-                if (prop[field] !== undefined) {
-                  console.log(`  ⚠️ Found alternative field "${field}":`, prop[field]);
-                }
               });
             });
           }
@@ -970,9 +751,6 @@ export async function getProperties(filters?: PropertyFilters, useCache: boolean
               if (process.env.NODE_ENV === 'development') {
                 const indexA = sortedData.indexOf(a);
                 const indexB = sortedData.indexOf(b);
-                if (indexA < 5 || indexB < 5) {
-                  console.log(`Price sort (API): ${a.name} (${aValue}) vs ${b.name} (${bValue}), order: ${sortOrder}`);
-                }
               }
               break;
             
@@ -1054,15 +832,6 @@ export async function getProperties(filters?: PropertyFilters, useCache: boolean
       }
       
       // Debug: log first few properties to verify sorting
-      if (process.env.NODE_ENV === 'development' && data.length > 0) {
-        console.log('First 3 properties after sort:', data.slice(0, 3).map(p => ({
-          name: p.name,
-          price: p.propertyType === 'off-plan' ? p.priceFrom : p.price,
-          size: p.propertyType === 'off-plan' ? p.sizeFrom : p.size,
-          createdAt: p.createdAt,
-        })));
-      }
-      
       // Return with total count
       const result: GetPropertiesResult = {
         properties: data,
@@ -1090,53 +859,26 @@ export async function getProperties(filters?: PropertyFilters, useCache: boolean
       // The /api/properties endpoint should always work with API Key/Secret
       // If it fails, it's a configuration issue that needs to be fixed
       
-      console.error('❌ CRITICAL ERROR: Failed to load properties from /api/properties endpoint!');
-      console.error('❌ This endpoint MUST work with API Key/Secret authentication!');
+      
+      
       
       if (error.response) {
-        console.error('❌ Response status:', error.response.status);
-        console.error('❌ Response data:', error.response.data);
-        
-        if (error.response.status === 403 || error.response.status === 401) {
-          console.error('❌ Authentication failed!');
-          console.error('❌ Please check:');
-          console.error('   1. API Key/Secret are correctly set in environment variables');
-          console.error('   2. API Key/Secret are valid and active on the backend');
-          console.error('   3. Backend middleware is properly configured to accept API Key/Secret');
-        } else {
-          console.error('❌ Unexpected error status:', error.response.status);
-        }
-      } else if (error.request) {
-        console.error('❌ No response received from server');
-        console.error('❌ Request config:', error.config);
-            } else {
-        console.error('❌ Error setting up request:', error.message);
-      }
-      
-        if (process.env.NODE_ENV === 'development') {
-        console.error('Request URL that failed:', error.config?.url);
-        console.error('Request params:', error.config?.params);
-        console.error('Request headers:', {
-          'x-api-key': error.config?.headers?.['x-api-key'] ? 'present' : 'missing',
-          'x-api-secret': error.config?.headers?.['x-api-secret'] ? 'present' : 'missing',
-          'API_BASE_URL': API_BASE_URL,
-        });
+        // Error response handling removed for performance
+      } else {
+        // Error handling removed for performance
       }
       
       // Throw error instead of using fallback
       throw new Error(`Failed to load properties from /api/properties endpoint: ${error.message || 'Unknown error'}`);
     }
   } catch (error: any) {
-    console.error('Error fetching properties:', error);
+    
     if (error.response) {
-      console.error('Response status:', error.response.status);
-      console.error('Response data:', error.response.data);
-      console.error('Response headers:', error.response.headers);
+      
+      
+      
       
       // Check if the error message gives us a hint
-      if (error.response.data?.message) {
-        console.error('Error message from server:', error.response.data.message);
-      }
     }
     throw error;
   }
@@ -1153,22 +895,11 @@ export async function getProperty(id: string): Promise<Property> {
     // Normalize property data (same as in getProperties)
     property = normalizeProperty(property);
     
-          if (process.env.NODE_ENV === 'development') {
-      console.log(`✅ PropertyDetail - Loaded property ${id}:`, {
-        name: property.name,
-        propertyType: property.propertyType,
-        priceFromAED: property.priceFromAED,
-        priceAED: property.priceAED,
-        priceFrom: property.priceFrom,
-        price: property.price,
-      });
-    }
-    
     return property;
   } catch (error: any) {
     // If 403 or 401, try to get from public data endpoint
     if (error.response?.status === 403 || error.response?.status === 401) {
-      console.warn(`Status ${error.response.status} on /properties/${id}, trying to find property in public data...`);
+      
       
       try {
         // Get all data from public endpoint
@@ -1181,9 +912,6 @@ export async function getProperty(id: string): Promise<Property> {
             // Normalize property data
             property = normalizeProperty(property);
           
-          if (process.env.NODE_ENV === 'development') {
-              console.log(`✅ Found property ${id} in public data`);
-            }
             return property;
           } else {
             throw new Error('Property not found in public data');
@@ -1192,17 +920,13 @@ export async function getProperty(id: string): Promise<Property> {
           throw new Error('Properties not found in public data structure');
         }
       } catch (publicDataError: any) {
-        console.error('Error fetching property from public data:', publicDataError);
+        
         throw new Error(`Property not found: ${publicDataError.message || 'Unknown error'}`);
       }
     }
     
     // For other errors, log and rethrow
-    console.error('Error fetching property:', error);
-    if (error.response) {
-      console.error('Response status:', error.response.status);
-      console.error('Response data:', error.response.data);
-    }
+    
     throw error;
   }
 }
@@ -1252,9 +976,6 @@ function normalizeProperty(property: any): Property {
     if ((property.priceFromAED === null || property.priceFromAED === undefined || property.priceFromAED === 0) && 
         property.priceFrom !== null && property.priceFrom !== undefined && property.priceFrom > 0) {
       property.priceFromAED = Math.round(property.priceFrom * 3.673);
-        if (process.env.NODE_ENV === 'development') {
-        console.log(`💱 PropertyDetail - Calculated priceFromAED for ${property.name}: ${property.priceFrom} USD * 3.673 = ${property.priceFromAED} AED`);
-      }
     }
     
     // For off-plan properties, bathroomsFrom/To should always be null
@@ -1279,9 +1000,6 @@ function normalizeProperty(property: any): Property {
     if ((property.priceAED === null || property.priceAED === undefined || property.priceAED === 0) && 
         property.price !== null && property.price !== undefined && property.price > 0) {
       property.priceAED = Math.round(property.price * 3.673);
-              if (process.env.NODE_ENV === 'development') {
-        console.log(`💱 PropertyDetail - Calculated priceAED for ${property.name}: ${property.price} USD * 3.673 = ${property.priceAED} AED`);
-      }
     }
     
     // Calculate sizeSqft if missing but size exists
@@ -1373,9 +1091,6 @@ export async function getPublicData(forceRefresh = false): Promise<PublicData> {
   // Return cached data if available and not expired
   const now = Date.now();
   if (!forceRefresh && publicDataCache && (now - publicDataCacheTime) < CACHE_DURATION) {
-    if (process.env.NODE_ENV === 'development') {
-      console.log('Using cached public data');
-    }
     return publicDataCache;
   }
 
@@ -1391,7 +1106,7 @@ export async function getPublicData(forceRefresh = false): Promise<PublicData> {
     publicDataCacheTime = now;
     
     if (process.env.NODE_ENV === 'development') {
-      console.log('Loaded and cached public data');
+      
       if (data.properties && Array.isArray(data.properties)) {
         const uniqueAreaIds = [...new Set(data.properties.map(p => {
           if (typeof p.area === 'object' && p.area !== null) {
@@ -1399,36 +1114,25 @@ export async function getPublicData(forceRefresh = false): Promise<PublicData> {
           }
           return null;
         }).filter(Boolean))];
-        console.log(`Public data contains ${data.properties.length} properties with ${uniqueAreaIds.length} unique area IDs`);
+        
         
         // Show all unique area IDs (for debugging)
-        if (uniqueAreaIds.length > 0) {
-          console.log('All unique area IDs in public data:', uniqueAreaIds);
-        }
-        
         // Check if we have areas data and compare with properties
         if (data.areas && Array.isArray(data.areas)) {
           const areaIdsFromAreas = data.areas.map(a => a.id);
-          console.log(`Areas data contains ${areaIdsFromAreas.length} areas`);
-          console.log('First 10 area IDs from areas:', areaIdsFromAreas.slice(0, 10));
+          
+          
           
           // Check if properties use area IDs that exist in areas
           const areaIdsInProperties = uniqueAreaIds.filter((id): id is string => id !== null);
           const missingAreaIds = areaIdsInProperties.filter(id => !areaIdsFromAreas.includes(id));
-          if (missingAreaIds.length > 0) {
-            console.warn('⚠️ Some area IDs in properties are not found in areas list:', missingAreaIds);
-          }
         }
       }
     }
     
     return data;
   } catch (error: any) {
-    console.error('Error fetching public data:', error);
-    if (error.response) {
-      console.error('Response status:', error.response.status);
-      console.error('Response data:', error.response.data);
-    }
+    
     throw error;
   }
 }
@@ -1439,9 +1143,6 @@ export async function getPublicData(forceRefresh = false): Promise<PublicData> {
 export function clearPublicDataCache(): void {
   publicDataCache = null;
   publicDataCacheTime = 0;
-  if (process.env.NODE_ENV === 'development') {
-    console.log('Public data cache cleared');
-  }
 }
 
 /**
@@ -1450,9 +1151,6 @@ export function clearPublicDataCache(): void {
 export function clearPropertiesCache(): void {
   const cacheSize = propertiesCache.size;
   propertiesCache.clear();
-  if (process.env.NODE_ENV === 'development') {
-    console.log(`🗑️ Properties cache cleared (removed ${cacheSize} entries)`);
-  }
 }
 
 /**
@@ -1461,9 +1159,6 @@ export function clearPropertiesCache(): void {
 export function clearAllCaches(): void {
   clearPropertiesCache();
   clearPublicDataCache();
-  if (process.env.NODE_ENV === 'development') {
-    console.log('🗑️ All caches cleared');
-  }
 }
 
 /**
@@ -1471,27 +1166,14 @@ export function clearAllCaches(): void {
  */
 export async function submitInvestment(data: InvestmentRequest): Promise<Investment> {
   try {
-    if (process.env.NODE_ENV === 'development') {
-      console.log('Submitting investment (authenticated):', {
-        propertyId: data.propertyId,
-        amount: data.amount,
-        date: data.date,
-        hasNotes: !!data.notes,
-      });
-    }
-    
     const response = await apiClient.post<ApiResponse<Investment>>('/investments', data);
-    
-    if (process.env.NODE_ENV === 'development') {
-      console.log('✅ Investment submitted successfully:', response.data.data);
-    }
     
     return response.data.data;
   } catch (error: any) {
-    console.error('Error submitting investment:', error);
+    
     if (error.response) {
-      console.error('Response status:', error.response.status);
-      console.error('Response data:', error.response.data);
+      
+      
       
       // Throw a more user-friendly error
       const errorMessage = error.response.data?.message || error.response.data?.error || 'Failed to submit investment';
@@ -1556,9 +1238,6 @@ const AREAS_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
 export function clearAreasCache(): void {
   areasCache.clear();
-  if (process.env.NODE_ENV === 'development') {
-    console.log('🗑️ Areas cache cleared');
-  }
 }
 
 export async function getAreas(cityId?: string, useCache: boolean = true): Promise<Area[]> {
@@ -1569,9 +1248,6 @@ export async function getAreas(cityId?: string, useCache: boolean = true): Promi
     if (useCache) {
       const cached = areasCache.get(cacheKey);
       if (cached && (Date.now() - cached.timestamp) < AREAS_CACHE_DURATION) {
-        if (process.env.NODE_ENV === 'development') {
-          console.log(`✅ Using cached areas (${cached.areas.length} areas, cityId: ${cityId || 'all'})`);
-        }
         return cached.areas;
       }
     }
@@ -1579,38 +1255,142 @@ export async function getAreas(cityId?: string, useCache: boolean = true): Promi
     const params = cityId ? { cityId } : {};
     const url = '/public/areas';
     
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`🔄 Fetching areas from: ${API_BASE_URL}${url}`, params);
-    }
-    
     const response = await apiClient.get<ApiResponse<Area[]>>(url, { params });
     let areas = response.data.data;
     
+    // Log only image-related info
     if (process.env.NODE_ENV === 'development') {
       const areasWithImages = areas.filter(a => a.images && Array.isArray(a.images) && a.images.length > 0).length;
-      const areasWithDescription = areas.filter(a => a.description).length;
-      const areasWithInfrastructure = areas.filter(a => a.infrastructure).length;
       
-      console.log(`✅ Successfully loaded ${areas.length} areas from /api/public/areas`);
-      console.log(`📸 Areas with images: ${areasWithImages}/${areas.length}`);
-      console.log(`📝 Areas with description: ${areasWithDescription}/${areas.length}`);
-      console.log(`🏗️ Areas with infrastructure: ${areasWithInfrastructure}/${areas.length}`);
-      
-      if (areasWithImages > 0) {
-        const sampleAreas = areas.filter(a => a.images && Array.isArray(a.images) && a.images.length > 0).slice(0, 5);
-        console.log('✅ Sample areas with images:', sampleAreas.map(a => ({
-          nameEn: a.nameEn,
-          imagesCount: a.images?.length || 0,
-          firstImage: a.images?.[0]?.substring(0, 60) + '...' || 'N/A'
-        })));
-      }
-      
+    }
+    
+    // If most areas don't have images, try to get them from properties
+    const areasWithoutImages = areas.filter(a => !a.images || !Array.isArray(a.images) || a.images.length === 0);
+    if (areasWithoutImages.length > areas.length * 0.8) { // If more than 80% don't have images
+      try {
+        // Load properties to get area images - use reasonable limit for performance
+        const result = await getProperties({ limit: 1000 }, true); // Reduced to 1000 for better performance
+        const properties = result.properties || [];
+        
+        // Build area name to ID map with multiple variations
+        const areaNameToIdMap = new Map<string, string>();
+        areas.forEach(area => {
+          const nameLower = area.nameEn.toLowerCase().trim();
+          areaNameToIdMap.set(nameLower, area.id);
+          
+          // Also add variations without "Dubai, " prefix
+          const nameWithoutDubai = nameLower.replace(/^dubai,\s*/, '').trim();
+          if (nameWithoutDubai !== nameLower) {
+            areaNameToIdMap.set(nameWithoutDubai, area.id);
+          }
+          
+          // Add variation with "Dubai, " prefix
+          if (!nameLower.startsWith('dubai,')) {
+            areaNameToIdMap.set(`dubai, ${nameLower}`, area.id);
+          }
+        });
+        
+        // Group properties by area and get first image
+        const areaImagesMap = new Map<string, string>();
+        const areaPropertiesCount = new Map<string, number>();
+        
+        properties.forEach(property => {
+          if (property.photos && property.photos.length > 0) {
+            let areaId: string | null = null;
+            let matchedAreaName = '';
+            
+            if (typeof property.area === 'string') {
+              // Off-plan: area is "areaName, cityName"
+              const areaName = property.area.split(',')[0].trim();
+              const areaNameLower = areaName.toLowerCase();
+              
+              // Try direct lookup
+              areaId = areaNameToIdMap.get(areaNameLower) || null;
+              
+              if (!areaId) {
+                // Try to find by matching
+                const area = areas.find(a => {
+                  const aNameLower = a.nameEn.toLowerCase().trim();
+                  const aNameNoDubai = aNameLower.replace(/^dubai,\s*/, '').trim();
+                  return aNameLower === areaNameLower || 
+                         aNameNoDubai === areaNameLower ||
+                         aNameLower.includes(areaNameLower) ||
+                         areaNameLower.includes(aNameNoDubai);
+                });
+                areaId = area?.id || null;
+                matchedAreaName = area?.nameEn || '';
+              } else {
+                const area = areas.find(a => a.id === areaId);
+                matchedAreaName = area?.nameEn || '';
+              }
+            } else if (property.area && typeof property.area === 'object') {
+              // Secondary: area is an object
+              areaId = property.area.id;
+              matchedAreaName = property.area.nameEn || '';
+              
+              // Also try to match by name (for cases where area.nameEn has "Dubai, " prefix)
+              if (!areaId && property.area.nameEn) {
+                const propertyAreaName = property.area.nameEn;
+                const areaNameWithoutPrefix = propertyAreaName.replace(/^Dubai,\s*/i, '').trim();
+                
+                // Try exact match first
+                let matchedArea = areas.find(a => 
+                  a.nameEn.toLowerCase() === propertyAreaName.toLowerCase() ||
+                  a.nameEn.toLowerCase() === areaNameWithoutPrefix.toLowerCase()
+                );
+                
+                // If no exact match, try partial match
+                if (!matchedArea) {
+                  matchedArea = areas.find(a => {
+                    const aNameLower = a.nameEn.toLowerCase();
+                    const propNameLower = propertyAreaName.toLowerCase();
+                    const propNameNoPrefix = areaNameWithoutPrefix.toLowerCase();
+                    
+                    return aNameLower.includes(propNameNoPrefix) || 
+                           propNameNoPrefix.includes(aNameLower) ||
+                           aNameLower.includes(propNameLower) ||
+                           propNameLower.includes(aNameLower);
+                  });
+                }
+                
+                if (matchedArea) {
+                  areaId = matchedArea.id;
+                  matchedAreaName = matchedArea.nameEn;
+                }
+              }
+            }
+            
+            if (areaId) {
+              // Count properties per area
+              areaPropertiesCount.set(areaId, (areaPropertiesCount.get(areaId) || 0) + 1);
+              
+              // Only set image if we don't have one yet (first property wins)
+              if (!areaImagesMap.has(areaId)) {
+                areaImagesMap.set(areaId, property.photos[0]);
+              }
+            }
+          }
+        });
+        
+        if (process.env.NODE_ENV === 'development') {
       const areasWithoutImages = areas.filter(a => !a.images || !Array.isArray(a.images) || a.images.length === 0);
-      if (areasWithoutImages.length > 0) {
-        console.warn(`⚠️ ${areasWithoutImages.length} areas without images from /api/public/areas`);
-        if (areasWithoutImages.length <= 10) {
-          console.warn('Areas without images:', areasWithoutImages.map(a => a.nameEn));
-        }
+          const areasGettingImagesFromProperties = areasWithoutImages.filter(a => areaImagesMap.has(a.id)).length;
+          }
+        
+        // Add images to areas that don't have them
+        let imagesAdded = 0;
+        areas = areas.map(area => {
+          if ((!area.images || !Array.isArray(area.images) || area.images.length === 0) && areaImagesMap.has(area.id)) {
+            imagesAdded++;
+            return {
+              ...area,
+              images: [areaImagesMap.get(area.id)!]
+            };
+          }
+          return area;
+        });
+        
+        } catch (propError: any) {
       }
     }
     
@@ -1630,19 +1410,12 @@ export async function getAreas(cityId?: string, useCache: boolean = true): Promi
         }
       }
       
-      if (process.env.NODE_ENV === 'development') {
-        console.log(`✅ Cached ${areas.length} areas (cityId: ${cityId || 'all'})`);
-      }
     }
     
     return areas;
   } catch (error: any) {
     // If 404, fallback to /public/data
     if (error.response?.status === 404) {
-      if (process.env.NODE_ENV === 'development') {
-        console.warn('⚠️ /public/areas endpoint not found (404), falling back to /public/data');
-      }
-      
       try {
         // Get areas from public data
         const publicData = await getPublicData(true);
@@ -1652,15 +1425,9 @@ export async function getAreas(cityId?: string, useCache: boolean = true): Promi
           // Check how many areas already have images from /public/data
           // Note: Areas from /public/data don't have images field in the type, but might have it in actual data
           const areasWithImagesFromData = areasFromData.filter(a => (a as any).images && Array.isArray((a as any).images) && (a as any).images.length > 0);
-          console.log(`📊 Fallback: Loaded ${areasFromData.length} areas from /public/data`);
-          console.log(`📸 Fallback: ${areasWithImagesFromData.length} areas already have images from /public/data`);
           
-          if (areasWithImagesFromData.length > 0) {
-            console.log('Sample areas with images from /public/data:', areasWithImagesFromData.slice(0, 5).map(a => ({
-              nameEn: a.nameEn,
-              imagesCount: ((a as any).images?.length || 0) as number
-            })));
-          }
+          
+          
         }
         
         // Try to get properties ONLY if we need images (not for counts - counts should come from backend)
@@ -1668,29 +1435,16 @@ export async function getAreas(cityId?: string, useCache: boolean = true): Promi
         const areasWithoutImages = areasFromData.filter(a => !(a as any).images || !Array.isArray((a as any).images) || (a as any).images.length === 0);
         
         if (areasWithoutImages.length > 0) {
-          if (process.env.NODE_ENV === 'development') {
-            console.log(`⚠️ Fallback: ${areasWithoutImages.length} areas need images from properties`);
-          }
-          
           try {
             // Load only a limited number of properties for images (not all 26K!)
             // Use limit to avoid loading all secondary properties
             const result = await getProperties({ limit: 1000 });
             properties = result.properties || [];
           
-          if (process.env.NODE_ENV === 'development') {
-              console.log(`📦 Fallback: Loaded ${properties.length} properties for area images (limited to 1000)`);
-          }
         } catch (propError: any) {
             // If properties fail, continue without images
-          if (process.env.NODE_ENV === 'development') {
-              console.warn('⚠️ Fallback: Could not load properties for area images:', propError);
-            }
           }
         } else {
-          if (process.env.NODE_ENV === 'development') {
-            console.log('✅ Fallback: All areas already have images from /public/data, skipping properties loading');
-          }
         }
         
         // Get best property image for each area
@@ -1703,11 +1457,6 @@ export async function getAreas(cityId?: string, useCache: boolean = true): Promi
         areasFromData.forEach(area => {
           areaNameToIdMap.set(area.nameEn.toLowerCase(), area.id);
         });
-        
-        if (process.env.NODE_ENV === 'development') {
-          console.log(`🗺️ Fallback: Built area name map with ${areaNameToIdMap.size} areas`);
-          console.log(`📦 Fallback: Processing ${properties.length} properties for area images`);
-        }
         
         let matchedCount = 0;
         let unmatchedCount = 0;
@@ -1762,7 +1511,7 @@ export async function getAreas(cityId?: string, useCache: boolean = true): Promi
               if (!areaId) {
                 unmatchedAreaNames.add(areaName);
                 if (process.env.NODE_ENV === 'development' && unmatchedCount < 5) {
-                  console.warn(`⚠️ Fallback: Could not find area ID for property area name: "${areaName}" (property: ${property.name})`);
+                  
                   unmatchedCount++;
                 }
               }
@@ -1793,7 +1542,7 @@ export async function getAreas(cityId?: string, useCache: boolean = true): Promi
                 matchedCount++;
                 if (process.env.NODE_ENV === 'development' && matchedCount <= 10) {
                   const area = areasFromData.find(a => a.id === areaId);
-                  console.log(`✅ Fallback: Mapped image for area: ${area?.nameEn || areaId} (from property: ${property.name})`);
+                  
                 }
               }
             }
@@ -1801,11 +1550,7 @@ export async function getAreas(cityId?: string, useCache: boolean = true): Promi
         });
         
         if (process.env.NODE_ENV === 'development') {
-          console.log(`📸 Fallback: Created image map: ${areaImagesMap.size} areas have images from properties`);
-          if (unmatchedAreaNames.size > 0) {
-            console.warn(`⚠️ Fallback: Total unmatched area names: ${unmatchedAreaNames.size}`);
-            console.warn('Sample unmatched names:', Array.from(unmatchedAreaNames).slice(0, 10));
-          }
+          
         }
         
         // Calculate projectsCount for each area
@@ -1847,25 +1592,16 @@ export async function getAreas(cityId?: string, useCache: boolean = true): Promi
           const areaImagesFromData = (area as any).images;
           if (areaImagesFromData && Array.isArray(areaImagesFromData) && areaImagesFromData.length > 0) {
             areaImages = areaImagesFromData;
-            if (process.env.NODE_ENV === 'development') {
-              console.log(`✅ Fallback: Using images from /public/data for area: ${area.nameEn} (${areaImages.length} images)`);
-            }
           } 
           // Priority 2: Use images from properties (areaImagesMap)
           else if (areaImagesMap.has(area.id)) {
             areaImages = [areaImagesMap.get(area.id)!];
-            if (process.env.NODE_ENV === 'development') {
-              console.log(`✅ Fallback: Using image from properties for area: ${area.nameEn}`);
-            }
           } 
           // Priority 3: Try to find from areaProperties
           else if (areaProperties.length > 0) {
             const propertyWithPhoto = areaProperties.find(p => p.photos && p.photos.length > 0);
             if (propertyWithPhoto && propertyWithPhoto.photos) {
               areaImages = [propertyWithPhoto.photos[0]];
-              if (process.env.NODE_ENV === 'development') {
-                console.log(`✅ Fallback: Found image from area properties for: ${area.nameEn}`);
-              }
             }
           }
           
@@ -1909,24 +1645,15 @@ export async function getAreas(cityId?: string, useCache: boolean = true): Promi
           ? areasWithCounts.filter(a => a.cityId === cityId)
           : areasWithCounts;
         
-        if (process.env.NODE_ENV === 'development') {
-          console.log(`✅ Loaded ${filteredAreas.length} areas from /public/data (fallback)`);
-        }
-        
         return filteredAreas;
       } catch (fallbackError: any) {
-        console.error('❌ Error in fallback to /public/data:', fallbackError);
+        
         throw fallbackError;
       }
     }
     
     // For other errors, throw as usual
-    console.error('❌ Error fetching areas:', error);
-    if (error.response) {
-      console.error('Response status:', error.response.status);
-      console.error('Response URL:', error.response.config?.url);
-      console.error('Response data:', error.response.data);
-    }
+    
     throw error;
   }
 }
@@ -1934,13 +1661,27 @@ export async function getAreas(cityId?: string, useCache: boolean = true): Promi
 /**
  * Get area by ID
  */
-export async function getAreaById(areaId: string): Promise<Area | null> {
+export async function getAreaById(areaIdOrSlug: string): Promise<Area | null> {
   try {
     const areas = await getAreas();
-    const area = areas.find(a => a.id === areaId);
+    // Try to find by ID first
+    let area = areas.find(a => a.id === areaIdOrSlug);
+    
+    // If not found by ID, try to find by slug (nameEn converted to slug)
+    if (!area) {
+      const slug = areaIdOrSlug.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+      area = areas.find(a => {
+        const areaSlug = (a.nameEn || '')
+          .toLowerCase()
+          .replace(/\s+/g, '-')
+          .replace(/[^a-z0-9-]/g, '');
+        return areaSlug === slug || a.id === areaIdOrSlug;
+      });
+    }
+    
     return area || null;
   } catch (error: any) {
-    console.error('Error fetching area by ID:', error);
+    
     return null;
   }
 }
@@ -1972,10 +1713,6 @@ export interface Developer {
 export async function getDevelopers(): Promise<Developer[]> {
   try {
     const url = '/public/developers';
-    
-    if (process.env.NODE_ENV === 'development') {
-      console.log('🔄 Fetching developers from:', `${API_BASE_URL}${url}`);
-    }
     
     const response = await apiClient.get<ApiResponse<any[]>>(url);
     let developers = response.data.data;
@@ -2031,61 +1768,57 @@ export async function getDevelopers(): Promise<Developer[]> {
       const developersWithDescription = processedDevelopers.filter(d => d.description).length;
       const developersWithLogo = processedDevelopers.filter(d => d.logo).length;
       
-      console.log(`✅ Successfully loaded ${processedDevelopers.length} developers from /api/public/developers`);
-      console.log(`📸 Developers with images: ${developersWithImages}/${processedDevelopers.length}`);
-      console.log(`📝 Developers with description: ${developersWithDescription}/${processedDevelopers.length}`);
-      console.log(`🖼️ Developers with logo: ${developersWithLogo}/${processedDevelopers.length}`);
+      
+      
+      
+      
     }
     
     return processedDevelopers;
   } catch (error: any) {
     // If 404, fallback to /public/data
     if (error.response?.status === 404) {
-      console.warn('⚠️ /public/developers endpoint not found (404), falling back to /public/data');
+      
       
       try {
         // Get developers from public data
-        console.log('🔄 Fallback: Fetching public data...');
+        
         const publicData = await getPublicData(true);
-        console.log('✅ Fallback: Received public data:', {
-          hasDevelopers: !!publicData.developers,
-          developersType: Array.isArray(publicData.developers) ? 'array' : typeof publicData.developers,
-          developersLength: Array.isArray(publicData.developers) ? publicData.developers.length : 'N/A',
-        });
+        
         
         const developersFromData = publicData.developers || [];
         
-        console.log(`📊 Fallback: Loaded ${developersFromData.length} developers from /public/data`);
+        
         
         if (!Array.isArray(developersFromData)) {
-          console.error('❌ Fallback: developers is not an array:', developersFromData);
+          
           return [];
         }
         
         if (developersFromData.length === 0) {
-          console.warn('⚠️ Fallback: No developers found in /public/data');
-          console.log('Available keys in publicData:', Object.keys(publicData));
+          
+          
           return [];
         }
         
-        console.log('✅ Fallback: Sample developer:', developersFromData[0]);
+        
         
         // Try to get properties to calculate counts (optional - don't fail if this fails)
         let properties: Property[] = [];
         try {
-          console.log('🔄 Fallback: Loading properties for counts...');
+          
           // Load only a limited number of properties for counts (not all 26K!)
           const result = await getProperties({ limit: 1000 });
           properties = result.properties || [];
           
-          console.log(`📦 Fallback: Loaded ${properties.length} properties for developer counts (limited to 1000)`);
+          
         } catch (propError: any) {
-          console.warn('⚠️ Fallback: Could not load properties for developer counts (continuing without counts):', propError.message);
+          
           // Continue without properties - counts will be 0
         }
         
         // Calculate projectsCount for each developer
-        console.log('🔄 Fallback: Calculating projectsCount...');
+        
         const developersWithCounts: Developer[] = developersFromData.map(developer => {
           const developerProperties = properties.filter(p => p.developer?.id === developer.id);
           
@@ -2109,29 +1842,20 @@ export async function getDevelopers(): Promise<Developer[]> {
           };
         });
         
-        console.log(`✅ Fallback: Successfully loaded ${developersWithCounts.length} developers from /public/data`);
+        
         
         return developersWithCounts;
       } catch (fallbackError: any) {
-        console.error('❌ Error in fallback to /public/data:', fallbackError);
-        console.error('Fallback error details:', {
-          message: fallbackError.message,
-          stack: fallbackError.stack,
-          response: fallbackError.response?.data,
-        });
+        
+        
         // Return empty array instead of throwing, so page can still render
-        console.warn('⚠️ Returning empty developers array due to fallback error');
+        
         return [];
       }
     }
     
     // For other errors, throw as usual
-    console.error('❌ Error fetching developers:', error);
-    if (error.response) {
-      console.error('Response status:', error.response.status);
-      console.error('Response URL:', error.response.config?.url);
-      console.error('Response data:', error.response.data);
-    }
+    
     throw error;
   }
 }
@@ -2145,7 +1869,7 @@ export async function getDeveloperById(developerId: string): Promise<Developer |
     const developer = developers.find(d => d.id === developerId);
     return developer || null;
   } catch (error: any) {
-    console.error('Error fetching developer by ID:', error);
+    
     return null;
   }
 }
@@ -2155,29 +1879,14 @@ export async function getDeveloperById(developerId: string): Promise<Developer |
  */
 export async function submitInvestmentPublic(data: InvestmentRequest): Promise<Investment> {
   try {
-    if (process.env.NODE_ENV === 'development') {
-      console.log('Submitting investment (public):', {
-        propertyId: data.propertyId,
-        amount: data.amount,
-        date: data.date,
-        userEmail: data.userEmail,
-        userPhone: data.userPhone,
-        hasNotes: !!data.notes,
-      });
-    }
-    
     const response = await apiClient.post<ApiResponse<Investment>>('/investments/public', data);
-    
-    if (process.env.NODE_ENV === 'development') {
-      console.log('✅ Investment submitted successfully (public):', response.data.data);
-    }
     
     return response.data.data;
   } catch (error: any) {
-    console.error('Error submitting investment (public):', error);
+    
     if (error.response) {
-      console.error('Response status:', error.response.status);
-      console.error('Response data:', error.response.data);
+      
+      
       
       // Throw a more user-friendly error
       const errorMessage = error.response.data?.message || error.response.data?.error || 'Failed to submit investment';
@@ -2267,10 +1976,6 @@ export async function getNews(page: number = 1, limit: number = 12): Promise<Get
     params.append('sortOrder', 'DESC');
 
     const url = `/public/news?${params.toString()}`;
-    
-    if (process.env.NODE_ENV === 'development') {
-      console.log('🔄 Fetching news from:', `${API_BASE_URL}${url}`);
-    }
 
     const response = await apiClient.get<ApiResponse<{
       data: NewsItem[];
@@ -2278,16 +1983,6 @@ export async function getNews(page: number = 1, limit: number = 12): Promise<Get
       page: number;
       limit: number;
     }>>(url);
-
-    if (process.env.NODE_ENV === 'development') {
-      console.log('📰 News API response:', {
-        success: response.data.success,
-        dataType: typeof response.data.data,
-        isArray: Array.isArray(response.data.data),
-        keys: response.data.data && typeof response.data.data === 'object' ? Object.keys(response.data.data) : 'N/A',
-        fullResponse: JSON.stringify(response.data, null, 2).substring(0, 500),
-      });
-    }
 
     if (!response.data.success) {
       throw new Error('Failed to fetch news');
@@ -2305,9 +2000,6 @@ export async function getNews(page: number = 1, limit: number = 12): Promise<Get
       // Direct array response
       newsArray = data;
       total = data.length;
-      if (process.env.NODE_ENV === 'development') {
-        console.log('✅ News: Direct array response, length:', data.length);
-      }
     } else if (data && typeof data === 'object') {
       // Paginated response: { data: NewsItem[], total: number, page: number, limit: number }
       if ('data' in data && Array.isArray((data as any).data)) {
@@ -2315,14 +2007,6 @@ export async function getNews(page: number = 1, limit: number = 12): Promise<Get
         total = (data as any).total || newsArray.length;
         currentPage = (data as any).page || page;
         currentLimit = (data as any).limit || limit;
-        if (process.env.NODE_ENV === 'development') {
-          console.log('✅ News: Paginated response', {
-            newsCount: newsArray.length,
-            total,
-            page: currentPage,
-            limit: currentLimit,
-          });
-        }
       } else {
         // Try to find array in other keys
         const possibleKeys = ['news', 'items', 'results', 'list'];
@@ -2330,16 +2014,10 @@ export async function getNews(page: number = 1, limit: number = 12): Promise<Get
           if (Array.isArray((data as any)[key])) {
             newsArray = (data as any)[key];
             total = (data as any).total || newsArray.length;
-            if (process.env.NODE_ENV === 'development') {
-              console.log(`✅ News: Found array in key "${key}"`, newsArray.length);
-            }
             break;
           }
         }
         if (newsArray.length === 0) {
-          if (process.env.NODE_ENV === 'development') {
-            console.warn('⚠️ News: No array found in response data');
-          }
           newsArray = [];
           total = 0;
         }
@@ -2359,21 +2037,9 @@ export async function getNews(page: number = 1, limit: number = 12): Promise<Get
       limit: currentLimit,
     };
   } catch (error) {
-    console.error('❌ Error fetching news:', error);
+    
     if (axios.isAxiosError(error)) {
       const axiosError = error as AxiosError<ApiError>;
-      
-      if (process.env.NODE_ENV === 'development') {
-        console.error('📰 News API Error Details:', {
-          status: axiosError.response?.status,
-          statusText: axiosError.response?.statusText,
-          message: axiosError.message,
-          code: axiosError.code,
-          responseData: axiosError.response?.data,
-          url: axiosError.config?.url,
-          method: axiosError.config?.method,
-        });
-      }
       
       if (axiosError.response?.status === 404) {
         // No news found, return empty result
@@ -2404,10 +2070,6 @@ export async function getNews(page: number = 1, limit: number = 12): Promise<Get
 export async function getNewsBySlug(slug: string): Promise<NewsDetail | null> {
   try {
     const url = `/public/news/${slug}`;
-    
-    if (process.env.NODE_ENV === 'development') {
-      console.log('🔄 Fetching news article from:', `${API_BASE_URL}${url}`);
-    }
 
     const response = await apiClient.get<ApiResponse<NewsDetail>>(url);
 
@@ -2424,7 +2086,7 @@ export async function getNewsBySlug(slug: string): Promise<NewsDetail | null> {
 
     return news;
   } catch (error) {
-    console.error('Error fetching news article:', error);
+    
     if (axios.isAxiosError(error)) {
       const axiosError = error as AxiosError<ApiError>;
       if (axiosError.response?.status === 404) {

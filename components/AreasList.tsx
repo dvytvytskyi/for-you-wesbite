@@ -21,6 +21,51 @@ interface Area {
 
 const ITEMS_PER_PAGE = 20;
 
+// List of allowed areas (43 areas from areas.json)
+const ALLOWED_AREAS = [
+  'Al Barari',
+  'Al Furjan',
+  'Arjan',
+  'Business Bay',
+  'Cherrywoods',
+  'City of Arabia',
+  'Damac Hills',
+  'Damac Hills 2',
+  'Damac Lagoons',
+  'Discovery Gardens',
+  'Downtown Dubai',
+  'Dubai Creek Harbour',
+  'Dubai Harbour',
+  'Dubai Hills',
+  'Dubai Industrial City',
+  'Dubai Internet City',
+  'Dubai Investment Park',
+  'Dubai Islands',
+  'Dubai Marina',
+  'Dubai Media City',
+  'Dubai Production City',
+  'Dubai Science Park',
+  'Dubai Silicon Oasis',
+  'Dubai Sports City',
+  'Dubai Studio City',
+  'International City',
+  'Jumeirah',
+  'Jumeirah Lake Towers (JLT)',
+  'Jumeirah Village Circle (JVC)',
+  'Jumeirah Village Triangle (JVT)',
+  'Majan',
+  'Mina Rashid',
+  'Mohammed Bin Rashid City (MBR)',
+  'Motor City',
+  'Palm Jumeirah',
+  'Sobha Hartland',
+  'Tilal Al Ghaf',
+  'Town Square',
+  'Wadi Al Safa 4',
+  'Wadi Al Safa 5',
+  'Wadi Al Safa 7',
+];
+
 export default function AreasList() {
   const t = useTranslations('areas');
   const locale = useLocale();
@@ -58,97 +103,208 @@ export default function AreasList() {
       try {
         const apiAreas = await getAreas();
         
-        // Convert API areas to component format and filter out areas with placeholder images
+        
+        // Convert API areas to component format
+        // Filter to only show allowed areas with valid images
         const convertedAreas: Area[] = apiAreas
           .filter(area => {
+            const areaName = (area.nameEn || '').trim();
+            
+            // Filter by allowed areas list (case-insensitive, flexible matching)
+            let isAllowed = false;
+            let matchedAllowedName = '';
+            
+            for (const allowed of ALLOWED_AREAS) {
+              const allowedLower = allowed.toLowerCase().trim();
+              const areaLower = areaName.toLowerCase().trim();
+              
+              // Exact match
+              if (allowedLower === areaLower) {
+                isAllowed = true;
+                matchedAllowedName = allowed;
+                break;
+              }
+              
+              // Check if area name contains allowed name or vice versa (for longer names)
+              if (allowedLower.length > 5 && areaLower.length > 5) {
+                if (allowedLower.includes(areaLower) || areaLower.includes(allowedLower)) {
+                  isAllowed = true;
+                  matchedAllowedName = allowed;
+                  break;
+                }
+              }
+              
+              // Also check if area name starts with allowed name (for cases like "Dubai Marina" matching "Marina")
+              if (areaLower.startsWith(allowedLower) || allowedLower.startsWith(areaLower)) {
+                isAllowed = true;
+                matchedAllowedName = allowed;
+                break;
+              }
+            }
+            
+            if (!isAllowed) {
+              return false;
+            }
+            
             // Filter out areas with 0 projects
             const projectsCount = area.projectsCount?.total || 0;
             if (projectsCount === 0) {
-              if (process.env.NODE_ENV === 'development') {
-                console.log(`❌ Area "${area.nameEn}" (${area.id}) filtered out: 0 projects`);
-              }
               return false;
             }
             
-            // Filter out areas that don't have real images (have placeholder)
-            const hasImages = area.images && Array.isArray(area.images) && area.images.length > 0;
-            if (!hasImages) {
-              if (process.env.NODE_ENV === 'development') {
-                console.log(`❌ Area "${area.nameEn}" (${area.id}) filtered out: no images`);
-              }
-              return false; // No images at all
-            }
-            
-            // Get first image URL
-            const firstImage = area.images && area.images.length > 0 ? area.images[0] : null;
-            if (!firstImage || typeof firstImage !== 'string' || firstImage.trim() === '') {
-              if (process.env.NODE_ENV === 'development') {
-                console.log(`❌ Area "${area.nameEn}" (${area.id}) filtered out: empty image URL`);
-              }
-              return false; // Empty or invalid image URL
-            }
-            
-            // Check if image URL is a placeholder (unsplash.com or other placeholder services)
-            const isPlaceholder = firstImage.includes('unsplash.com') ||
-              firstImage.includes('placeholder') ||
-              firstImage.includes('via.placeholder.com') ||
-              firstImage.includes('dummyimage.com') ||
-              firstImage.includes('placehold.it') ||
-              firstImage.includes('fakeimg.pl');
-            
-            if (isPlaceholder) {
-              if (process.env.NODE_ENV === 'development') {
-                console.log(`❌ Area "${area.nameEn}" (${area.id}) filtered out: placeholder image URL: ${firstImage.substring(0, 100)}`);
-              }
-              return false;
-            }
-            
-            // Check if URL looks valid (starts with http:// or https://)
-            const isValidUrl = firstImage.startsWith('http://') || firstImage.startsWith('https://');
-            if (!isValidUrl) {
-              if (process.env.NODE_ENV === 'development') {
-                console.log(`❌ Area "${area.nameEn}" (${area.id}) filtered out: invalid URL format: ${firstImage.substring(0, 100)}`);
-              }
-              return false;
-            }
-            
-            // Check if URL is from known valid image domains (optional - can be removed if too restrictive)
-            // This helps filter out obviously invalid URLs
-            const validImageDomains = [
-              'reelly.io',
-              'xano.io',
-              'alnair.ae',
-              'foryou-realestate.com',
-              'cdn',
-              'cloudinary.com',
-              'amazonaws.com',
-              's3.amazonaws.com',
-              'imgur.com',
-              'i.imgur.com',
-            ];
-            
-            const hasValidDomain = validImageDomains.some(domain => firstImage.includes(domain));
-            // Don't filter out based on domain alone, as there might be other valid domains
-            // But log it for debugging
-            if (process.env.NODE_ENV === 'development' && !hasValidDomain) {
-              console.log(`⚠️ Area "${area.nameEn}" (${area.id}) has image from unknown domain: ${new URL(firstImage).hostname}`);
-            }
-            
-            // Area passed all checks
+            // Allow areas even without images - we'll use fallback
             return true;
           })
           .map(area => {
-            // At this point, we know area has valid real images
-            const imageUrl = area.images && area.images.length > 0 
-              ? area.images[0] 
-              : '';
+            // Get first valid image URL or use fallback
+            let imageUrl = '/golf.jpg'; // Default fallback image
+            
+            // Handle images - can be array, string, or null
+            let imagesArray: string[] = [];
+            
+            // Debug: log raw images data for areas that will use fallback (only in dev, and only for first few)
+            // REMOVED: Too much logging slows down the site
+            
+            if (area.images) {
+              if (Array.isArray(area.images)) {
+                // Already an array - filter valid URLs
+                imagesArray = area.images
+                  .filter(img => img && typeof img === 'string' && img.trim() !== '')
+                  .map(img => {
+                    // Even if it's in array, check if individual item contains comma
+                    const trimmed = img.trim();
+                    return trimmed.includes(',') ? trimmed.split(',')[0].trim() : trimmed;
+                  })
+                  .filter(img => img && img.startsWith('http'));
+              } else if (typeof area.images === 'string') {
+                // Single string - convert to array
+                const trimmed = area.images.trim();
+                if (trimmed === '') {
+                  imagesArray = [];
+                } else if (trimmed.includes(',')) {
+                  // CRITICAL: Split by comma and take only first valid URL
+                  const urls = trimmed.split(',').map(url => url.trim()).filter(url => url && url.startsWith('http'));
+                  imagesArray = urls.length > 0 ? [urls[0]] : []; // Take only first URL
+                  // REMOVED: Too much logging
+                } else {
+                  // Single URL
+                  if (trimmed.startsWith('http')) {
+                    imagesArray = [trimmed];
+                  } else {
+                    imagesArray = [];
+                  }
+                }
+              } else if (typeof area.images === 'object' && area.images !== null) {
+                // Try to extract from object (in case it's wrapped)
+                const imagesValue = (area.images as any).images || (area.images as any).data || (area.images as any).url || area.images;
+                
+                // Check if imagesValue is null or undefined
+                if (imagesValue === null || imagesValue === undefined) {
+                  imagesArray = [];
+                } else if (Array.isArray(imagesValue)) {
+                  // Array from object
+                  imagesArray = imagesValue
+                    .filter(img => img && typeof img === 'string' && img.trim() !== '')
+                    .map(img => {
+                      const trimmed = img.trim();
+                      return trimmed.includes(',') ? trimmed.split(',')[0].trim() : trimmed;
+                    })
+                    .filter(img => img && img.startsWith('http'));
+                } else if (typeof imagesValue === 'string') {
+                  // String from object - handle comma-separated URLs
+                  const trimmed = imagesValue.trim();
+                  if (trimmed === '') {
+                    imagesArray = [];
+                  } else if (trimmed.includes(',')) {
+                    const urls = trimmed.split(',').map(url => url.trim()).filter(url => url && url.startsWith('http'));
+                    imagesArray = urls.length > 0 ? [urls[0]] : []; // Take only first URL
+                  } else {
+                    if (trimmed.startsWith('http')) {
+                      imagesArray = [trimmed];
+                    } else {
+                      imagesArray = [];
+                    }
+                  }
+                } else {
+                  // Unknown format
+                  imagesArray = [];
+                }
+              }
+            }
+            
+            const hasImages = imagesArray.length > 0;
+            if (hasImages) {
+              // Find first valid image (not placeholder)
+              for (const img of imagesArray) {
+                if (img && typeof img === 'string') {
+                  const cleanImg = img.trim();
+                  if (cleanImg === '') continue;
+                  
+                  // If image contains comma, take only first part
+                  const singleImg = cleanImg.includes(',') ? cleanImg.split(',')[0].trim() : cleanImg;
+                  
+                  // Check if image is placeholder
+                  const isPlaceholder = singleImg.includes('unsplash.com') ||
+                    singleImg.includes('placeholder') ||
+                    singleImg.includes('via.placeholder.com') ||
+                    singleImg.includes('dummyimage.com') ||
+                    singleImg.includes('placehold.it') ||
+                    singleImg.includes('fakeimg.pl');
+                  
+                  // Check if URL is valid
+                  const isValidUrl = singleImg.startsWith('http://') || singleImg.startsWith('https://');
+                  
+                  if (!isPlaceholder && isValidUrl) {
+                    imageUrl = singleImg;
+                    break; // Use first valid image
+                  }
+                }
+              }
+              
+              // REMOVED: Too much logging slows down the site
+            }
+            // REMOVED: Too much logging slows down the site
+            
+            // Always ensure we have a valid image URL (fallback to /golf.jpg)
+            if (!imageUrl || imageUrl.trim() === '' || imageUrl === '/golf.jpg') {
+              imageUrl = '/golf.jpg';
+            } else {
+              // CRITICAL FIX: If imageUrl contains comma (multiple URLs), take only the first one
+              // This can happen if area.images is an array that gets stringified incorrectly
+              if (imageUrl.includes(',')) {
+                const firstUrl = imageUrl.split(',')[0].trim();
+                // REMOVED: Too much logging
+                imageUrl = firstUrl;
+              }
+              
+              // Ensure it's a single string, not an array
+              if (Array.isArray(imageUrl)) {
+                imageUrl = imageUrl[0] || '/golf.jpg';
+              }
+              
+              // Remove any whitespace
+              if (typeof imageUrl === 'string') {
+                imageUrl = imageUrl.trim();
+              }
+              
+              // Final validation: must be a valid URL string
+              if (typeof imageUrl !== 'string' || (!imageUrl.startsWith('http') && imageUrl !== '/golf.jpg')) {
+                // REMOVED: Too much logging
+                imageUrl = '/golf.jpg';
+              }
+            }
+            
+            // Final safety check: ensure image is always a clean string
+            if (typeof imageUrl !== 'string') {
+              imageUrl = '/golf.jpg';
+            }
             
             return {
               id: area.id,
               name: area.nameEn,
               nameRu: area.nameRu,
               projectsCount: area.projectsCount.total,
-              image: imageUrl,
+              image: imageUrl, // Always valid - single URL string, no commas
               city: area.city.nameEn,
               cityRu: area.city.nameRu,
             };
@@ -156,40 +312,8 @@ export default function AreasList() {
         
         setAllAreas(convertedAreas);
         
-        if (process.env.NODE_ENV === 'development') {
-          const filteredOut = apiAreas.length - convertedAreas.length;
-          const areasWithZeroProjects = apiAreas.filter(area => (area.projectsCount?.total || 0) === 0).length;
-          const areasWithoutImages = apiAreas.filter(area => {
-            const hasImages = area.images && Array.isArray(area.images) && area.images.length > 0;
-            if (!hasImages) return true;
-            const firstImage = area.images && area.images.length > 0 ? area.images[0] : null;
-            if (!firstImage || typeof firstImage !== 'string' || firstImage.trim() === '') return true;
-            const isPlaceholder = firstImage.includes('unsplash.com') ||
-              firstImage.includes('placeholder') ||
-              firstImage.includes('via.placeholder.com') ||
-              firstImage.includes('dummyimage.com');
-            const isValidUrl = firstImage.startsWith('http://') || firstImage.startsWith('https://');
-            return isPlaceholder || !isValidUrl;
-          }).length;
-          
-          console.log(`✅ Loaded ${convertedAreas.length} areas with projects and valid images`);
-          console.log(`   Filtered out:`);
-          console.log(`   - ${areasWithZeroProjects} areas with 0 projects`);
-          console.log(`   - ${areasWithoutImages} areas with no images/invalid images`);
-          console.log(`   Total filtered: ${filteredOut} areas`);
-          
-          // Log some examples of filtered areas with 0 projects
-          if (areasWithZeroProjects > 0) {
-            const zeroProjectAreas = apiAreas.filter(area => (area.projectsCount?.total || 0) === 0).slice(0, 10);
-            console.log(`📋 Examples of areas with 0 projects (filtered out):`, zeroProjectAreas.map(a => ({
-              name: a.nameEn,
-              projectsCount: a.projectsCount?.total || 0
-            })));
-          }
-        }
-      } catch (err: any) {
-        console.error('Failed to fetch areas:', err);
-        setError(err.message || 'Failed to load areas');
+            // REMOVED: Too much logging slows down the site
+      } catch (err: any) {setError(err.message || 'Failed to load areas');
       } finally {
         setLoading(false);
       }
@@ -308,15 +432,8 @@ export default function AreasList() {
           <>
             <div className={styles.grid}>
               {areas
-                .filter(area => !failedImages.has(area.id)) // Hide areas with failed images
                 .map((area) => {
                 const isImageLoading = imagesLoading.has(area.id);
-                const hasFailed = failedImages.has(area.id);
-                
-                // Don't render if image has failed
-                if (hasFailed) {
-                  return null;
-                }
                 
                 return (
                   <Link
@@ -329,12 +446,54 @@ export default function AreasList() {
                         <div className={styles.imageSkeleton}></div>
                       )}
                       <Image
-                        src={area.image}
+                          src={(() => {
+                            // Ensure we always use a single URL, never multiple URLs with comma
+                            let src = area.image;
+                            
+                            // If area.image is not set or empty, use fallback
+                            if (!src || typeof src !== 'string' || src.trim() === '' || src === '/golf.jpg') {
+                              src = '/golf.jpg';
+                            } else {
+                              // Clean the URL
+                              src = src.trim();
+                              
+                              // If somehow src still contains comma, take first URL
+                              if (src.includes(',')) {
+                                src = src.split(',')[0].trim();
+                              }
+                              
+                              // Validate URL is complete and valid
+                              if (src !== '/golf.jpg') {
+                                // Check if URL is complete (ends with image extension or is a valid URL)
+                                const isValidUrl = src.startsWith('http://') || src.startsWith('https://');
+                                
+                                if (!isValidUrl) {
+                                  src = '/golf.jpg';
+                                }
+                              }
+                            }
+                            
+                            // Final validation before returning
+                            if (src !== '/golf.jpg' && (!src.startsWith('http') || src.length < 10)) {
+                              src = '/golf.jpg';
+                            }
+                            
+                            return src;
+                          })()}
                         alt={getAreaName(area)}
                         fill
                         style={{ objectFit: 'cover', opacity: isImageLoading ? 0 : 1, transition: 'opacity 0.3s ease' }}
                         sizes="(max-width: 1200px) 50vw, (max-width: 900px) 100vw, 33vw"
-                        unoptimized
+                        loading="lazy"
+                        unoptimized={(() => {
+                          // Use unoptimized for external images that might not be in remotePatterns
+                          const src = area.image;
+                          if (!src || src === '/golf.jpg' || !src.startsWith('http')) {
+                            return false; // Local images can be optimized
+                          }
+                          // For external images, use unoptimized to ensure they load
+                          return true;
+                        })()}
                         onLoad={() => {
                           setImagesLoading(prev => {
                             const next = new Set(prev);
@@ -343,22 +502,16 @@ export default function AreasList() {
                           });
                         }}
                         onError={(e) => {
-                          // If image fails to load, mark it as failed and hide the area card
-                          if (process.env.NODE_ENV === 'development') {
-                            console.error(`❌ Failed to load image for area "${area.name}" (${area.id}):`, area.image);
-                          }
-                          setFailedImages(prev => {
-                            const next = new Set(prev);
-                            next.add(area.id);
-                            return next;
-                          });
-                          setImagesLoading(prev => {
-                            const next = new Set(prev);
-                            next.delete(area.id);
-                            return next;
-                          });
-                        }}
-                        onLoadingComplete={() => {
+                            // If image fails to load, force fallback
+                            const target = e.target as HTMLImageElement;
+                            
+                            if (target && target.src !== `${window.location.origin}/golf.jpg`) {
+                              target.src = '/golf.jpg';
+                              // Also update the area's image in state to prevent retries
+                              setAllAreas(prev => prev.map(a => 
+                                a.id === area.id ? { ...a, image: '/golf.jpg' } : a
+                              ));
+                            }
                           setImagesLoading(prev => {
                             const next = new Set(prev);
                             next.delete(area.id);

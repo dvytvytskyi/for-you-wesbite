@@ -15,25 +15,8 @@ interface Area {
   image: string;
 }
 
-// Target areas to display on home page (by ID)
-const TARGET_AREA_IDS = [
-  '7924f2dd-94bf-4ec3-b3fe-cbc5606a073a', // Business Bay
-  '1b6f0f1f-0587-4d5f-96b2-5cb76844b1a3', // Downtown Dubai
-  '599de105-6125-405c-9a9c-cd4e1c80bc38', // City Walk
-  'a22870e9-9d1e-4dfb-aaba-9cc647afe23b', // Palm Jumeirah
-  'c9f2c230-e3b5-465a-9c5f-cf7bebc35905', // Jumeirah Village Circle (JVC)
-  '2a295d06-8184-40d0-a68a-18cf529173af', // Dubai Hills
-];
-
-// Area names mapping for sorting
-const AREA_ORDER: { [key: string]: number } = {
-  '7924f2dd-94bf-4ec3-b3fe-cbc5606a073a': 0, // Business Bay
-  '1b6f0f1f-0587-4d5f-96b2-5cb76844b1a3': 1, // Downtown Dubai
-  '599de105-6125-405c-9a9c-cd4e1c80bc38': 2, // City Walk
-  'a22870e9-9d1e-4dfb-aaba-9cc647afe23b': 3, // Palm Jumeirah
-  'c9f2c230-e3b5-465a-9c5f-cf7bebc35905': 4, // JVC
-  '2a295d06-8184-40d0-a68a-18cf529173af': 5, // Dubai Hills
-};
+// Number of top areas to display on home page
+const TOP_AREAS_COUNT = 10;
 
 export default function Areas() {
   const t = useTranslations('areas');
@@ -54,64 +37,51 @@ export default function Areas() {
     return locale === 'ru' ? area.nameRu : area.name;
   };
 
-  // Load areas from API - оптимізовано: використовуємо кеш, фільтруємо тільки потрібні areas
+  // Load top 10 areas from Dubai - similar to /areas page
   useEffect(() => {
     const loadAreas = async () => {
       setLoading(true);
       try {
         const apiAreas = await getAreas(undefined, true); // Використовуємо кеш
         
-        if (process.env.NODE_ENV === 'development') {
-          console.log(`📦 Areas component: Loaded ${apiAreas.length} areas from API/cache, filtering ${TARGET_AREA_IDS.length} target areas`);
-        }
-        
-        // Filter only target areas by ID, exclude areas without real images or with placeholders, and convert to component format
-        const filteredAreas: Area[] = apiAreas
+        // Filter Dubai areas, sort by projectsCount, and take top 10
+        const convertedAreas: Area[] = apiAreas
           .filter((apiArea: ApiArea) => {
-            // Filter by target IDs
-            const isTargetArea = TARGET_AREA_IDS.includes(apiArea.id);
-            if (!isTargetArea) {
+            // Filter for Dubai areas only
+            const isDubai = apiArea.city?.nameEn?.toLowerCase() === 'dubai' || 
+                           apiArea.city?.nameRu?.toLowerCase() === 'дубай';
+            if (!isDubai) {
               return false;
             }
             
-            // Check if area has real images (not placeholders)
-            const hasImages = apiArea.images && Array.isArray(apiArea.images) && apiArea.images.length > 0;
-            if (!hasImages) {
-              return false; // No images at all
-            }
-            
-            // Get first image URL
-            const firstImage = apiArea.images && apiArea.images.length > 0 ? apiArea.images[0] : null;
-            if (!firstImage || typeof firstImage !== 'string' || firstImage.trim() === '') {
-              return false; // Empty or invalid image URL
-            }
-            
-            // Check if image URL is a placeholder (unsplash.com or other placeholder services)
-            const isPlaceholder = firstImage.includes('unsplash.com') ||
-              firstImage.includes('placeholder') ||
-              firstImage.includes('via.placeholder.com') ||
-              firstImage.includes('dummyimage.com') ||
-              firstImage.includes('placehold.it') ||
-              firstImage.includes('fakeimg.pl');
-            
-            if (isPlaceholder) {
+            // Filter out areas with 0 projects
+            const projectsCount = apiArea.projectsCount?.total || 0;
+            if (projectsCount === 0) {
               return false;
             }
             
-            // Check if URL looks valid (starts with http:// or https://)
-            const isValidUrl = firstImage.startsWith('http://') || firstImage.startsWith('https://');
-            if (!isValidUrl) {
-              return false;
-            }
-            
-            // Area passed all checks
             return true;
           })
           .map((apiArea: ApiArea) => {
-            // Get image - should always have real images at this point due to filter
-            const imageUrl = apiArea.images && apiArea.images.length > 0 
-              ? apiArea.images[0] 
-              : '';
+            // Use actual image if available and valid, otherwise use fallback
+            let imageUrl = '/golf.jpg'; // Default fallback image
+            const hasImages = apiArea.images && Array.isArray(apiArea.images) && apiArea.images.length > 0;
+            const firstImage = hasImages ? apiArea.images[0] : null;
+
+            if (firstImage && typeof firstImage === 'string' && firstImage.trim() !== '') {
+              const isPlaceholder = firstImage.includes('unsplash.com') ||
+                firstImage.includes('placeholder') ||
+                firstImage.includes('via.placeholder.com') ||
+                firstImage.includes('dummyimage.com') ||
+                firstImage.includes('placehold.it') ||
+                firstImage.includes('fakeimg.pl');
+
+              const isValidUrl = firstImage.startsWith('http://') || firstImage.startsWith('https://');
+
+              if (!isPlaceholder && isValidUrl) {
+                imageUrl = firstImage;
+              }
+            }
             
             // Generate slug from nameEn
             const slug = (apiArea.nameEn || '')
@@ -124,22 +94,18 @@ export default function Areas() {
               name: apiArea.nameEn || '',
               nameRu: apiArea.nameRu || apiArea.nameEn || '',
               projectsCount: apiArea.projectsCount?.total || 0,
-              image: imageUrl,
-              areaId: apiArea.id, // Keep original ID for sorting
+              image: imageUrl, // Can be fallback or real image
             };
           })
           .sort((a, b) => {
-            // Sort by AREA_ORDER
-            const aOrder = AREA_ORDER[(a as any).areaId] ?? 999;
-            const bOrder = AREA_ORDER[(b as any).areaId] ?? 999;
-            return aOrder - bOrder;
+            // Sort by projectsCount descending
+            return b.projectsCount - a.projectsCount;
           })
-          .map(({ areaId, ...area }) => area); // Remove areaId from final result
+          .slice(0, TOP_AREAS_COUNT); // Take top 10
         
-        setAreas(filteredAreas);
-      } catch (error) {
-        console.error('Failed to load areas:', error);
-        setAreas([]);
+        setAreas(convertedAreas);
+        
+        } catch (error) {setAreas([]);
       } finally {
         setLoading(false);
       }
@@ -225,14 +191,7 @@ export default function Areas() {
               ) : areas.length === 0 ? (
                 <div className={styles.noAreas}>No areas found</div>
               ) : (
-                areas
-                  .filter(area => !failedImages.has(area.id)) // Hide areas with failed images
-                  .map((area) => {
-                    // Don't render if image has failed
-                    if (failedImages.has(area.id)) {
-                      return null;
-                    }
-                    
+                areas.map((area) => {
                     return (
                       <Link
                         key={area.id}
@@ -247,17 +206,20 @@ export default function Areas() {
                             style={{ objectFit: 'cover' }}
                             sizes="(max-width: 1200px) 33vw, (max-width: 900px) 50vw, 25vw"
                             loading="lazy"
-                            unoptimized
-                            onError={() => {
-                              // If image fails to load, mark it as failed and hide the area card
-                              if (process.env.NODE_ENV === 'development') {
-                                console.error(`❌ Failed to load image for area "${area.name}" (${area.id}):`, area.image);
+                            unoptimized={(() => {
+                              // Use unoptimized for external images that might not be in remotePatterns
+                              const src = area.image;
+                              if (!src || src === '/golf.jpg' || !src.startsWith('http')) {
+                                return false; // Local images can be optimized
                               }
-                              setFailedImages(prev => {
-                                const next = new Set(prev);
-                                next.add(area.id);
-                                return next;
-                              });
+                              // For external images, use unoptimized to ensure they load
+                              return true;
+                            })()}
+                            onError={() => {
+                              // If image fails to load (even fallback), log it but don't hide the card
+                              if (process.env.NODE_ENV === 'development') {
+                              }
+                              // No need to add to failedImages, as we now use a fallback
                             }}
                           />
                           <div className={styles.cardOverlay}></div>
