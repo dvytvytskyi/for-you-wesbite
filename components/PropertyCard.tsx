@@ -211,15 +211,38 @@ function PropertyCard({ property, currentPage = 1 }: PropertyCardProps) {
   const totalPhotos = property.photos?.length || 0;
 
   const handleImageChange = (dir: 'prev' | 'next') => {
-    if (!property.photos || property.photos.length <= 1 || isTransitioning) return;
+    // Calculate max index based on available photos
+    const maxVisibleIndex = visiblePhotos.length - 1;
+    const totalAvailable = hasMorePhotos ? MAX_PHOTOS_TO_LOAD + 1 : visiblePhotos.length; // 5 photos + 1 blur = 6 total
+    
+    if (totalAvailable <= 1 || isTransitioning) return;
     
     setIsTransitioning(true);
     setPrevImageIndex(currentImageIndex);
     setDirection(dir === 'next' ? 'right' : 'left');
     
-    const newIndex = dir === 'next'
-      ? (currentImageIndex + 1) % property.photos.length
-      : currentImageIndex === 0 ? property.photos.length - 1 : currentImageIndex - 1;
+    let newIndex: number;
+    if (dir === 'next') {
+      // If at last visible photo (index 4) and has more, go to blur placeholder (index 5)
+      if (currentImageIndex === maxVisibleIndex && hasMorePhotos) {
+        newIndex = MAX_PHOTOS_TO_LOAD; // Index 5 = blur placeholder
+      } else if (currentImageIndex === MAX_PHOTOS_TO_LOAD) {
+        // If at blur placeholder, wrap to first photo
+        newIndex = 0;
+      } else {
+        newIndex = currentImageIndex + 1;
+      }
+    } else {
+      // If at blur placeholder (index 5), go to last visible photo (index 4)
+      if (currentImageIndex === MAX_PHOTOS_TO_LOAD) {
+        newIndex = maxVisibleIndex;
+      } else if (currentImageIndex === 0) {
+        // If at first photo, wrap to blur placeholder if exists, otherwise to last
+        newIndex = hasMorePhotos ? MAX_PHOTOS_TO_LOAD : maxVisibleIndex;
+      } else {
+        newIndex = currentImageIndex - 1;
+      }
+    }
     
     setCurrentImageIndex(newIndex);
     
@@ -234,7 +257,11 @@ function PropertyCard({ property, currentPage = 1 }: PropertyCardProps) {
     setImageLoading(true);
     setCurrentImageIndex(0);
     
-    // Debug: Log photos data
+    // Ensure we don't load more than 5 photos
+    // Limit property.photos to first 5 for performance
+    if (property.photos && property.photos.length > MAX_PHOTOS_TO_LOAD) {
+      // This is just for reference - actual limiting happens in visiblePhotos
+    }
     }, [property.id, property.photos, property.name]);
 
   const handleClick = () => {
@@ -301,10 +328,18 @@ function PropertyCard({ property, currentPage = 1 }: PropertyCardProps) {
                     sizes="(max-width: 1200px) 50vw, (max-width: 900px) 100vw, 33vw"
                     className={`${styles.cardImage} ${styles.prevImage} ${direction === 'right' ? styles.slideOutLeft : styles.slideOutRight}`}
                     loading="lazy"
+                    unoptimized={(() => {
+                      // Use unoptimized for external images that might not be in remotePatterns
+                      const src = visiblePhotos[prevImageIndex];
+                      if (!src || src === '/golf.jpg' || !src.startsWith('http')) {
+                        return false; // Local images can be optimized
+                      }
+                      return true; // External images use unoptimized
+                    })()}
                   />
                 )}
-                {/* Current image - sliding in */}
-                {visiblePhotos[currentImageIndex] && (
+                {/* Current image - sliding in - only load if index < 5 */}
+                {currentImageIndex < MAX_PHOTOS_TO_LOAD && visiblePhotos[currentImageIndex] && (
                   <Image
                     key={`current-${currentImageIndex}`}
                     src={visiblePhotos[currentImageIndex]}
@@ -313,7 +348,15 @@ function PropertyCard({ property, currentPage = 1 }: PropertyCardProps) {
                     style={{ objectFit: 'cover' }}
                     sizes="(max-width: 1200px) 50vw, (max-width: 900px) 100vw, 33vw"
                     className={`${styles.cardImage} ${styles.currentImage} ${isTransitioning && direction === 'right' ? styles.slideInRight : isTransitioning && direction === 'left' ? styles.slideInLeft : ''}`}
-                    loading="lazy"
+                    loading={currentImageIndex === 0 ? 'eager' : 'lazy'}
+                    unoptimized={(() => {
+                      // Use unoptimized for external images that might not be in remotePatterns
+                      const src = visiblePhotos[currentImageIndex];
+                      if (!src || src === '/golf.jpg' || !src.startsWith('http')) {
+                        return false; // Local images can be optimized
+                      }
+                      return true; // External images use unoptimized
+                    })()}
                     onLoad={() => {
                       setImageLoading(false);
                       }}
@@ -335,7 +378,7 @@ function PropertyCard({ property, currentPage = 1 }: PropertyCardProps) {
             </div>
           </div>
         )}
-        {property.photos && property.photos.length > 1 && (
+        {property.photos && property.photos.length > 1 && (visiblePhotos.length > 1 || hasMorePhotos) && (
           <>
             <button
               className={`${styles.imageNav} ${styles.prev}`}
@@ -380,14 +423,15 @@ function PropertyCard({ property, currentPage = 1 }: PropertyCardProps) {
               </div>
             )}
           </div>
-          <button
-            className={styles.favoriteButton}
-            onClick={(e) => {
-              e.preventDefault();
-              setIsFavorite(!isFavorite);
-            }}
-            aria-label="Add to favorites"
-          >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <button
+              className={styles.favoriteButton}
+              onClick={(e) => {
+                e.preventDefault();
+                setIsFavorite(!isFavorite);
+              }}
+              aria-label="Add to favorites"
+            >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path
                 d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
@@ -399,6 +443,7 @@ function PropertyCard({ property, currentPage = 1 }: PropertyCardProps) {
               />
             </svg>
           </button>
+          </div>
         </div>
       </div>
 
