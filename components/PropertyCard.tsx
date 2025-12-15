@@ -341,6 +341,7 @@ function PropertyCard({ property, currentPage = 1 }: PropertyCardProps) {
                   />
                 )}
                 {/* Current image - sliding in - only load if index < 5 */}
+                {/* CRITICAL: Only render the current image, not all images */}
                 {currentImageIndex < MAX_PHOTOS_TO_LOAD && visiblePhotos[currentImageIndex] && (
                   <Image
                     key={`current-${currentImageIndex}`}
@@ -351,6 +352,7 @@ function PropertyCard({ property, currentPage = 1 }: PropertyCardProps) {
                     sizes="(max-width: 1200px) 50vw, (max-width: 900px) 100vw, 33vw"
                     className={`${styles.cardImage} ${styles.currentImage} ${isTransitioning && direction === 'right' ? styles.slideInRight : isTransitioning && direction === 'left' ? styles.slideInLeft : ''}`}
                     loading={currentImageIndex === 0 ? 'eager' : 'lazy'}
+                    priority={currentImageIndex === 0 ? false : undefined}
                     unoptimized={(() => {
                       // Use unoptimized for external images that might not be in remotePatterns
                       const src = visiblePhotos[currentImageIndex];
