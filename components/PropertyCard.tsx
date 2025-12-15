@@ -204,11 +204,13 @@ function PropertyCard({ property, currentPage = 1 }: PropertyCardProps) {
     return formatNumber(Math.round(pricePerSqm));
   };
 
-  // Limit to first 5 photos for performance
+  // Limit to first 5 photos for performance - CRITICAL: only use first 5 photos
   const MAX_PHOTOS_TO_LOAD = 5;
-  const visiblePhotos = property.photos?.slice(0, MAX_PHOTOS_TO_LOAD) || [];
-  const hasMorePhotos = (property.photos?.length || 0) > MAX_PHOTOS_TO_LOAD;
-  const totalPhotos = property.photos?.length || 0;
+  // Force limit to first 5 photos - don't allow more
+  const allPhotos = Array.isArray(property.photos) ? property.photos : [];
+  const visiblePhotos = allPhotos.slice(0, MAX_PHOTOS_TO_LOAD);
+  const hasMorePhotos = allPhotos.length > MAX_PHOTOS_TO_LOAD;
+  const totalPhotos = allPhotos.length;
 
   const handleImageChange = (dir: 'prev' | 'next') => {
     // Calculate max index based on available photos
@@ -282,8 +284,8 @@ function PropertyCard({ property, currentPage = 1 }: PropertyCardProps) {
         {imageLoading && (
           <div className={styles.imageSkeleton}></div>
         )}
-        {/* Ensure photos is an array and has at least one valid URL */}
-        {Array.isArray(property.photos) && property.photos.length > 0 && property.photos[0] && (
+        {/* Ensure photos is an array and has at least one valid URL - ONLY use first 5 photos */}
+        {visiblePhotos.length > 0 && visiblePhotos[0] && (
           <div className={styles.imageWrapper} style={{ opacity: imageLoading ? 0 : 1, transition: 'opacity 0.3s ease' }}>
             {/* Show blur placeholder for 6th photo and beyond */}
             {currentImageIndex >= MAX_PHOTOS_TO_LOAD ? (
@@ -369,7 +371,7 @@ function PropertyCard({ property, currentPage = 1 }: PropertyCardProps) {
           </div>
         )}
         {/* Placeholder when no photos */}
-        {(!Array.isArray(property.photos) || property.photos.length === 0 || !property.photos[0]) && (
+        {visiblePhotos.length === 0 && (
           <div className={styles.imageWrapper}>
             <div className={styles.placeholderImage}>
               <svg width="64" height="64" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -378,7 +380,7 @@ function PropertyCard({ property, currentPage = 1 }: PropertyCardProps) {
             </div>
           </div>
         )}
-        {property.photos && property.photos.length > 1 && (visiblePhotos.length > 1 || hasMorePhotos) && (
+        {(visiblePhotos.length > 1 || hasMorePhotos) && (
           <>
             <button
               className={`${styles.imageNav} ${styles.prev}`}
