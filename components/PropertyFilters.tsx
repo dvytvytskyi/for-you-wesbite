@@ -86,24 +86,42 @@ export default function PropertyFilters({ filters, onFilterChange, isModal = fal
       try {
         setLoadingData(true);
         
-        // Load areas with projectsCount from /public/areas endpoint
-        // This ensures we get areas with project counts and can filter by projectsCount > 0
-        const areasData = await getAreas(undefined, true);
+        // Get public data to find Dubai city ID
+        const publicData = await getPublicData();
+        
+        // Find Dubai city ID
+        const dubaiCity = publicData.cities.find(city => 
+          city.nameEn.toLowerCase() === 'dubai' || 
+          city.nameRu.toLowerCase() === 'дубай'
+        );
+        
+        const dubaiCityId = dubaiCity?.id;
+        
+        // Load areas only for Dubai (if city ID found)
+        const areasData = dubaiCityId 
+          ? await getAreas(dubaiCityId, true)
+          : await getAreas(undefined, true);
         
         // Filter areas to only show those with projects (projectsCount > 0)
+        // Sort by projectsCount (most popular first) and take top 30
         const areasWithProjects = areasData
           .filter(area => {
             const projectsCount = area.projectsCount?.total || 0;
             return projectsCount > 0;
           })
           .sort((a, b) => {
-            // Sort by nameEn (alphabetically, always use English for consistent sorting)
+            // Sort by projectsCount descending (most popular first)
+            const countA = a.projectsCount?.total || 0;
+            const countB = b.projectsCount?.total || 0;
+            if (countB !== countA) {
+              return countB - countA;
+            }
+            // If counts are equal, sort alphabetically
             return a.nameEn.localeCompare(b.nameEn);
-          });
+          })
+          .slice(0, 30); // Take only top 30 popular areas
         
         // Load developers from public data
-        const publicData = await getPublicData();
-        
         // Sort developers alphabetically by name
         const sortedDevelopers = [...(publicData.developers || [])].sort((a, b) => 
           a.name.localeCompare(b.name)
