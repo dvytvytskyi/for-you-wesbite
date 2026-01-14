@@ -459,8 +459,8 @@
 }
 
 .partnersTitle {
-  font-family: 'Inter', sans-serif;
-  font-size: 14px;
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 16px;
   font-weight: 400;
   color: #003077;
   margin: 0 0 60px 0;
@@ -509,6 +509,7 @@
   0% {
     transform: translateX(0);
   }
+
   100% {
     transform: translateX(-50%);
   }
@@ -963,7 +964,8 @@
   font-weight: 400;
   color: #000000;
   padding: 12px 16px;
-  padding-right: 40px; /* Space for select arrow */
+  padding-right: 40px;
+  /* Space for select arrow */
   border: 1px solid rgba(0, 0, 0, 0.2);
   border-radius: 8px;
   background: #ffffff;
@@ -973,11 +975,13 @@
 }
 
 .formField input[type="date"] {
-  padding-right: 16px; /* Date input doesn't need extra padding */
+  padding-right: 16px;
+  /* Date input doesn't need extra padding */
 }
 
 .formField textarea {
-  padding-right: 16px; /* Textarea doesn't need extra padding */
+  padding-right: 16px;
+  /* Textarea doesn't need extra padding */
 }
 
 .formField select {
@@ -1069,8 +1073,11 @@
     font-size: 28px;
   }
 
-  .formTitle {
-    font-size: 20px;
+  .formField input,
+  .formField select,
+  .formField textarea {
+    font-size: 16px;
+    /* Prevent zoom on iOS */
   }
 }
 
@@ -1238,4 +1245,3 @@
     font-size: 14px;
   }
 }
-

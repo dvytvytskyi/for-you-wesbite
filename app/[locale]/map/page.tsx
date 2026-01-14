@@ -2,11 +2,29 @@
 
 import { useEffect, useState } from 'react';
 import { useLocale } from 'next-intl';
+import dynamic from 'next/dynamic';
 import Header from '@/components/Header';
-import MapboxMap from '@/components/MapboxMap';
-import { getProperties, Property as ApiProperty } from '@/lib/api';
+import { getMapMarkers, getProperties, Property as ApiProperty } from '@/lib/api';
 import { formatNumber } from '@/lib/utils';
 import styles from './page.module.css';
+
+// Lazily load MapboxMap as it's a heavy client component
+const MapboxMap = dynamic(() => import('@/components/MapboxMap'), {
+  ssr: false,
+  loading: () => (
+    <div style={{
+      width: '100%',
+      height: '100%',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      background: '#f8f9fa'
+    }}>
+      <div style={{ color: '#003077', fontWeight: '500' }}>Initializing Map...</div>
+    </div>
+  )
+});
+
 
 // Convert API Property to MapboxMap Property format
 function convertPropertyToMapFormat(property: ApiProperty, locale: string): any {
@@ -113,7 +131,7 @@ function convertPropertyToMapFormat(property: ApiProperty, locale: string): any 
   };
 
   // Convert facilities to amenities
-  const amenities = property.facilities.map(f => 
+  const amenities = property.facilities.map(f =>
     locale === 'ru' ? f.nameRu : f.nameEn
   );
 
@@ -167,6 +185,7 @@ function convertPropertyToMapFormat(property: ApiProperty, locale: string): any 
     units: getUnits(),
     description: property.description,
     descriptionRu: property.description,
+    isForYouChoice: property.isForYouChoice,
   };
 }
 
@@ -182,26 +201,41 @@ export default function MapPage() {
       try {
         setLoading(true);
         setError(null);
-        
-        // Load only off-plan properties for map
-        // For map, we need all off-plan properties, so request a large limit
-        const result = await getProperties({ propertyType: 'off-plan', limit: 1000 });
-        const apiProperties = result.properties || [];
-        
-        if (process.env.NODE_ENV === 'development') {
-          }
-        
-        // Convert to map format and filter out invalid ones
-        const mapProperties = apiProperties
-          .map(p => convertPropertyToMapFormat(p, locale))
-          .filter((p): p is NonNullable<typeof p> => p !== null);
+
+        // Fetch all markers at once from the optimized endpoint
+        const markers = await getMapMarkers();
+
+        console.log(`[Map] Fetched ${markers.length} markers`);
+
+        // Convert to map format (partial)
+        const mapProperties = markers.map(m => ({
+          id: m.id,
+          // Create a minimal property object
+          name: '',
+          nameRu: '',
+          location: { area: '', areaRu: '', city: '', cityRu: '' },
+          price: {
+            usd: 0,
+            aed: typeof m.priceAED === 'string' ? parseFloat(m.priceAED) : Number(m.priceAED),
+            eur: 0
+          },
+          developer: { name: '', nameRu: '' },
+          bedrooms: 0,
+          bathrooms: 0,
+          size: { sqm: 0, sqft: 0 },
+          images: [],
+          type: m.propertyType === 'off-plan' ? 'new' as const : 'secondary' as const,
+          coordinates: [
+            typeof m.lng === 'string' ? parseFloat(m.lng) : Number(m.lng),
+            typeof m.lat === 'string' ? parseFloat(m.lat) : Number(m.lat)
+          ] as [number, number],
+          isPartial: true
+        }));
 
         setProperties(mapProperties);
         setIsInitialLoad(false);
-        
-        if (process.env.NODE_ENV === 'development') {
-          }
       } catch (err: any) {
+        console.error('Failed to load map markers:', err);
         setError(err.message || 'Failed to load properties');
         setIsInitialLoad(false);
       } finally {
@@ -209,7 +243,6 @@ export default function MapPage() {
       }
     };
 
-    // Load properties asynchronously - don't block map rendering
     loadProperties();
   }, [locale]);
 
@@ -219,7 +252,7 @@ export default function MapPage() {
       <div className={styles.mapPage}>
         {/* Show loading indicator only while loading properties, not blocking map */}
         {isInitialLoad && (
-          <div style={{ 
+          <div style={{
             position: 'absolute',
             top: '80px',
             left: '50%',
@@ -238,7 +271,7 @@ export default function MapPage() {
           </div>
         )}
         {error && (
-          <div style={{ 
+          <div style={{
             position: 'absolute',
             top: '80px',
             left: '50%',

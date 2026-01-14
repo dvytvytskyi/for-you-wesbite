@@ -65,6 +65,10 @@ const nextConfig = {
         protocol: 'https',
         hostname: 'foryou-realestate.com',
       },
+      {
+        protocol: 'https',
+        hostname: 'nbg1.your-objectstorage.com',
+      },
     ],
   },
 };

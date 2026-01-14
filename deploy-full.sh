@@ -29,7 +29,7 @@ fi
 
 # Read password from user or use environment variable
 if [ -z "$SERVER_PASSWORD" ]; then
-    SERVER_PASSWORD="FNrtVkfCRwgW"
+    SERVER_PASSWORD="xTVvPEwrpaF4"
 fi
 
 echo "📡 Step 1: Checking server connection..."
@@ -115,9 +115,9 @@ echo "⚙️  Step 5: Creating .env.local file on server..."
 sshpass -p "$SERVER_PASSWORD" ssh -o StrictHostKeyChecking=no ${SERVER_USER}@${SERVER_IP} bash << 'ENDSSH'
     cat > /var/www/foryou-realestate/.env.local << 'ENVFILE'
 NEXT_PUBLIC_API_URL=https://admin.foryou-realestate.com/api
-NEXT_PUBLIC_API_KEY=fyr_8f968d115244e76d209a26f5177c5c998aca0e8dbce4a6e9071b2bc43b78f6d2
-NEXT_PUBLIC_API_SECRET=5c8335f9c7e476cbe77454fd32532cc68f57baf86f7f96e6bafcf682f98b275bc579d73484cf5bada7f4cd7d071b122778b71f414fb96b741c5fe60394d1795f
-NEXT_PUBLIC_MAPBOX_TOKEN=pk.eyJ1IjoibW1hcmFjaCIsImEiOiJjbTJqMG1pNjUwNzZ4M2psY21mazV5cDU4In0.FQ7FqgFo4QKHqOVaM3JXjQ
+NEXT_PUBLIC_API_KEY=fyr_7084daf35cf6427f60e06bccd675f133b8a19ce4866cf941156bb4f38fba4016
+NEXT_PUBLIC_API_SECRET=2e9e9a3a8080f207cf1c684baaeff40dcd4404c10f4d2207340bb48ee8ccdccda3f4e2fde5bd74fa4d8f463e361c45c9437206a97abb772415263e3a69655a73
+NEXT_PUBLIC_MAPBOX_TOKEN=pk.eyJ1IjoiYWJpZXNwYW5hIiwiYSI6ImNsb3N4NzllYzAyOWYybWw5ZzNpNXlqaHkifQ.UxlTvUuSq9L5jt0jRtRR-A
 NODE_ENV=production
 ENVFILE
     echo "✓ .env.local created"
@@ -129,7 +129,7 @@ sshpass -p "$SERVER_PASSWORD" ssh -o StrictHostKeyChecking=no ${SERVER_USER}@${S
     cd /var/www/foryou-realestate
     
     echo "Installing npm dependencies..."
-    npm install --omit=dev 2>&1 | tail -20
+    npm install 2>&1
     
     echo "✓ Dependencies installed"
 ENDSSH
@@ -140,7 +140,7 @@ sshpass -p "$SERVER_PASSWORD" ssh -o StrictHostKeyChecking=no ${SERVER_USER}@${S
     cd /var/www/foryou-realestate
     
     echo "Building Next.js project..."
-    npm run build 2>&1 | tail -30
+    npm run build 2>&1
     
     echo "✓ Build completed"
 ENDSSH

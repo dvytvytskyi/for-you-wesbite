@@ -35,12 +35,10 @@
   left: 0;
   width: 100%;
   height: 100%;
-  background: linear-gradient(
-    90deg,
-    #f0f0f0 0%,
-    #e0e0e0 50%,
-    #f0f0f0 100%
-  );
+  background: linear-gradient(90deg,
+      #f0f0f0 0%,
+      #e0e0e0 50%,
+      #f0f0f0 100%);
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
   border-radius: 8px;
@@ -51,6 +49,7 @@
   0% {
     background-position: -200% 0;
   }
+
   100% {
     background-position: 200% 0;
   }
@@ -89,6 +88,17 @@
   height: 100%;
 }
 
+.preloadImage {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  pointer-events: none;
+  z-index: -1;
+}
+
 .currentImage {
   opacity: 1;
   transform: translateX(0);
@@ -122,6 +132,7 @@
     transform: translateX(100%);
     opacity: 1;
   }
+
   to {
     transform: translateX(0);
     opacity: 1;
@@ -133,6 +144,7 @@
     transform: translateX(-100%);
     opacity: 1;
   }
+
   to {
     transform: translateX(0);
     opacity: 1;
@@ -144,6 +156,7 @@
     transform: translateX(0);
     opacity: 1;
   }
+
   to {
     transform: translateX(-100%);
     opacity: 1;
@@ -155,6 +168,7 @@
     transform: translateX(0);
     opacity: 1;
   }
+
   to {
     transform: translateX(100%);
     opacity: 1;
@@ -227,10 +241,25 @@
   left: 12px;
   right: 12px;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 8px;
   z-index: 4;
+  flex-wrap: wrap;
+  /* Allow wrapping */
+  height: 0;
+  /* To not affect height calculation */
+  overflow: visible;
+  /* Show overflowing content */
+}
+
+/* Container for left-side badges to stack them properly */
+.badgesGroup {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  max-width: calc(100% - 40px);
+  /* Leave space for heart button */
 }
 
 .typeBadge {
@@ -245,6 +274,28 @@
   font-weight: 500;
   text-transform: capitalize;
   border: 1px solid rgba(255, 255, 255, 0.2);
+  white-space: nowrap;
+}
+
+.exclusiveBadge {
+  background: #EBA44E;
+  /* Custom warm color */
+  color: #ffffff;
+  /* White text for better contrast */
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  /* Slightly lighter weight */
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  box-shadow: none;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
 }
 
 .content {
@@ -486,4 +537,3 @@
     font-size: 20px;
   }
 }
-

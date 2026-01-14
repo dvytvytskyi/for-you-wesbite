@@ -14,8 +14,8 @@
 }
 
 .partnersTitle {
-  font-family: 'Inter', sans-serif;
-  font-size: 14px;
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 16px;
   font-weight: 400;
   color: #003077;
   margin: 0 0 60px 0;
@@ -69,6 +69,7 @@
   0% {
     transform: translateX(0);
   }
+
   100% {
     transform: translateX(-50%);
   }
@@ -112,4 +113,3 @@
     max-width: 150px;
   }
 }
-

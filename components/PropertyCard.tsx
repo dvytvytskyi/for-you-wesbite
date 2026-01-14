@@ -5,24 +5,30 @@ import { useTranslations, useLocale } from 'next-intl';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Property } from '@/lib/api';
+import { getOptimizedImageUrl } from '@/lib/images';
 import { formatNumber } from '@/lib/utils';
 import { saveScrollState } from '@/lib/scrollRestoration';
+import { useFavorites } from '@/lib/favoritesContext';
 import styles from './PropertyCard.module.css';
 
 interface PropertyCardProps {
   property: Property;
   currentPage?: number;
+  index?: number;
 }
 
-function PropertyCard({ property, currentPage = 1 }: PropertyCardProps) {
+function PropertyCard({ property, currentPage = 1, index = 10 }: PropertyCardProps) {
   const t = useTranslations('propertyCard');
   const locale = useLocale();
+  const { isFavorite, toggleFavorite } = useFavorites();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [prevImageIndex, setPrevImageIndex] = useState(0);
   const [direction, setDirection] = useState<'left' | 'right' | null>(null);
   const [isTransitioning, setIsTransitioning] = useState(false);
-  const [isFavorite, setIsFavorite] = useState(false);
+  // const [isFavorite, setIsFavorite] = useState(false); // Removed local state
+  const isFav = isFavorite(property.id);
   const [imageLoading, setImageLoading] = useState(true);
+  const [isInteracted, setIsInteracted] = useState(false);
 
   const getLocalizedPath = (path: string) => {
     return locale === 'en' ? path : `/${locale}${path}`;
@@ -42,26 +48,26 @@ function PropertyCard({ property, currentPage = 1 }: PropertyCardProps) {
       }
       return '';
     }
-    
+
     if (typeof property.area === 'string') {
       // Off-plan: area already contains "areaName, cityName"
       return property.area;
     }
-    
+
     // Secondary: area is an object, need to combine with city
     if (!property.city) {
       // If no city, just return area name
       return locale === 'ru' ? property.area.nameRu : property.area.nameEn;
     }
-    
+
     const areaName = locale === 'ru' ? property.area.nameRu : property.area.nameEn;
     const cityName = locale === 'ru' ? property.city.nameRu : property.city.nameEn;
-    
+
     // Format: "area name, city name"
     const parts = [];
     if (areaName) parts.push(areaName);
     if (cityName) parts.push(cityName);
-    
+
     return parts.join(', ');
   };
 
@@ -113,7 +119,7 @@ function PropertyCard({ property, currentPage = 1 }: PropertyCardProps) {
       const sizeTo = property.sizeTo;
       const sizeFromSqft = property.sizeFromSqft;
       const sizeToSqft = property.sizeToSqft;
-      
+
       // Check if we have valid size data
       if (sizeFrom !== null && sizeFrom !== undefined && sizeFrom > 0) {
         if (sizeTo !== null && sizeTo !== undefined && sizeTo > 0 && sizeTo !== sizeFrom) {
@@ -124,8 +130,8 @@ function PropertyCard({ property, currentPage = 1 }: PropertyCardProps) {
             from = sizeFrom;
             to = sizeTo;
           } else {
-            from = sizeFromSqft !== null && sizeFromSqft !== undefined && sizeFromSqft > 0 
-              ? sizeFromSqft 
+            from = sizeFromSqft !== null && sizeFromSqft !== undefined && sizeFromSqft > 0
+              ? sizeFromSqft
               : Math.round(sizeFrom * 10.764);
             to = sizeToSqft !== null && sizeToSqft !== undefined && sizeToSqft > 0
               ? sizeToSqft
@@ -153,7 +159,7 @@ function PropertyCard({ property, currentPage = 1 }: PropertyCardProps) {
       // For secondary: use size/sizeSqft
       const size = property.size;
       const sizeSqft = property.sizeSqft;
-      
+
       if (size !== null && size !== undefined && size > 0) {
         let displaySize: number;
         if (locale === 'ru') {
@@ -179,35 +185,38 @@ function PropertyCard({ property, currentPage = 1 }: PropertyCardProps) {
     } else {
       price = (property.priceAED && property.priceAED > 0) ? property.priceAED : null;
     }
-    
+
     if (!price || price === 0) {
       return 'N/A';
     }
-    
+
     let size: number;
     if (property.propertyType === 'off-plan') {
       size = property.sizeFrom || 0;
     } else {
       size = property.size || 0;
     }
-    
+
     if (!size || size === 0) {
       return 'N/A';
     }
-    
+
     // Calculate price per sqm in AED (price is already in AED)
     const pricePerSqm = price / size;
     if (isNaN(pricePerSqm) || !isFinite(pricePerSqm)) {
       return 'N/A';
     }
-    
+
     return formatNumber(Math.round(pricePerSqm));
   };
 
   // Limit to first 5 photos for performance - CRITICAL: only use first 5 photos
   const MAX_PHOTOS_TO_LOAD = 5;
   // Force limit to first 5 photos - don't allow more
-  const allPhotos = Array.isArray(property.photos) ? property.photos : [];
+  // Prefer property.images (small) for optimized loading, fallback to photos
+  const allPhotos = (property.images && property.images.length > 0)
+    ? property.images.map(img => img.small)
+    : (Array.isArray(property.photos) ? property.photos : []);
   const visiblePhotos = allPhotos.slice(0, MAX_PHOTOS_TO_LOAD);
   const hasMorePhotos = allPhotos.length > MAX_PHOTOS_TO_LOAD;
   const totalPhotos = allPhotos.length;
@@ -216,13 +225,13 @@ function PropertyCard({ property, currentPage = 1 }: PropertyCardProps) {
     // Calculate max index based on available photos
     const maxVisibleIndex = visiblePhotos.length - 1;
     const totalAvailable = hasMorePhotos ? MAX_PHOTOS_TO_LOAD + 1 : visiblePhotos.length; // 5 photos + 1 blur = 6 total
-    
+
     if (totalAvailable <= 1 || isTransitioning) return;
-    
+
     setIsTransitioning(true);
     setPrevImageIndex(currentImageIndex);
     setDirection(dir === 'next' ? 'right' : 'left');
-    
+
     let newIndex: number;
     if (dir === 'next') {
       // If at last visible photo (index 4) and has more, go to blur placeholder (index 5)
@@ -245,9 +254,9 @@ function PropertyCard({ property, currentPage = 1 }: PropertyCardProps) {
         newIndex = currentImageIndex - 1;
       }
     }
-    
+
     setCurrentImageIndex(newIndex);
-    
+
     setTimeout(() => {
       setIsTransitioning(false);
       setDirection(null);
@@ -258,13 +267,19 @@ function PropertyCard({ property, currentPage = 1 }: PropertyCardProps) {
   useEffect(() => {
     setImageLoading(true);
     setCurrentImageIndex(0);
-    
+
     // Ensure we don't load more than 5 photos
     // Limit property.photos to first 5 for performance
     if (property.photos && property.photos.length > MAX_PHOTOS_TO_LOAD) {
       // This is just for reference - actual limiting happens in visiblePhotos
     }
-    }, [property.id, property.photos, property.name]);
+  }, [property.id, property.photos, property.images, property.name]);
+
+  // Manual prefetching removed in favor of hidden pre-rendering
+
+  const handleMouseEnter = () => {
+    setIsInteracted(true);
+  };
 
   const handleClick = () => {
     // Save scroll position and page before navigating
@@ -272,10 +287,11 @@ function PropertyCard({ property, currentPage = 1 }: PropertyCardProps) {
   };
 
   return (
-    <Link 
-      href={getLocalizedPath(`/properties/${property.id}`)} 
+    <Link
+      href={getLocalizedPath(`/properties/${property.id}`)}
       className={styles.card}
       onClick={handleClick}
+      onMouseEnter={handleMouseEnter}
     >
       <div className={styles.imageContainer}>
         <div className={styles.imageGradientTop}></div>
@@ -304,7 +320,7 @@ function PropertyCard({ property, currentPage = 1 }: PropertyCardProps) {
                   )}
                 </div>
                 <div className={styles.viewAllOverlay}>
-                  <button 
+                  <button
                     className={styles.viewAllButton}
                     onClick={(e) => {
                       e.preventDefault();
@@ -320,54 +336,48 @@ function PropertyCard({ property, currentPage = 1 }: PropertyCardProps) {
             ) : (
               <>
                 {/* Previous image - sliding out */}
-                {isTransitioning && prevImageIndex !== currentImageIndex && prevImageIndex < MAX_PHOTOS_TO_LOAD && visiblePhotos[prevImageIndex] && (
-                  <Image
-                    key={`prev-${prevImageIndex}`}
-                    src={visiblePhotos[prevImageIndex]}
-                    alt={getName()}
-                    fill
-                    style={{ objectFit: 'cover' }}
-                    sizes="(max-width: 1200px) 50vw, (max-width: 900px) 100vw, 33vw"
-                    className={`${styles.cardImage} ${styles.prevImage} ${direction === 'right' ? styles.slideOutLeft : styles.slideOutRight}`}
-                    loading="lazy"
-                    unoptimized={(() => {
-                      // Use unoptimized for external images that might not be in remotePatterns
-                      const src = visiblePhotos[prevImageIndex];
-                      if (!src || src === '/golf.jpg' || !src.startsWith('http')) {
-                        return false; // Local images can be optimized
-                      }
-                      return true; // External images use unoptimized
-                    })()}
-                  />
-                )}
-                {/* Current image - sliding in - only load if index < 5 */}
-                {/* CRITICAL: Only render the current image, not all images */}
-                {currentImageIndex < MAX_PHOTOS_TO_LOAD && visiblePhotos[currentImageIndex] && (
-                  <Image
-                    key={`current-${currentImageIndex}`}
-                    src={visiblePhotos[currentImageIndex]}
-                    alt={getName()}
-                    fill
-                    style={{ objectFit: 'cover' }}
-                    sizes="(max-width: 1200px) 50vw, (max-width: 900px) 100vw, 33vw"
-                    className={`${styles.cardImage} ${styles.currentImage} ${isTransitioning && direction === 'right' ? styles.slideInRight : isTransitioning && direction === 'left' ? styles.slideInLeft : ''}`}
-                    loading={currentImageIndex === 0 ? 'eager' : 'lazy'}
-                    priority={currentImageIndex === 0 ? false : undefined}
-                    unoptimized={(() => {
-                      // Use unoptimized for external images that might not be in remotePatterns
-                      const src = visiblePhotos[currentImageIndex];
-                      if (!src || src === '/golf.jpg' || !src.startsWith('http')) {
-                        return false; // Local images can be optimized
-                      }
-                      return true; // External images use unoptimized
-                    })()}
-                    onLoad={() => {
-                      setImageLoading(false);
+                {/* Render ALL visible photos for instant browsing */}
+                {visiblePhotos.slice(0, MAX_PHOTOS_TO_LOAD).map((src, idx) => {
+                  let imageClass = styles.preloadImage;
+                  const isCurrent = idx === currentImageIndex;
+                  const isPrev = idx === prevImageIndex;
+
+                  if (isCurrent) {
+                    imageClass = `${styles.cardImage} ${styles.currentImage}`;
+                    if (isTransitioning) {
+                      imageClass += direction === 'right' ? ` ${styles.slideInRight}` : ` ${styles.slideInLeft}`;
+                    }
+                  } else if (isPrev && isTransitioning) {
+                    imageClass = `${styles.cardImage} ${styles.prevImage}`;
+                    if (isTransitioning) {
+                      imageClass += direction === 'right' ? ` ${styles.slideOutLeft}` : ` ${styles.slideOutRight}`;
+                    }
+                  }
+
+                  // Render up to 5 photos with lazy loading for smooth slider experience
+
+                  return (
+                    <Image
+                      key={`photo-${idx}`}
+                      src={getOptimizedImageUrl(src, 800)}
+                      alt={getName()}
+                      fill
+                      style={{ objectFit: 'cover' }}
+                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                      className={imageClass}
+                      // First image of top 2 cards is eager. Others lazy.
+                      loading={idx === 0 && index < 2 ? 'eager' : 'lazy'}
+                      priority={idx === 0 && index < 2}
+                      unoptimized={!src.includes('res.cloudinary.com')}
+                      onLoad={() => {
+                        if (idx === 0) setImageLoading(false);
                       }}
-                    onError={(e) => {setImageLoading(false);
-                    }}
-                  />
-                )}
+                      onError={() => {
+                        if (idx === 0) setImageLoading(false);
+                      }}
+                    />
+                  );
+                })}
               </>
             )}
           </div>
@@ -377,7 +387,7 @@ function PropertyCard({ property, currentPage = 1 }: PropertyCardProps) {
           <div className={styles.imageWrapper}>
             <div className={styles.placeholderImage}>
               <svg width="64" height="64" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M4 16L8.586 11.414C9.367 10.633 10.633 10.633 11.414 11.414L16 16M14 14L15.586 12.414C16.367 11.633 17.633 11.633 18.414 12.414L20 14M14 8H14.01M6 20H18C19.105 20 20 19.105 20 18V6C20 4.895 19.105 4 18 4H6C4.895 4 4 4.895 4 6V18C4 19.105 4.895 20 6 20Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M4 16L8.586 11.414C9.367 10.633 10.633 10.633 11.414 11.414L16 16M14 14L15.586 12.414C16.367 11.633 17.633 11.633 18.414 12.414L20 14M14 8H14.01M6 20H18C19.105 20 20 19.105 20 18V6C20 4.895 19.105 4 18 4H6C4.895 4 4 4.895 4 6V18C4 19.105 4.895 20 6 20Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </div>
           </div>
@@ -393,7 +403,7 @@ function PropertyCard({ property, currentPage = 1 }: PropertyCardProps) {
               aria-label="Previous image"
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M15 19L8 12L15 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M15 19L8 12L15 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </button>
             <button
@@ -405,7 +415,7 @@ function PropertyCard({ property, currentPage = 1 }: PropertyCardProps) {
               aria-label="Next image"
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M9 5L16 12L9 19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M9 5L16 12L9 19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </button>
             <div className={styles.imageIndicator}>
@@ -414,7 +424,12 @@ function PropertyCard({ property, currentPage = 1 }: PropertyCardProps) {
           </>
         )}
         <div className={styles.badgesContainer}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div className={styles.badgesGroup}>
+            {property.isForYouChoice && (
+              <div className={styles.exclusiveBadge}>
+                {t('exclusiveForYou') || 'Exclusive ForYou'}
+              </div>
+            )}
             <div className={styles.typeBadge}>
               {property.propertyType === 'off-plan' ? (t('type.offPlan') || 'Off Plan') : (t('type.secondary') || 'Secondary')}
             </div>
@@ -431,7 +446,7 @@ function PropertyCard({ property, currentPage = 1 }: PropertyCardProps) {
             className={styles.favoriteButton}
             onClick={(e) => {
               e.preventDefault();
-              setIsFavorite(!isFavorite);
+              toggleFavorite(property);
             }}
             aria-label="Add to favorites"
           >
@@ -442,7 +457,7 @@ function PropertyCard({ property, currentPage = 1 }: PropertyCardProps) {
                 strokeWidth="2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                fill={isFavorite ? 'currentColor' : 'none'}
+                fill={isFav ? 'currentColor' : 'none'}
               />
             </svg>
           </button>
@@ -452,8 +467,8 @@ function PropertyCard({ property, currentPage = 1 }: PropertyCardProps) {
       <div className={styles.content}>
         <div className={styles.locationRow}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M21 10C21 17 12 23 12 23C12 23 3 17 3 10C3 7.61305 3.94821 5.32387 5.63604 3.63604C7.32387 1.94821 9.61305 1 12 1C14.3869 1 16.6761 1.94821 18.364 3.63604C20.0518 5.32387 21 7.61305 21 10Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-            <circle cx="12" cy="10" r="3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M21 10C21 17 12 23 12 23C12 23 3 17 3 10C3 7.61305 3.94821 5.32387 5.63604 3.63604C7.32387 1.94821 9.61305 1 12 1C14.3869 1 16.6761 1.94821 18.364 3.63604C20.0518 5.32387 21 7.61305 21 10Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            <circle cx="12" cy="10" r="3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
           <span className={styles.locationText}>{getLocation()}</span>
         </div>
@@ -464,10 +479,10 @@ function PropertyCard({ property, currentPage = 1 }: PropertyCardProps) {
           {getBedrooms() && (
             <div className={styles.detailItem}>
               <svg width="16" height="16" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M3 6V16C3 16.5523 3.44772 17 4 17H16C16.5523 17 17 16.5523 17 16V6C17 5.44772 16.5523 5 16 5H4C3.44772 5 3 5.44772 3 6Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                <path d="M7 5V3C7 2.44772 7.44772 2 8 2H12C12.5523 2 13 2.44772 13 3V5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                <path d="M6 10H14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                <path d="M6 13H14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M3 6V16C3 16.5523 3.44772 17 4 17H16C16.5523 17 17 16.5523 17 16V6C17 5.44772 16.5523 5 16 5H4C3.44772 5 3 5.44772 3 6Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M7 5V3C7 2.44772 7.44772 2 8 2H12C12.5523 2 13 2.44772 13 3V5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M6 10H14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M6 13H14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
               <span>{getBedrooms()} {locale === 'ru' ? 'спалень' : 'beds'}</span>
             </div>
@@ -475,11 +490,11 @@ function PropertyCard({ property, currentPage = 1 }: PropertyCardProps) {
           {getBathrooms() && (
             <div className={styles.detailItem}>
               <svg width="16" height="16" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M4 6C4 5.44772 4.44772 5 5 5H15C15.5523 5 16 5.44772 16 6V14C16 14.5523 15.5523 15 15 15H5C4.44772 15 4 14.5523 4 14V6Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                <path d="M4 8H16" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                <circle cx="7.5" cy="11" r="0.8" fill="currentColor"/>
-                <circle cx="12.5" cy="11" r="0.8" fill="currentColor"/>
-                <path d="M10 8V11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M4 6C4 5.44772 4.44772 5 5 5H15C15.5523 5 16 5.44772 16 6V14C16 14.5523 15.5523 15 15 15H5C4.44772 15 4 14.5523 4 14V6Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M4 8H16" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                <circle cx="7.5" cy="11" r="0.8" fill="currentColor" />
+                <circle cx="12.5" cy="11" r="0.8" fill="currentColor" />
+                <path d="M10 8V11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
               <span>{getBathrooms()} {locale === 'ru' ? 'ванн' : 'baths'}</span>
             </div>
@@ -487,8 +502,8 @@ function PropertyCard({ property, currentPage = 1 }: PropertyCardProps) {
           {getSize() && (
             <div className={styles.detailItem}>
               <svg width="16" height="16" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <rect x="3" y="5" width="14" height="12" rx="1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                <path d="M3 9H17" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                <rect x="3" y="5" width="14" height="12" rx="1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M3 9H17" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
               <span>{getSize()}</span>
             </div>
@@ -532,6 +547,7 @@ export default memo(PropertyCard, (prevProps, nextProps) => {
   // Only re-render if property ID or key properties change
   return (
     prevProps.property.id === nextProps.property.id &&
+    prevProps.property.images?.[0]?.small === nextProps.property.images?.[0]?.small &&
     prevProps.property.photos?.[0] === nextProps.property.photos?.[0] &&
     prevProps.property.priceAED === nextProps.property.priceAED &&
     prevProps.property.priceFromAED === nextProps.property.priceFromAED

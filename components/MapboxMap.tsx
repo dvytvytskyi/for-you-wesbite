@@ -1,12 +1,15 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import mapboxgl from 'mapbox-gl';
+import type mapboxgl from 'mapbox-gl';
 import MapboxDraw from '@mapbox/mapbox-gl-draw';
 import '@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import PropertyPopup from './PropertyPopup';
+import { getProperty, getPropertySummary } from '@/lib/api';
+import { convertPropertyToMapFormat } from '@/lib/transformers';
+import { useLocale } from 'next-intl';
 
 interface Property {
   id: string;
@@ -45,6 +48,8 @@ interface Property {
   }>;
   description?: string;
   descriptionRu?: string;
+  isForYouChoice?: boolean;
+  isPartial?: boolean;
 }
 
 interface MapboxMapProps {
@@ -55,16 +60,14 @@ interface MapboxMapProps {
 // Format price for marker display (e.g., 132000 -> "AED 132K")
 function formatPriceForMarker(priceAED: number): string {
   if (!priceAED || priceAED === 0) return 'On request';
-  
+
   if (priceAED >= 1000000) {
-    // Millions: 1.5M, 2.3M, etc.
     const millions = priceAED / 1000000;
     if (millions % 1 === 0) {
       return `AED ${millions}M`;
     }
     return `AED ${millions.toFixed(1)}M`;
   } else if (priceAED >= 1000) {
-    // Thousands: 132K, 1.5K, etc.
     const thousands = priceAED / 1000;
     if (thousands % 1 === 0) {
       return `AED ${thousands}K`;
@@ -75,126 +78,19 @@ function formatPriceForMarker(priceAED: number): string {
   }
 }
 
-// Create custom marker element with price
-function createMarkerElement(priceAED: number): HTMLDivElement {
-  const el = document.createElement('div');
-  el.className = 'custom-marker';
-  
-  const priceText = formatPriceForMarker(priceAED);
-  
-  // Orange color for properties >= AED 5M, blue for others
-  const backgroundColor = priceAED >= 5000000 ? '#EBA44E' : '#003077';
-  
-  // Use CSS classes instead of inline styles for better performance
-  el.className = 'custom-marker custom-marker-price';
-  
-  el.style.cssText = `
-    background: ${backgroundColor};
-    color: #ffffff;
-    padding: 4px 8px;
-    border-radius: 4px;
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    font-size: 11px;
-    font-weight: 600;
-    line-height: 1.2;
-    white-space: nowrap;
-    cursor: pointer;
-    touch-action: manipulation;
-    user-select: none;
-    -webkit-user-select: none;
-    -moz-user-select: none;
-    -ms-user-select: none;
-    -webkit-tap-highlight-color: transparent;
-    pointer-events: auto;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    transform-origin: center center;
-    z-index: 10;
-  `;
-  
-  el.textContent = priceText;
-  
-  return el;
-}
-
-// Universal click handler for both desktop and mobile
-function addMarkerClickHandler(
-  el: HTMLDivElement,
-  property: Property,
-  map: mapboxgl.Map | null,
-  setSelectedProperty: (property: Property) => void
-) {
-  const [lng, lat] = property.coordinates;
-  
-  const handleMarkerClick = (e: Event) => {
-    e.stopPropagation();
-    e.preventDefault();
-    if (!map) return;
-    
-    // On mobile, don't adjust offset - let the popup appear at bottom
-    const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768;
-    const offsetX = isMobile ? 0 : 280;
-    const offsetY = isMobile ? 0 : 100;
-    
-    map.flyTo({
-      center: [lng, lat],
-      zoom: isMobile ? 13 : 14,
-      offset: [offsetX, offsetY],
-      duration: 1000,
-      essential: true
-    });
-
-    setSelectedProperty(property);
-  };
-  
-  // Add click handler for desktop
-  el.addEventListener('click', handleMarkerClick);
-  
-  // Add touch handlers for mobile
-  let touchStartTime = 0;
-  let touchStartX = 0;
-  let touchStartY = 0;
-  
-  el.addEventListener('touchstart', (e: TouchEvent) => {
-    touchStartTime = Date.now();
-    touchStartX = e.touches[0].clientX;
-    touchStartY = e.touches[0].clientY;
-  }, { passive: true });
-  
-  el.addEventListener('touchend', (e: TouchEvent) => {
-    const touchEndTime = Date.now();
-    const touchDuration = touchEndTime - touchStartTime;
-    
-    // Only trigger if it was a quick tap (not a drag)
-    if (touchDuration < 300) {
-      const touchEndX = e.changedTouches[0].clientX;
-      const touchEndY = e.changedTouches[0].clientY;
-      const deltaX = Math.abs(touchEndX - touchStartX);
-      const deltaY = Math.abs(touchEndY - touchStartY);
-      
-      // If movement is less than 10px, treat it as a tap
-      if (deltaX < 10 && deltaY < 10) {
-        e.preventDefault();
-        e.stopPropagation();
-        handleMarkerClick(e);
-      }
-    }
-  }, { passive: false });
-}
-
 // Helper function to check if point is inside polygon
 function isPointInPolygon(point: [number, number], polygon: number[][]): boolean {
   const [x, y] = point;
   let inside = false;
-  
+
   for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
     const [xi, yi] = polygon[i];
     const [xj, yj] = polygon[j];
-    
+
     const intersect = ((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
     if (intersect) inside = !inside;
   }
-  
+
   return inside;
 }
 
@@ -202,6 +98,11 @@ export default function MapboxMap({ accessToken, properties = [] }: MapboxMapPro
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const drawRef = useRef<MapboxDraw | null>(null);
+  // Refs for data access inside event handlers/closures
+  const [filteredProperties, setFilteredProperties] = useState<Property[]>(properties);
+  const filteredPropertiesRef = useRef(filteredProperties);
+  const propertiesRef = useRef(properties);
+
   const markersRef = useRef<mapboxgl.Marker[]>([]);
   const markersMapRef = useRef<Map<string, mapboxgl.Marker>>(new Map());
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
@@ -209,776 +110,403 @@ export default function MapboxMap({ accessToken, properties = [] }: MapboxMapPro
   const [mapStyle, setMapStyle] = useState<'map' | 'satellite'>('map');
   const [isDrawing, setIsDrawing] = useState(false);
   const [drawnPolygon, setDrawnPolygon] = useState<number[][] | null>(null);
-  const [filteredProperties, setFilteredProperties] = useState<Property[]>(properties);
   const [isMapLoading, setIsMapLoading] = useState(true);
+
   const router = useRouter();
   const searchParams = useSearchParams();
+  const locale = useLocale();
+  const isDrawingRef = useRef(isDrawing);
 
-  // Filter properties by polygon
-  const filterPropertiesByPolygon = (polygon: number[][]) => {
-    const filtered = properties.filter(property => {
-      if (!property.coordinates || !Array.isArray(property.coordinates) || property.coordinates.length !== 2) {
-        return false;
-      }
-      const [lng, lat] = property.coordinates;
-      return isPointInPolygon([lng, lat], polygon);
-    });
-    setFilteredProperties(filtered);
-  };
+  // Sync refs
+  useEffect(() => { isDrawingRef.current = isDrawing; }, [isDrawing]);
+  useEffect(() => { filteredPropertiesRef.current = filteredProperties; }, [filteredProperties]);
+  useEffect(() => { propertiesRef.current = properties; }, [properties]);
 
-  // Update URL with polygon
-  const updateUrlWithPolygon = (polygon: number[][]) => {
+  // Sync properties prop with local state
+  useEffect(() => {
+    if (drawnPolygon) {
+      const filtered = properties.filter(property => {
+        if (!property.coordinates || !Array.isArray(property.coordinates) || property.coordinates.length !== 2) return false;
+        const [lng, lat] = property.coordinates;
+        return isPointInPolygon([lng, lat], drawnPolygon);
+      });
+      setFilteredProperties(filtered);
+    } else {
+      setFilteredProperties(properties);
+    }
+  }, [properties, drawnPolygon]);
+
+  // URL Managers
+  const updateUrlWithPolygon = useCallback((polygon: number[][]) => {
     const polygonString = encodeURIComponent(JSON.stringify(polygon));
     const currentUrl = new URL(window.location.href);
     currentUrl.searchParams.set('polygon', polygonString);
     router.replace(currentUrl.pathname + currentUrl.search, { scroll: false });
-  };
+  }, [router]);
 
-  // Clear polygon from URL
-  const clearPolygonFromUrl = () => {
+  const clearPolygonFromUrl = useCallback(() => {
     const currentUrl = new URL(window.location.href);
     currentUrl.searchParams.delete('polygon');
     router.replace(currentUrl.pathname + currentUrl.search, { scroll: false });
-  };
+  }, [router]);
 
-  useEffect(() => {
-    if (!mapContainer.current) return;
+  // Filter properties by polygon
+  const filterPropertiesByPolygon = useCallback((polygon: number[][]) => {
+    const filtered = propertiesRef.current.filter(property => {
+      if (!property.coordinates || !Array.isArray(property.coordinates) || property.coordinates.length !== 2) return false;
+      const [lng, lat] = property.coordinates;
+      return isPointInPolygon([lng, lat], polygon);
+    });
+    setFilteredProperties(filtered);
+  }, []);
 
-    const token = accessToken || process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
-    
-    if (!token) {return;
+  // Setup Layers Function
+  const setupLayers = useCallback((mapInstance: mapboxgl.Map) => {
+    if (mapInstance.getLayer('clusters')) return;
+
+    mapInstance.addLayer({
+      id: 'clusters',
+      type: 'circle',
+      source: 'properties',
+      filter: ['has', 'point_count'],
+      paint: {
+        'circle-color': '#003077',
+        'circle-radius': ['step', ['get', 'point_count'], 20, 10, 30, 50, 40],
+        'circle-stroke-color': '#ffffff',
+        'circle-stroke-width': 2
+      }
+    });
+
+    mapInstance.addLayer({
+      id: 'cluster-count',
+      type: 'symbol',
+      source: 'properties',
+      filter: ['has', 'point_count'],
+      layout: {
+        'text-field': '{point_count_abbreviated}',
+        'text-font': ['DIN Offc Pro Medium', 'Arial Unicode MS Bold'],
+        'text-size': 12
+      },
+      paint: { 'text-color': '#ffffff' }
+    });
+
+    if (!mapInstance.hasImage('marker-bg')) {
+      const canvas = document.createElement('canvas');
+      canvas.width = 24; canvas.height = 24;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.fillStyle = '#ffffff';
+        const w = 24, h = 24, r = 8;
+        ctx.beginPath();
+        ctx.roundRect(0, 0, w, h, r);
+        ctx.fill();
+        const imageData = ctx.getImageData(0, 0, 24, 24);
+        mapInstance.addImage('marker-bg', imageData, {
+          sdf: true,
+          stretchX: [[10, 14]],
+          stretchY: [[10, 14]],
+          content: [8, 8, 16, 16],
+          pixelRatio: 2
+        });
+      }
     }
 
-    if (map.current) return; // Initialize map only once
+    mapInstance.addLayer({
+      id: 'unclustered-point-bg',
+      type: 'symbol',
+      source: 'properties',
+      filter: ['!', ['has', 'point_count']],
+      layout: {
+        'icon-image': 'marker-bg',
+        'icon-text-fit': 'both',
+        'icon-text-fit-padding': [0, 4, 0, 4],
+        'text-field': ['get', 'priceFormatted'],
+        'text-font': ['DIN Offc Pro Medium', 'Arial Unicode MS Bold'],
+        'text-size': 11,
+        'text-offset': [0, 0],
+        'text-allow-overlap': false,
+        'icon-allow-overlap': false
+      },
+      paint: {
+        'text-color': '#ffffff',
+        'icon-color': [
+          'case',
+          ['boolean', ['get', 'isHighValue'], false],
+          '#EBA44E',
+          '#003077'
+        ]
+      }
+    });
 
-    try {
-      // UAE bounds: approximate coordinates
-      // Southwest corner: [50.5, 22.5] (west of UAE, south of UAE)
-      // Northeast corner: [56.5, 26.5] (east of UAE, north of UAE)
-      const uaeBounds = [
-        [50.5, 22.5], // Southwest [lng, lat]
-        [56.5, 26.5]  // Northeast [lng, lat]
-      ] as [[number, number], [number, number]];
-
-      map.current = new mapboxgl.Map({
-        container: mapContainer.current,
-        style: 'mapbox://styles/abiespana/cmcxiep98004r01quhxspf3w9',
-        center: [55.2708, 25.2048], // Dubai coordinates [lng, lat]
-        zoom: 11,
-        minZoom: 8, // Prevent zooming out too far
-        maxZoom: 18, // Optional: limit max zoom
-        maxBounds: uaeBounds, // Restrict panning to UAE area
-        accessToken: token,
+    const layers = ['clusters', 'cluster-count', 'unclustered-point-bg'];
+    layers.forEach(layer => {
+      mapInstance.on('mouseenter', layer, () => {
+        mapInstance.getCanvas().style.cursor = 'pointer';
       });
-
-      // Initialize MapboxDraw (but don't activate it by default)
-      drawRef.current = new MapboxDraw({
-        displayControlsDefault: false,
-        defaultMode: 'simple_select', // Start in simple_select mode (not drawing)
+      mapInstance.on('mouseleave', layer, () => {
+        mapInstance.getCanvas().style.cursor = '';
       });
-      map.current.addControl(drawRef.current as any);
+    });
+  }, []);
 
-      // Hide Mapbox logo and attribution
-      map.current.on('load', () => {
-        setIsMapLoading(false);
-        
-        // Hide Mapbox logo
-        const mapboxLogo = map.current!.getContainer().querySelector('.mapboxgl-ctrl-logo');
-        if (mapboxLogo) {
-          (mapboxLogo as HTMLElement).style.display = 'none';
-        }
-        
-        // Hide "Improve this map" and other Mapbox attribution
-        const attribution = map.current!.getContainer().querySelector('.mapboxgl-ctrl-attrib');
-        if (attribution) {
-          (attribution as HTMLElement).style.display = 'none';
-        }
+  // Main Initialization Effect
+  useEffect(() => {
+    if (!mapContainer.current) return;
+    if (map.current) return;
 
-        // Check URL for polygon parameter
-        const polygonParam = searchParams.get('polygon');
-        if (polygonParam) {
-          try {
-            const polygon = JSON.parse(decodeURIComponent(polygonParam));
-            if (Array.isArray(polygon) && polygon.length > 0) {
-              drawRef.current?.add({
-                type: 'Feature',
-                properties: {},
-                geometry: {
-                  type: 'Polygon',
-                  coordinates: [polygon]
-                }
-              });
-              setDrawnPolygon(polygon);
-              setIsDrawing(true);
-              filterPropertiesByPolygon(polygon);
-            }
-          } catch (e) {}
-        }
-      });
+    const token = accessToken || 'pk.eyJ1IjoiYWJpZXNwYW5hIiwiYSI6ImNsb3N4NzllYzAyOWYybWw5ZzNpNXlqaHkifQ.UxlTvUuSq9L5jt0jRtRR-A';
+    if (!token) return;
 
-      // Handle draw events
-      map.current.on('draw.create', (e: any) => {
-        const feature = e.features[0];
-        if (feature.geometry.type === 'Polygon') {
-          const coordinates = feature.geometry.coordinates[0];
-          
-          // Filter properties and update markers
-          const filtered = properties.filter(property => {
-            if (!property.coordinates || !Array.isArray(property.coordinates) || property.coordinates.length !== 2) {
-              return false;
-            }
-            const [lng, lat] = property.coordinates;
-            const isInside = isPointInPolygon([lng, lat], coordinates);
-            return isInside;
-          });
-          
-          if (process.env.NODE_ENV === 'development') {if (filtered.length > 0) {
-            }
-          }
-          
-          // Update state
-          setDrawnPolygon(coordinates);
-          setIsDrawing(true);
-          setFilteredProperties(filtered);
-          updateUrlWithPolygon(coordinates);
-          
-          // Force markers update - wait for map to be ready
-          const updateMarkers = () => {
-            if (!map.current || !map.current.loaded()) {
-              setTimeout(updateMarkers, 100);
-              return;
-            }
-            
-            // Remove all existing markers
-            markersRef.current.forEach(marker => marker.remove());
-            markersRef.current = [];
-            markersMapRef.current.clear();
-            
-            // Add filtered markers
-            filtered.forEach(property => {
-              if (!property.coordinates || !Array.isArray(property.coordinates) || property.coordinates.length !== 2) {
-                return;
-              }
+    (async () => {
+      try {
+        const mapboxgl = (await import('mapbox-gl')).default;
+        if (!mapContainer.current) return;
 
-              const [lng, lat] = property.coordinates;
-              if (typeof lng !== 'number' || typeof lat !== 'number' || isNaN(lng) || isNaN(lat)) {
-                return;
-              }
+        const uaeBounds: [[number, number], [number, number]] = [[50.5, 22.5], [56.5, 26.5]];
 
-              if (lng < 50 || lng > 60 || lat < 20 || lat > 30) {
-                return;
-              }
+        map.current = new mapboxgl.Map({
+          container: mapContainer.current,
+          style: 'mapbox://styles/abiespana/cmkdvczeg002301sdfd53hv5f',
+          center: [55.2708, 25.2048],
+          zoom: 11,
+          minZoom: 8,
+          maxZoom: 18,
+          maxBounds: uaeBounds,
+          accessToken: token,
+        });
 
-              const priceAED = property.price?.aed || 0;
-              const el = createMarkerElement(priceAED);
-              
-              // Add universal click handler (works for both desktop and mobile)
-              addMarkerClickHandler(el, property, map.current, setSelectedProperty);
-              
-              const marker = new mapboxgl.Marker({
-                element: el,
-                anchor: 'center',
-                offset: [0, 0]
-              });
-              
-              marker.setLngLat([lng, lat]);
-              marker.addTo(map.current!);
-              
-              markersRef.current.push(marker);
-              markersMapRef.current.set(property.id, marker);
-            });
-            
-            };
-          
-          // Wait for map to be idle before updating markers
-          if (map.current && map.current.loaded()) {
-            map.current.once('idle', () => {
-              requestAnimationFrame(() => {
-                updateMarkers();
-              });
-            });
-          } else if (map.current) {
-            map.current.once('load', () => {
-              if (map.current) {
-                map.current.once('idle', () => {
-                  requestAnimationFrame(() => {
-                    updateMarkers();
-                  });
-                });
-              }
-            });
-          }
-        }
-      });
+        drawRef.current = new MapboxDraw({
+          displayControlsDefault: false,
+          defaultMode: 'simple_select',
+        });
+        map.current.addControl(drawRef.current as any);
 
-      map.current.on('draw.delete', (_e: any) => {
-        setDrawnPolygon(null);
-        setIsDrawing(false);
-        setFilteredProperties(properties);
-        clearPolygonFromUrl();
-        
-        // Force markers update after clearing selection
-        const updateMarkers = () => {
-          if (!map.current || !map.current.loaded()) {
-            setTimeout(updateMarkers, 100);
-            return;
-          }
-          
-          // Remove all existing markers
-          markersRef.current.forEach(marker => marker.remove());
-          markersRef.current = [];
-          markersMapRef.current.clear();
-          
-          // Add all properties markers
-          properties.forEach(property => {
-            if (!property.coordinates || !Array.isArray(property.coordinates) || property.coordinates.length !== 2) {
-              return;
-            }
+        const initMapData = () => {
+          if (!map.current) return;
 
-            const [lng, lat] = property.coordinates;
-            if (typeof lng !== 'number' || typeof lat !== 'number' || isNaN(lng) || isNaN(lat)) {
-              return;
-            }
-
-            if (lng < 50 || lng > 60 || lat < 20 || lat > 30) {
-              return;
-            }
-
-            const priceAED = property.price?.aed || 0;
-            const el = createMarkerElement(priceAED);
-            
-            // Add universal click handler (works for both desktop and mobile)
-            addMarkerClickHandler(el, property, map.current, setSelectedProperty);
-            
-            const marker = new mapboxgl.Marker({
-              element: el,
-              anchor: 'center',
-              offset: [0, 0]
-            });
-            
-            marker.setLngLat([lng, lat]);
-            marker.addTo(map.current!);
-            
-            markersRef.current.push(marker);
-            markersMapRef.current.set(property.id, marker);
-          });
-          
+          const geojson: GeoJSON.FeatureCollection = {
+            type: 'FeatureCollection',
+            features: filteredPropertiesRef.current
+              .filter(p => p.coordinates && Array.isArray(p.coordinates) && p.coordinates.length === 2 && !isNaN(p.coordinates[0]) && !isNaN(p.coordinates[1]))
+              .map(p => {
+                const priceAED = p.price?.aed || 0;
+                return {
+                  type: 'Feature',
+                  geometry: {
+                    type: 'Point',
+                    coordinates: [p.coordinates[0], p.coordinates[1]]
+                  },
+                  properties: {
+                    id: p.id,
+                    price: priceAED,
+                    priceFormatted: formatPriceForMarker(priceAED),
+                    isHighValue: priceAED >= 5000000
+                  }
+                };
+              })
           };
-        
-        // Wait for map to be idle before updating markers
-        if (map.current) {
-          if (map.current.loaded()) {
-            map.current.once('idle', () => {
-              requestAnimationFrame(() => {
-                updateMarkers();
-              });
+
+          if (!map.current.getSource('properties')) {
+            map.current.addSource('properties', {
+              type: 'geojson',
+              data: geojson,
+              cluster: true,
+              clusterMaxZoom: 14,
+              clusterRadius: 50
             });
+            setupLayers(map.current);
           } else {
-            map.current.once('load', () => {
-              if (map.current) {
-                map.current.once('idle', () => {
-                  requestAnimationFrame(() => {
-                    updateMarkers();
-                  });
-                });
-              }
-            });
+            (map.current.getSource('properties') as mapboxgl.GeoJSONSource).setData(geojson);
+            setupLayers(map.current); // Ensure layers exist
           }
-        }
-      });
-    } catch (error) {}
+        };
+
+        map.current.on('load', () => {
+          setIsMapLoading(false);
+          const mapboxLogo = map.current?.getContainer().querySelector('.mapboxgl-ctrl-logo');
+          if (mapboxLogo) (mapboxLogo as HTMLElement).style.display = 'none';
+          const attribution = map.current?.getContainer().querySelector('.mapboxgl-ctrl-attrib');
+          if (attribution) (attribution as HTMLElement).style.display = 'none';
+
+          const polygonParam = searchParams.get('polygon');
+          if (polygonParam) {
+            try {
+              const polygon = JSON.parse(decodeURIComponent(polygonParam));
+              if (Array.isArray(polygon) && polygon.length > 0) {
+                drawRef.current?.add({
+                  type: 'Feature',
+                  properties: {},
+                  geometry: { type: 'Polygon', coordinates: [polygon] }
+                });
+                setDrawnPolygon(polygon);
+                setIsDrawing(true);
+                filterPropertiesByPolygon(polygon);
+              }
+            } catch (e) { }
+          }
+        });
+
+        map.current.on('style.load', initMapData);
+
+        // Map Interactions
+        map.current.on('click', (e) => handleInteraction(e, map.current!));
+        map.current.on('touchstart', (e) => {
+          if (e.originalEvent.touches.length === 1) handleInteraction(e, map.current!);
+        });
+
+        // Draw Events
+        map.current.on('draw.create', (e: any) => {
+          const feature = e.features[0];
+          if (feature.geometry.type === 'Polygon') {
+            const coordinates = feature.geometry.coordinates[0];
+            const filtered = propertiesRef.current.filter(property => {
+              const [lng, lat] = property.coordinates as [number, number];
+              return isPointInPolygon([lng, lat], coordinates);
+            });
+            setDrawnPolygon(coordinates);
+            setIsDrawing(true);
+            setFilteredProperties(filtered);
+            updateUrlWithPolygon(coordinates);
+          }
+        });
+
+        map.current.on('draw.delete', () => {
+          setDrawnPolygon(null);
+          setIsDrawing(false);
+          setFilteredProperties(propertiesRef.current);
+          clearPolygonFromUrl();
+        });
+
+      } catch (error) { console.error(error); }
+    })();
 
     // Cleanup
     return () => {
-      // Remove all markers
-      markersRef.current.forEach(marker => marker.remove());
-      markersRef.current = [];
-      markersMapRef.current.clear();
-      
-      if (drawRef.current && map.current) {
-        map.current.removeControl(drawRef.current);
-      }
-      
       if (map.current) {
         map.current.remove();
         map.current = null;
       }
     };
-  }, [accessToken, searchParams]);
+  }, []); // Run once
 
-  // Update filtered properties when properties change
-  useEffect(() => {
-    if (!drawnPolygon) {
-      setFilteredProperties(properties);
-    }
-  }, [properties, drawnPolygon]);
+  // Separate Function for Interaction
+  const handleInteraction = (e: mapboxgl.MapMouseEvent | mapboxgl.MapTouchEvent, mapInstance: mapboxgl.Map) => {
+    if (isDrawingRef.current) return;
+    const isMobile = 'touches' in e;
+    const point = isMobile ? (e as any).point : (e as any).point;
+    const bbox: [mapboxgl.PointLike, mapboxgl.PointLike] = [[point.x - 5, point.y - 5], [point.x + 5, point.y + 5]];
+    const features = mapInstance.queryRenderedFeatures(bbox, { layers: ['clusters', 'cluster-count', 'unclustered-point-bg'] });
 
-  // Toggle draw mode
-  const toggleDrawMode = () => {
-    if (!map.current || !drawRef.current) return;
+    if (!features.length) return;
+    const feature = features[0];
+    const layerId = feature.layer?.id;
 
-    if (isDrawing && drawnPolygon) {
-      // Clear selection
-      drawRef.current.deleteAll();
-      drawRef.current.changeMode('simple_select'); // Return to simple select mode
-      setDrawnPolygon(null);
-      setIsDrawing(false);
-      setFilteredProperties(properties);
-      clearPolygonFromUrl();
-      
-      // Force markers update after clearing
-      const updateMarkers = () => {
-        if (!map.current || !map.current.loaded()) {
-          setTimeout(updateMarkers, 100);
-          return;
-        }
-        
-        // Remove all existing markers
-        markersRef.current.forEach(marker => marker.remove());
-        markersRef.current = [];
-        markersMapRef.current.clear();
-        
-        // Add all properties markers
-        properties.forEach(property => {
-          if (!property.coordinates || !Array.isArray(property.coordinates) || property.coordinates.length !== 2) {
-            return;
-          }
-
-          const [lng, lat] = property.coordinates;
-          if (typeof lng !== 'number' || typeof lat !== 'number' || isNaN(lng) || isNaN(lat)) {
-            return;
-          }
-
-          if (lng < 50 || lng > 60 || lat < 20 || lat > 30) {
-            return;
-          }
-
-          const priceAED = property.price?.aed || 0;
-          const el = createMarkerElement(priceAED);
-          
-          // Add universal click handler (works for both desktop and mobile)
-          addMarkerClickHandler(el, property, map.current, setSelectedProperty);
-          
-          const marker = new mapboxgl.Marker({
-            element: el,
-            anchor: 'center',
-            offset: [0, 0]
-          });
-          
-          marker.setLngLat([lng, lat]);
-          marker.addTo(map.current!);
-          
-          markersRef.current.push(marker);
-          markersMapRef.current.set(property.id, marker);
+    if (layerId === 'clusters' || layerId === 'cluster-count') {
+      const clusterId = feature.properties?.cluster_id;
+      (mapInstance.getSource('properties') as mapboxgl.GeoJSONSource).getClusterExpansionZoom(clusterId, (err, zoom) => {
+        if (!err && zoom) mapInstance.easeTo({ center: (feature.geometry as any).coordinates, zoom: zoom + 2 });
+      });
+    } else if (layerId === 'unclustered-point-bg') {
+      const id = feature.properties?.id;
+      const property = propertiesRef.current.find(p => p.id === id);
+      if (property) {
+        const isMobileUI = window.innerWidth <= 768;
+        mapInstance.flyTo({
+          center: (feature.geometry as any).coordinates,
+          zoom: Math.max(mapInstance.getZoom(), isMobileUI ? 13 : 14),
+          offset: isMobileUI ? [0, 0] : [280, 100]
         });
-        
-        };
-      
-      // Wait for map to be idle before updating markers
-      if (map.current) {
-        if (map.current.loaded()) {
-          map.current.once('idle', () => {
-            requestAnimationFrame(() => {
-              updateMarkers();
-            });
-          });
-        } else {
-          map.current.once('load', () => {
-            if (map.current) {
-              map.current.once('idle', () => {
-                requestAnimationFrame(() => {
-                  updateMarkers();
-                });
+
+        // Show partial info immediately
+        setSelectedProperty(property);
+
+        // Fetch full info if it's a partial property
+        if (property.isPartial) {
+          getPropertySummary(property.id).then(fullApiProperty => {
+            if (fullApiProperty) {
+              // Ensure coordinates are preserved if summary endpoint doesn't return them
+              if (!fullApiProperty.longitude && property.coordinates) fullApiProperty.longitude = property.coordinates[0];
+              if (!fullApiProperty.latitude && property.coordinates) fullApiProperty.latitude = property.coordinates[1];
+
+              import('@/lib/transformers').then(({ convertPropertyToMapFormat }) => {
+                const fullMapProperty = convertPropertyToMapFormat(fullApiProperty, locale);
+                if (fullMapProperty) {
+                  // Keep the isPartial: false or just set the new property
+                  setSelectedProperty(fullMapProperty);
+                } else {
+                  // Fallback: if transformer fails, at least update the name/images on the existing object
+                  setSelectedProperty(prev => prev ? { ...prev, name: fullApiProperty.name, images: fullApiProperty.photos } : null);
+                }
               });
             }
+          }).catch(err => {
+            console.error('Failed to fetch property details for map popup:', err);
           });
         }
       }
-    } else {
-      // Start drawing
-      drawRef.current.changeMode('draw_polygon');
-      setIsDrawing(true);
     }
   };
 
-
-  // Add markers when map is ready and properties are available
+  // Update Data Effect
   useEffect(() => {
     if (!map.current) return;
-
-    const addMarkers = () => {
-      if (!map.current) return;
-      
-      // Use filtered properties if polygon is drawn, otherwise use all properties
-      const propsToShow = drawnPolygon ? filteredProperties : properties;
-
-      if (propsToShow.length === 0) {
-        // Remove all markers if no properties
-        markersRef.current.forEach(marker => marker.remove());
-        markersRef.current = [];
-        markersMapRef.current.clear();
-        return;
-      }
-
-      // Create a set of current property IDs
-      const currentPropertyIds = new Set(propsToShow.map(p => p.id));
-      
-      // Remove markers for properties that no longer exist
-      markersMapRef.current.forEach((marker, propertyId) => {
-        if (!currentPropertyIds.has(propertyId)) {
-          marker.remove();
-          markersMapRef.current.delete(propertyId);
-          const index = markersRef.current.indexOf(marker);
-          if (index > -1) {
-            markersRef.current.splice(index, 1);
-          }
-        }
-      });
-
-      // Add or update markers for current properties in batches to avoid blocking UI
-      const propertiesToAdd = propsToShow.filter(property => {
-        // Skip if marker already exists
-        if (markersMapRef.current.has(property.id)) {
-          return false;
-        }
-        // Validate coordinates
-        if (!property.coordinates || !Array.isArray(property.coordinates) || property.coordinates.length !== 2) {
-          return false;
-        }
-
-        const [lng, lat] = property.coordinates;
-        if (typeof lng !== 'number' || typeof lat !== 'number' || isNaN(lng) || isNaN(lat)) {
-          return false;
-        }
-
-        // Validate coordinate ranges (Dubai area approximately: lng 54-56, lat 24-26)
-        if (lng < 50 || lng > 60 || lat < 20 || lat > 30) {
-          return false;
-        }
-        
-        return true;
-      });
-
-      // Add markers in batches of 50 to avoid blocking UI
-      const BATCH_SIZE = 50;
-      let currentIndex = 0;
-
-      const addBatch = () => {
-        if (!map.current) return;
-        
-        const batch = propertiesToAdd.slice(currentIndex, currentIndex + BATCH_SIZE);
-        
-        batch.forEach(property => {
-          const [lng, lat] = property.coordinates;
-          const priceAED = property.price?.aed || 0;
-          const el = createMarkerElement(priceAED);
-          
-          // Add universal click handler (works for both desktop and mobile)
-          addMarkerClickHandler(el, property, map.current, setSelectedProperty);
-          
-          // Create marker with center anchor for stable positioning
-          const marker = new mapboxgl.Marker({
-            element: el,
-            anchor: 'center',
-            offset: [0, 0]
-          });
-          
-          marker.setLngLat([lng, lat]);
-          marker.addTo(map.current!);
-          
-          markersRef.current.push(marker);
-          markersMapRef.current.set(property.id, marker);
-        });
-
-        currentIndex += BATCH_SIZE;
-
-        // Continue with next batch if there are more properties
-        if (currentIndex < propertiesToAdd.length) {
-          requestAnimationFrame(addBatch);
-        }
-      };
-
-      // Start adding markers in batches
-      if (propertiesToAdd.length > 0) {
-        requestAnimationFrame(addBatch);
-      }
-    };
-
-    // Wait for map to fully load and render
-    const loadMarkers = () => {
-      if (!map.current) return;
-      
-      // Wait for map to be fully loaded and rendered
-      const tryLoadMarkers = () => {
-        if (map.current && map.current.loaded()) {
-          // Use requestAnimationFrame to ensure DOM is ready
-          requestAnimationFrame(() => {
-            setTimeout(() => {
-              addMarkers();
-            }, 100);
-          });
-        } else {
-          // If not loaded yet, wait a bit and try again
-          setTimeout(tryLoadMarkers, 100);
-        }
-      };
-      
-      tryLoadMarkers();
-    };
-
-    // Load markers when map is ready
-    if (map.current) {
-      if (map.current.loaded()) {
-        // If map is already loaded, wait for idle event
-        map.current.once('idle', () => {
-          loadMarkers();
-        });
-      } else {
-        // Wait for both 'load' and 'idle' events to ensure map is fully rendered
-        map.current.once('load', () => {
-          if (map.current) {
-            map.current.once('idle', () => {
-              loadMarkers();
-            });
-          }
-        });
-      }
-
-      // Also add markers when style changes (e.g., satellite toggle)
-      map.current.on('style.load', () => {
-        // Re-hide Mapbox elements
-        if (map.current) {
-          const mapboxLogo = map.current.getContainer().querySelector('.mapboxgl-ctrl-logo');
-          if (mapboxLogo) {
-            (mapboxLogo as HTMLElement).style.display = 'none';
-          }
-          
-          const attribution = map.current.getContainer().querySelector('.mapboxgl-ctrl-attrib');
-          if (attribution) {
-            (attribution as HTMLElement).style.display = 'none';
-          }
-
-          // Wait for style to be fully loaded before reloading markers
-          map.current.once('idle', () => {
-            loadMarkers();
-          });
-        }
-      });
+    if (!map.current.getSource('properties')) {
+      // Source not ready (wait for style.load)
+      return;
     }
 
-    // Cleanup function
-    return () => {
-      if (map.current) {
-        // Remove event listeners
-        map.current.off('load');
-        map.current.off('idle');
-        map.current.off('style.load');
-      }
-      // Note: Don't remove markers on cleanup here, only on unmount
+    const geojson: GeoJSON.FeatureCollection = {
+      type: 'FeatureCollection',
+      features: filteredProperties
+        .filter(p => p.coordinates && Array.isArray(p.coordinates) && p.coordinates.length === 2 && !isNaN(p.coordinates[0]) && !isNaN(p.coordinates[1]))
+        .map(p => {
+          const priceAED = p.price?.aed || 0;
+          return {
+            type: 'Feature',
+            geometry: {
+              type: 'Point',
+              coordinates: [p.coordinates[0], p.coordinates[1]]
+            },
+            properties: {
+              id: p.id,
+              price: priceAED,
+              priceFormatted: formatPriceForMarker(priceAED),
+              isHighValue: priceAED >= 5000000
+            }
+          };
+        })
     };
-  }, [properties, filteredProperties, drawnPolygon]);
 
-  // Handle map zoom out and shift right when popup closes
-  useEffect(() => {
+    (map.current.getSource('properties') as mapboxgl.GeoJSONSource).setData(geojson);
+  }, [filteredProperties, isMapLoading]); // Trigger when filtered properties updates
+
+  const toggleMapStyle = () => {
     if (!map.current) return;
+    const newStyle = mapStyle === 'map' ? 'satellite' : 'map';
+    setMapStyle(newStyle);
+    map.current.setStyle(newStyle === 'satellite' ? 'mapbox://styles/mapbox/satellite-v9' : 'mapbox://styles/abiespana/cmkdvczeg002301sdfd53hv5f');
+    // style.load listener will re-init data
+  };
 
-    // If popup was open and now is closed (selectedProperty becomes null)
-    if (previousSelectedPropertyRef.current && !selectedProperty) {
-      const previousProperty = previousSelectedPropertyRef.current;
-      const [lng, lat] = previousProperty.coordinates;
-      
-      // Zoom out slightly and shift right
-      map.current.flyTo({
-        center: [lng, lat],
-        zoom: 12.4, // Zoom out from 14 to 12.4 (20% less zoom out)
-        offset: [100, 0], // Shift 100px to the right
-        duration: 800,
-        essential: true
-      });
-    }
-
-    // Update previous reference
+  // Handle selected property changes
+  useEffect(() => {
     previousSelectedPropertyRef.current = selectedProperty;
   }, [selectedProperty]);
 
-  // Toggle between map and satellite view
-  const toggleMapStyle = () => {
-    if (!map.current) return;
-    
-    const newStyle = mapStyle === 'map' ? 'satellite' : 'map';
-    setMapStyle(newStyle);
-    
-    if (map.current) {
-      if (newStyle === 'satellite') {
-        map.current.setStyle('mapbox://styles/mapbox/satellite-v9');
-      } else {
-        map.current.setStyle('mapbox://styles/abiespana/cmcxiep98004r01quhxspf3w9');
-      }
-      
-      // Re-hide Mapbox elements and reload markers after style change
-      map.current.once('style.load', () => {
-        if (map.current) {
-          // Hide Mapbox logo
-          const mapboxLogo = map.current.getContainer().querySelector('.mapboxgl-ctrl-logo');
-          if (mapboxLogo) {
-            (mapboxLogo as HTMLElement).style.display = 'none';
-          }
-          
-          // Hide attribution
-          const attribution = map.current.getContainer().querySelector('.mapboxgl-ctrl-attrib');
-          if (attribution) {
-            (attribution as HTMLElement).style.display = 'none';
-          }
-          
-          // Reload markers after style change
-          if (properties.length > 0) {
-            // Remove existing markers
-            markersRef.current.forEach(marker => marker.remove());
-            markersRef.current = [];
-            markersMapRef.current.clear();
-            
-          // Re-add markers in batches to avoid blocking UI
-          const validProperties = properties.filter(property => {
-            if (!property.coordinates || !Array.isArray(property.coordinates) || property.coordinates.length !== 2) {
-              return false;
-            }
-
-            const [lng, lat] = property.coordinates;
-            if (typeof lng !== 'number' || typeof lat !== 'number' || isNaN(lng) || isNaN(lat)) {
-              return false;
-            }
-
-            if (lng < 50 || lng > 60 || lat < 20 || lat > 30) {
-              return false;
-            }
-            
-            return true;
-          });
-
-          const BATCH_SIZE = 50;
-          let currentIndex = 0;
-
-          const addBatch = () => {
-            if (!map.current) return;
-            
-            const batch = validProperties.slice(currentIndex, currentIndex + BATCH_SIZE);
-            
-            batch.forEach(property => {
-              const [lng, lat] = property.coordinates;
-              const priceAED = property.price?.aed || 0;
-              const el = createMarkerElement(priceAED);
-              
-              addMarkerClickHandler(el, property, map.current!, setSelectedProperty);
-              
-              const marker = new mapboxgl.Marker({
-                element: el,
-                anchor: 'center',
-                offset: [0, 0]
-              });
-              
-              marker.setLngLat([lng, lat]);
-              marker.addTo(map.current);
-              
-              markersRef.current.push(marker);
-              markersMapRef.current.set(property.id, marker);
-            });
-
-            currentIndex += BATCH_SIZE;
-
-            if (currentIndex < validProperties.length) {
-              requestAnimationFrame(addBatch);
-            }
-          };
-
-          if (validProperties.length > 0) {
-            requestAnimationFrame(addBatch);
-          }
-          }
-        }
-      });
-    }
-  };
-
   return (
     <>
-      <div 
-        ref={mapContainer} 
-        style={{ width: '100%', height: '100%', position: 'relative' }}
-      />
-      
-      {/* Map loading skeleton */}
+      <div ref={mapContainer} style={{ width: '100%', height: '100%', position: 'relative' }} />
       {isMapLoading && (
-        <div style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          width: '100%',
-          height: '100%',
-          background: 'linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%)',
-          backgroundSize: '200% 100%',
-          animation: 'shimmer 1.5s infinite',
-          zIndex: 1,
-          pointerEvents: 'none',
-        }}>
-          <style jsx>{`
-            @keyframes shimmer {
-              0% {
-                background-position: -200% 0;
-              }
-              100% {
-                background-position: 200% 0;
-              }
-            }
-          `}</style>
+        <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', background: '#f0f0f0', zIndex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          Loading Map...
         </div>
       )}
-      
-      {/* Button container */}
-      <div style={{
-        position: 'absolute',
-        bottom: '20px',
-        right: '20px',
-        display: 'flex',
-        gap: '12px',
-        zIndex: 1000,
-      }}>
-        {/* Satellite toggle button */}
-        <button
-          onClick={toggleMapStyle}
-          style={{
-            position: 'relative',
-            background: '#003077',
-            color: '#ffffff',
-            border: 'none',
-            borderRadius: '8px',
-            padding: '10px 16px',
-            fontFamily: "'Inter', sans-serif",
-            fontSize: '14px',
-            fontWeight: '500',
-            cursor: 'pointer',
-            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)',
-            transition: 'all 0.2s ease',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = '#003f94';
-            e.currentTarget.style.transform = 'translateY(-1px)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = '#003077';
-            e.currentTarget.style.transform = 'translateY(0)';
-          }}
-        >
+      <div style={{ position: 'absolute', bottom: '20px', right: '20px', display: 'flex', gap: '12px', zIndex: 1000 }}>
+        <button onClick={toggleMapStyle} style={{ background: '#003077', color: '#fff', border: 'none', borderRadius: '8px', padding: '10px 16px', cursor: 'pointer' }}>
           {mapStyle === 'map' ? 'Satellite' : 'Map'}
         </button>
       </div>
-      
-      {selectedProperty && (
-        <PropertyPopup
-          property={selectedProperty}
-          onClose={() => setSelectedProperty(null)}
-        />
-      )}
+      {selectedProperty && <PropertyPopup property={selectedProperty} onClose={() => setSelectedProperty(null)} />}
     </>
   );
 }
-

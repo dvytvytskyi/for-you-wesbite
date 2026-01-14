@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
-import { getPublicData, getAreas } from '@/lib/api';
+import { getAreasSimple, getDevelopersSimple } from '@/lib/api';
 import styles from './PropertyFilters.module.css';
 
 interface Filters {
@@ -56,7 +56,7 @@ export default function PropertyFilters({ filters, onFilterChange, isModal = fal
   const t = useTranslations('filters');
   const locale = useLocale();
   const [localFilters, setLocalFilters] = useState<Filters>(filters);
-  
+
   // Sync localFilters with external filters prop
   useEffect(() => {
     setLocalFilters(filters);
@@ -76,7 +76,7 @@ export default function PropertyFilters({ filters, onFilterChange, isModal = fal
   const priceRef = useRef<HTMLDivElement>(null);
   const sortRef = useRef<HTMLDivElement>(null);
   const developerRef = useRef<HTMLDivElement>(null);
-  
+
   // State for dropdown direction (openUp/openDown)
   const [dropdownDirections, setDropdownDirections] = useState<Record<string, boolean>>({});
 
@@ -85,57 +85,31 @@ export default function PropertyFilters({ filters, onFilterChange, isModal = fal
     const loadData = async () => {
       try {
         setLoadingData(true);
-        
-        // Get public data to find Dubai city ID
-        const publicData = await getPublicData();
-        
-        // Find Dubai city ID
-        const dubaiCity = publicData.cities.find(city => 
-          city.nameEn.toLowerCase() === 'dubai' || 
-          city.nameRu.toLowerCase() === 'дубай'
-        );
-        
-        const dubaiCityId = dubaiCity?.id;
-        
-        // Load areas only for Dubai (if city ID found)
-        const areasData = dubaiCityId 
-          ? await getAreas(dubaiCityId, true)
-          : await getAreas(undefined, true);
-        
-        // Filter areas to only show those with projects (projectsCount > 0)
-        // Sort by projectsCount (most popular first) and take top 30
-        const areasWithProjects = areasData
-          .filter(area => {
-            const projectsCount = area.projectsCount?.total || 0;
-            return projectsCount > 0;
-          })
-          .sort((a, b) => {
-            // Sort by projectsCount descending (most popular first)
-            const countA = a.projectsCount?.total || 0;
-            const countB = b.projectsCount?.total || 0;
-            if (countB !== countA) {
-              return countB - countA;
-            }
-            // If counts are equal, sort alphabetically
-            return a.nameEn.localeCompare(b.nameEn);
-          })
-          .slice(0, 30); // Take only top 30 popular areas
-        
-        // Load developers from public data
-        // Sort developers alphabetically by name
-        const sortedDevelopers = [...(publicData.developers || [])].sort((a, b) => 
+        // Load simple data in parallel
+        const [areasData, developersData] = await Promise.all([
+          getAreasSimple(),
+          getDevelopersSimple()
+        ]);
+
+        // Filter areas (we can take top 30 or filter by Dubai if we know the ID)
+        // Since we don't have projectsCount in 'simple' version, we just show alphabetical or provided order
+        const sortedAreas = [...areasData]
+          .sort((a, b) => (locale === 'ru' ? a.nameRu : a.nameEn).localeCompare(locale === 'ru' ? b.nameRu : b.nameEn))
+          .slice(0, 50);
+
+        const sortedDevelopers = [...developersData].sort((a, b) =>
           a.name.localeCompare(b.name)
         );
-        
-        setAreas(areasWithProjects);
-        setDevelopers(sortedDevelopers);
+
+        setAreas(sortedAreas as any);
+        setDevelopers(sortedDevelopers as any);
         setLoadingData(false);
       } catch (error) {
         setLoadingData(false);
       }
     };
     loadData();
-  }, []);
+  }, [locale]);
 
   // Функція для форматування числа з розділювачами тисяч
   const formatNumber = (value: string): string => {
@@ -155,13 +129,13 @@ export default function PropertyFilters({ filters, onFilterChange, isModal = fal
   // Function to check if dropdown should open upward
   const checkDropdownDirection = (ref: React.RefObject<HTMLDivElement>, dropdownId: string) => {
     if (!ref.current) return false;
-    
+
     const rect = ref.current.getBoundingClientRect();
     const viewportHeight = window.innerHeight;
     const spaceBelow = viewportHeight - rect.bottom;
     const spaceAbove = rect.top;
     const estimatedDropdownHeight = 320; // Approximate height of dropdown with padding
-    
+
     // In modal mode, check relative to modal container or modal body
     if (isModal) {
       // Find modal container - look for modal backdrop or dialog
@@ -180,36 +154,36 @@ export default function PropertyFilters({ filters, onFilterChange, isModal = fal
           parent = parent.parentElement;
         }
       }
-      
+
       if (modalContainer) {
         const modalRect = modalContainer.getBoundingClientRect();
         const spaceBelowInModal = modalRect.bottom - rect.bottom;
         const spaceAboveInModal = rect.top - modalRect.top;
-        
+
         // Add some padding for better UX
         const padding = 20;
-        
+
         // Open upward if not enough space below in modal but enough space above
         const shouldOpenUp = (spaceBelowInModal < estimatedDropdownHeight + padding) && (spaceAboveInModal > estimatedDropdownHeight + padding);
-        
+
         setDropdownDirections(prev => ({
           ...prev,
           [dropdownId]: shouldOpenUp
         }));
-        
+
         return shouldOpenUp;
       }
     }
-    
+
     // For non-modal or if modal container not found, use viewport
     // Open upward if not enough space below but enough space above
     const shouldOpenUp = spaceBelow < estimatedDropdownHeight && spaceAbove > estimatedDropdownHeight;
-    
+
     setDropdownDirections(prev => ({
       ...prev,
       [dropdownId]: shouldOpenUp
     }));
-    
+
     return shouldOpenUp;
   };
 
@@ -217,7 +191,7 @@ export default function PropertyFilters({ filters, onFilterChange, isModal = fal
   const handleDropdownToggle = (dropdownId: string, ref: React.RefObject<HTMLDivElement>, isOpen: boolean, setIsOpen: (value: boolean) => void) => {
     const newIsOpen = !isOpen;
     setIsOpen(newIsOpen);
-    
+
     // Check direction after state update
     if (newIsOpen) {
       // Use setTimeout to ensure DOM is updated
@@ -365,8 +339,8 @@ export default function PropertyFilters({ filters, onFilterChange, isModal = fal
         </div>
 
         {/* Location Dropdown */}
-        <div 
-          className={`${styles.dropdownWrapper} ${styles.locationDropdown} ${isModal ? styles.dropdownWrapperModal : ''}`} 
+        <div
+          className={`${styles.dropdownWrapper} ${styles.locationDropdown} ${isModal ? styles.dropdownWrapperModal : ''}`}
           ref={locationRef}
           data-dropdown-open={isLocationOpen ? 'true' : 'false'}
         >
@@ -376,7 +350,7 @@ export default function PropertyFilters({ filters, onFilterChange, isModal = fal
           >
             <span>{getLocationLabel()}</span>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" className={isLocationOpen ? styles.rotated : ''}>
-              <path d="M6 9L12 15L18 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M6 9L12 15L18 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </button>
           {isLocationOpen && (
@@ -402,8 +376,8 @@ export default function PropertyFilters({ filters, onFilterChange, isModal = fal
         </div>
 
         {/* Developer Dropdown */}
-        <div 
-          className={`${styles.dropdownWrapper} ${styles.locationDropdown} ${isModal ? styles.dropdownWrapperModal : ''}`} 
+        <div
+          className={`${styles.dropdownWrapper} ${styles.locationDropdown} ${isModal ? styles.dropdownWrapperModal : ''}`}
           ref={developerRef}
           data-dropdown-open={isDeveloperOpen ? 'true' : 'false'}
         >
@@ -413,7 +387,7 @@ export default function PropertyFilters({ filters, onFilterChange, isModal = fal
           >
             <span>{getDeveloperLabel()}</span>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" className={isDeveloperOpen ? styles.rotated : ''}>
-              <path d="M6 9L12 15L18 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M6 9L12 15L18 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </button>
           {isDeveloperOpen && (
@@ -452,8 +426,8 @@ export default function PropertyFilters({ filters, onFilterChange, isModal = fal
         </div>
 
         {/* Bedrooms Dropdown */}
-        <div 
-          className={`${styles.dropdownWrapper} ${styles.bedroomsDropdown} ${isModal ? styles.dropdownWrapperModal : ''}`} 
+        <div
+          className={`${styles.dropdownWrapper} ${styles.bedroomsDropdown} ${isModal ? styles.dropdownWrapperModal : ''}`}
           ref={bedroomsRef}
           data-dropdown-open={isBedroomsOpen ? 'true' : 'false'}
         >
@@ -463,7 +437,7 @@ export default function PropertyFilters({ filters, onFilterChange, isModal = fal
           >
             <span>{getBedroomsLabel()}</span>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" className={isBedroomsOpen ? styles.rotated : ''}>
-              <path d="M6 9L12 15L18 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M6 9L12 15L18 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </button>
           {isBedroomsOpen && (
@@ -483,8 +457,8 @@ export default function PropertyFilters({ filters, onFilterChange, isModal = fal
         </div>
 
         {/* Size Dropdown */}
-        <div 
-          className={`${styles.dropdownWrapper} ${styles.sizeDropdown} ${isModal ? styles.dropdownWrapperModal : ''}`} 
+        <div
+          className={`${styles.dropdownWrapper} ${styles.sizeDropdown} ${isModal ? styles.dropdownWrapperModal : ''}`}
           ref={sizeRef}
           data-dropdown-open={isSizeOpen ? 'true' : 'false'}
         >
@@ -494,7 +468,7 @@ export default function PropertyFilters({ filters, onFilterChange, isModal = fal
           >
             <span>{getSizeLabel()}</span>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" className={isSizeOpen ? styles.rotated : ''}>
-              <path d="M6 9L12 15L18 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M6 9L12 15L18 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </button>
           {isSizeOpen && (
@@ -524,8 +498,8 @@ export default function PropertyFilters({ filters, onFilterChange, isModal = fal
         </div>
 
         {/* Price Dropdown */}
-        <div 
-          className={`${styles.dropdownWrapper} ${styles.priceDropdown} ${isModal ? styles.dropdownWrapperModal : ''}`} 
+        <div
+          className={`${styles.dropdownWrapper} ${styles.priceDropdown} ${isModal ? styles.dropdownWrapperModal : ''}`}
           ref={priceRef}
           data-dropdown-open={isPriceOpen ? 'true' : 'false'}
         >
@@ -535,7 +509,7 @@ export default function PropertyFilters({ filters, onFilterChange, isModal = fal
           >
             <span>{getPriceLabel()}</span>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" className={isPriceOpen ? styles.rotated : ''}>
-              <path d="M6 9L12 15L18 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M6 9L12 15L18 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </button>
           {isPriceOpen && (
@@ -565,8 +539,8 @@ export default function PropertyFilters({ filters, onFilterChange, isModal = fal
         </div>
 
         {/* Sort Dropdown */}
-        <div 
-          className={`${styles.dropdownWrapper} ${styles.sortDropdown} ${isModal ? styles.dropdownWrapperModal : ''}`} 
+        <div
+          className={`${styles.dropdownWrapper} ${styles.sortDropdown} ${isModal ? styles.dropdownWrapperModal : ''}`}
           ref={sortRef}
           data-dropdown-open={isSortOpen ? 'true' : 'false'}
         >
@@ -576,7 +550,7 @@ export default function PropertyFilters({ filters, onFilterChange, isModal = fal
           >
             <span>{getSortLabel()}</span>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" className={isSortOpen ? styles.rotated : ''}>
-              <path d="M6 9L12 15L18 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M6 9L12 15L18 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </button>
           {isSortOpen && (

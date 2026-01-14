@@ -89,11 +89,11 @@ export default function ProjectImage() {
 
   return (
     <section className={styles.projectImage} ref={sectionRef}>
-      <div 
+      <div
         className={`${styles.imageWrapper} ${isVisible ? styles.visible : ''}`}
       >
         <Image
-          src="/golf.jpg"
+          src="https://res.cloudinary.com/dgv0rxd60/image/upload/f_auto,q_auto:eco,w_1920/v1768389724/golf.jpg"
           alt="Golf Edge by Emaar"
           fill
           style={{ objectFit: 'cover' }}
@@ -109,15 +109,15 @@ export default function ProjectImage() {
           <div className={styles.leftColumn}>
             <h2 className={styles.projectTitle}>{t('title')}</h2>
             <p className={styles.projectDescription}>{t('description')}</p>
-            
+
             <div className={styles.features}>
               <div className={styles.featureItem}>
                 <div className={styles.featureIcon}>
                   <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M3 6V16C3 16.5523 3.44772 17 4 17H16C16.5523 17 17 16.5523 17 16V6C17 5.44772 16.5523 5 16 5H4C3.44772 5 3 5.44772 3 6Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                    <path d="M7 5V3C7 2.44772 7.44772 2 8 2H12C12.5523 2 13 2.44772 13 3V5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                    <path d="M6 10H14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                    <path d="M6 13H14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M3 6V16C3 16.5523 3.44772 17 4 17H16C16.5523 17 17 16.5523 17 16V6C17 5.44772 16.5523 5 16 5H4C3.44772 5 3 5.44772 3 6Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M7 5V3C7 2.44772 7.44772 2 8 2H12C12.5523 2 13 2.44772 13 3V5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M6 10H14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M6 13H14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                 </div>
                 <span>{t('features.bedrooms')}</span>
@@ -125,11 +125,11 @@ export default function ProjectImage() {
               <div className={styles.featureItem}>
                 <div className={styles.featureIcon}>
                   <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M4 6C4 5.44772 4.44772 5 5 5H15C15.5523 5 16 5.44772 16 6V14C16 14.5523 15.5523 15 15 15H5C4.44772 15 4 14.5523 4 14V6Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                    <path d="M4 8H16" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                    <circle cx="7.5" cy="11" r="0.8" fill="currentColor"/>
-                    <circle cx="12.5" cy="11" r="0.8" fill="currentColor"/>
-                    <path d="M10 8V11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M4 6C4 5.44772 4.44772 5 5 5H15C15.5523 5 16 5.44772 16 6V14C16 14.5523 15.5523 15 15 15H5C4.44772 15 4 14.5523 4 14V6Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M4 8H16" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    <circle cx="7.5" cy="11" r="0.8" fill="currentColor" />
+                    <circle cx="12.5" cy="11" r="0.8" fill="currentColor" />
+                    <path d="M10 8V11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                 </div>
                 <span>{t('features.bathrooms')}</span>
@@ -137,10 +137,10 @@ export default function ProjectImage() {
               <div className={styles.featureItem}>
                 <div className={styles.featureIcon}>
                   <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M10 3C10 3 6 7 6 10C6 12.2091 7.79086 14 10 14C12.2091 14 14 12.2091 14 10C14 7 10 3 10 3Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                    <path d="M5 12L3 17H17L15 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                    <path d="M8 8C8 8 8.5 7.5 10 7.5C11.5 7.5 12 8 12 8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-                    <path d="M8 10C8 10 8.5 9.5 10 9.5C11.5 9.5 12 10 12 10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+                    <path d="M10 3C10 3 6 7 6 10C6 12.2091 7.79086 14 10 14C12.2091 14 14 12.2091 14 10C14 7 10 3 10 3Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M5 12L3 17H17L15 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M8 8C8 8 8.5 7.5 10 7.5C11.5 7.5 12 8 12 8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+                    <path d="M8 10C8 10 8.5 9.5 10 9.5C11.5 9.5 12 10 12 10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
                   </svg>
                 </div>
                 <span>{t('features.park')}</span>
@@ -148,13 +148,13 @@ export default function ProjectImage() {
             </div>
 
             <div className={styles.actions}>
-              <Link 
+              <Link
                 href={getLocalizedPath('/properties/3ec6a3be-02d4-460c-947c-cda4314e591b')}
                 className={styles.readMoreButton}
               >
                 {t('readMore')}
               </Link>
-              <button 
+              <button
                 className={styles.contactButton}
                 onClick={handleContactClick}
               >
@@ -167,7 +167,7 @@ export default function ProjectImage() {
             <form className={styles.contactForm} onSubmit={handleSubmit}>
               <h3 className={styles.formTitle}>{t('form.title')}</h3>
               <p className={styles.formDescription}>{t('form.description')}</p>
-              
+
               <input
                 type="text"
                 placeholder={t('form.name')}
@@ -190,7 +190,7 @@ export default function ProjectImage() {
               <button type="submit" className={styles.submitButton}>
                 {t('form.send')}
               </button>
-              
+
               <p className={styles.formNote}>{t('form.note')}</p>
             </form>
           </div>
@@ -199,22 +199,22 @@ export default function ProjectImage() {
 
       {/* Contact Modal */}
       {isModalOpen && (
-        <div 
+        <div
           className={styles.modalOverlay}
           onClick={handleBackdropClick}
         >
-          <div 
+          <div
             className={styles.modalContent}
             ref={modalRef}
             onClick={(e) => e.stopPropagation()}
           >
-            <button 
+            <button
               className={styles.modalCloseButton}
               onClick={handleCloseModal}
               aria-label="Close modal"
             >
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </button>
 
@@ -223,7 +223,7 @@ export default function ProjectImage() {
               <div className={styles.modalLeft}>
                 <h2 className={styles.modalTitle}>{t('form.title')}</h2>
                 <p className={styles.modalDescription}>{t('form.description')}</p>
-                
+
                 <form className={styles.modalForm} onSubmit={handleSubmit}>
                   <input
                     type="text"
@@ -247,7 +247,7 @@ export default function ProjectImage() {
                   <button type="submit" className={styles.modalSubmitButton}>
                     {t('form.send')}
                   </button>
-                  
+
                   <p className={styles.modalNote}>{t('form.note')}</p>
                 </form>
               </div>

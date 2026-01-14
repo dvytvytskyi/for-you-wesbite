@@ -30,7 +30,7 @@ interface Filters {
 const mapSortToBackend = (frontendSort: string | undefined, propertyType: 'off-plan' | 'secondary'): { sortBy: ApiPropertyFilters['sortBy'], sortOrder: ApiPropertyFilters['sortOrder'] } => {
   // Default to 'newest' if sort is empty or undefined
   const sortValue = frontendSort || 'newest';
-  
+
   const mapping: Record<string, { sortBy: ApiPropertyFilters['sortBy'], sortOrder: ApiPropertyFilters['sortOrder'] }> = {
     'price-desc': { sortBy: propertyType === 'off-plan' ? 'priceFrom' : 'price', sortOrder: 'DESC' },
     'price-asc': { sortBy: propertyType === 'off-plan' ? 'priceFrom' : 'price', sortOrder: 'ASC' },
@@ -45,7 +45,7 @@ const mapSortToBackend = (frontendSort: string | undefined, propertyType: 'off-p
 const convertFiltersToApi = (filters: Filters, page: number): ApiPropertyFilters => {
   const propertyType = filters.type === 'new' ? 'off-plan' : 'secondary';
   const sort = mapSortToBackend(filters.sort, propertyType);
-  
+
   const apiFilters: ApiPropertyFilters = {
     propertyType,
     sortBy: sort.sortBy,
@@ -53,6 +53,7 @@ const convertFiltersToApi = (filters: Filters, page: number): ApiPropertyFilters
     // Server-side pagination: request only the current page
     page: page,
     limit: ITEMS_PER_PAGE, // 36 items per page
+    summary: true,
   };
 
   // Developer filter
@@ -113,7 +114,7 @@ const ITEMS_PER_PAGE = 36;
 // Helper functions to sync filters with URL
 const filtersToUrlParams = (filters: Filters, page?: number): URLSearchParams => {
   const params = new URLSearchParams();
-  
+
   if (filters.type !== 'new') params.set('type', filters.type);
   if (filters.search) params.set('search', filters.search);
   if (filters.location.length > 0) params.set('location', filters.location.join(','));
@@ -134,14 +135,14 @@ const filtersToUrlParams = (filters: Filters, page?: number): URLSearchParams =>
       params.delete('page');
     }
   }
-  
+
   return params;
 };
 
 const urlParamsToFilters = (searchParams: URLSearchParams): Filters => {
   const typeParam = searchParams.get('type');
   const type: 'new' | 'secondary' = typeParam === 'secondary' ? 'secondary' : 'new';
-  
+
   return {
     type,
     search: searchParams.get('search') || '',
@@ -162,17 +163,17 @@ export default function PropertiesList() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
-  
+
   // Create a new searchParams object for URL updates
   const createSearchParams = useCallback((newFilters: Filters, page?: number): URLSearchParams => {
     return filtersToUrlParams(newFilters, page);
   }, []);
-  
+
   const [properties, setProperties] = useState<Property[]>([]);
   const [totalProperties, setTotalProperties] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Initialize filters from URL or defaults
   const [filters, setFilters] = useState<Filters>(() => {
     return urlParamsToFilters(searchParams);
@@ -199,7 +200,7 @@ export default function PropertiesList() {
   // Sync page with URL when URL changes (e.g., browser back/forward)
   // Use a ref to track if we're updating URL ourselves to avoid loops
   const isUpdatingUrlRef = useRef(false);
-  
+
   useEffect(() => {
     // Skip if we're the ones updating the URL
     if (isUpdatingUrlRef.current) {
@@ -209,11 +210,12 @@ export default function PropertiesList() {
       }, 100);
       return;
     }
-    
+
     const urlPage = searchParams.get('page') ? parseInt(searchParams.get('page') || '1', 10) : 1;
     setCurrentPage((prevPage) => {
       // Only update if URL page is different from current page
-      if (urlPage !== prevPage && urlPage >= 1) {return urlPage;
+      if (urlPage !== prevPage && urlPage >= 1) {
+        return urlPage;
       }
       return prevPage;
     });
@@ -226,56 +228,54 @@ export default function PropertiesList() {
   const loadProperties = useCallback(async () => {
     setLoading(true);
     setError(null);
-    
+
     try {
       // Convert filters and pass current page for server-side pagination
       const apiFilters = convertFiltersToApi(filters, currentPage);
-      
+
       // Override search with debounced value
       if (debouncedSearch) {
         apiFilters.search = debouncedSearch;
       } else {
         delete apiFilters.search;
       }
-      
+
       if (process.env.NODE_ENV === 'development') {
       }
-      
+
       // Request only the current page from API (36 items)
       // Use cache by default, but allow bypassing it via URL parameter ?refresh=true
       const refreshCache = searchParams.get('refresh') === 'true';
-      
+
       // Always clear cache if refresh parameter is present
       if (refreshCache) {
         const { clearPropertiesCache, clearPublicDataCache } = await import('@/lib/api');
         clearPropertiesCache();
         clearPublicDataCache();
-        }
-      
+      }
+
       const result = await getProperties(apiFilters, !refreshCache);
       const loadedProperties = Array.isArray(result.properties) ? result.properties : [];
-      
+
       // Use total from API - this is the total count of ALL properties matching filters
       let total = result.total || 0;
-      
-      // If total is 0 or equals loaded count and we got a full page, estimate there are more
-      // This handles cases where API doesn't return correct total
-      if ((total === 0 || total === loadedProperties.length) && loadedProperties.length === ITEMS_PER_PAGE) {
-        // For secondary properties, estimate conservatively (26K+)
-        if (apiFilters.propertyType === 'secondary') {
-          total = 26000; // Conservative estimate for secondary
-          } else {
-          // For off-plan, estimate 1000
-          total = 1000;
-          }
+
+      // Unified total count logic: if API fails to provide total, but returns a full page, assume more pages exist
+      if (total <= loadedProperties.length && loadedProperties.length >= ITEMS_PER_PAGE) {
+        // If we got exactly ITEMS_PER_PAGE (or more), and total is missing or too small,
+        // assume more pages exist (will be corrected on next fetch or use baseline estimates)
+        if (total < ITEMS_PER_PAGE * 2) {
+          total = apiFilters.propertyType === 'secondary' ? 26000 : 1000;
+        }
       }
-      
+
       setTotalProperties(total);
-      
+
       // Set properties directly (no slicing needed - API returns only this page)
       setProperties(loadedProperties);
-      
-      } catch (err: any) {setError(err.message || t('errorLoading') || 'Error loading properties');
+
+    } catch (err: any) {
+      setError(err.message || t('errorLoading') || 'Error loading properties');
     } finally {
       setLoading(false);
     }
@@ -289,16 +289,16 @@ export default function PropertiesList() {
     const newUrl = queryString ? `${pathname}?${queryString}` : pathname;// Use router.replace with the full URL including query string
     // Next.js App Router should handle this correctly
     const urlWithQuery = queryString ? `${pathname}?${queryString}` : pathname;
-    
+
     // Use startTransition for non-urgent URL updates
     startTransition(() => {
       router.replace(urlWithQuery, { scroll: false });
     });
-    
+
     // Force URL update in browser address bar immediately
     if (typeof window !== 'undefined' && window.history) {
       window.history.replaceState(null, '', urlWithQuery);
-      
+
       // Reset flag after a delay
       setTimeout(() => {
         isUpdatingUrlRef.current = false;
@@ -320,7 +320,7 @@ export default function PropertiesList() {
   // Restore scroll position and page when returning from property detail page
   useEffect(() => {
     if (scrollRestored || loading) return;
-    
+
     const restoredState = restoreScrollState();
     if (restoredState) {
       // Update page if it was restored and different from current
@@ -382,29 +382,31 @@ export default function PropertiesList() {
 
   // Calculate pagination based on total from API
   // Server-side pagination: API returns total count of all matching properties
-  const totalPages = totalProperties > 0 
-    ? Math.ceil(totalProperties / ITEMS_PER_PAGE) 
+  const totalPages = totalProperties > 0
+    ? Math.ceil(totalProperties / ITEMS_PER_PAGE)
     : Math.ceil(properties.length / ITEMS_PER_PAGE) || 1;
-  
+
   // Ensure properties is always an array
   const propertiesArray = Array.isArray(properties) ? properties : [];
-  
+
   // Ensure currentPage is within valid range
   const validPage = totalPages > 0 ? Math.min(Math.max(1, currentPage), totalPages) : 1;
-  
-  // Sync currentPage if it's out of bounds
+
+  // Sync currentPage if it's out of bounds OR if URL doesn't match state
   useEffect(() => {
-    if (totalPages > 0 && currentPage > totalPages) {
-      setCurrentPage(1);
-      updateUrl(filters, 1);
+    const urlPage = searchParams.get('page') ? parseInt(searchParams.get('page') || '1', 10) : 1;
+    if (currentPage !== urlPage && urlPage >= 1) {
+      setCurrentPage(urlPage);
     }
-  }, [totalPages, currentPage, filters, updateUrl]);
-  
+  }, [searchParams, currentPage]);
+
   const handlePageChange = (page: number) => {
-    if (page < 1 || page > totalPages) {return; // Validate page number
-    }setCurrentPage(page);
-    setScrollRestored(false); // Reset scroll restoration when manually changing page
-    updateUrl(filters, page); // Update URL with new page
+    if (page < 1 || page > totalPages) return;
+
+    // Update local state first for immediate UI response
+    setCurrentPage(page);
+    setScrollRestored(false);
+    updateUrl(filters, page);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -458,7 +460,7 @@ export default function PropertiesList() {
           onApply={handleApplyFilters}
           onReset={handleResetFilters}
         />
-        
+
         {loading ? (
           <>
             <div className={styles.resultsHeader}>
@@ -496,11 +498,12 @@ export default function PropertiesList() {
               </div>
             </div>
             <div className={styles.grid}>
-              {propertiesArray.map((property) => (
-                <PropertyCard 
-                  key={property.id} 
-                  property={property} 
+              {propertiesArray.map((property, index) => (
+                <PropertyCard
+                  key={property.id}
+                  property={property}
                   currentPage={validPage}
+                  index={index}
                 />
               ))}
             </div>

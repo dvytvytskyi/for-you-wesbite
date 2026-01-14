@@ -1,6 +1,9 @@
 import LoginForm from '@/components/auth/LoginForm';
 
-export default function LoginPage() {
+import { unstable_setRequestLocale } from 'next-intl/server';
+
+export default function LoginPage({ params: { locale } }: { params: { locale: string } }) {
+  unstable_setRequestLocale(locale);
   return <LoginForm />;
 }
 

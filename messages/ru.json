@@ -2,6 +2,7 @@
   "header": {
     "signIn": "Войти",
     "register": "Регистрация",
+    "likes": "Лайки",
     "nav": {
       "home": "Главная",
       "properties": "Недвижимость",
@@ -263,6 +264,7 @@
     }
   },
   "propertyCard": {
+    "exclusiveForYou": "Exclusive ForYou",
     "type": {
       "new": "Новостройка",
       "offPlan": "Офф план",

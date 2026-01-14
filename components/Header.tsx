@@ -14,7 +14,7 @@ export default function Header() {
   const router = useRouter();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  
+
   // Перевіряємо чи ми на головній сторінці
   const isHomePage = pathname === `/${locale}` || pathname === '/';
 
@@ -113,10 +113,15 @@ export default function Header() {
       <div className={styles.container}>
         <div className={styles.logo}>
           <Link href={getLocalizedPath('/')}>
-            <img src={isScrolled || !isHomePage ? "/new logo blue.png" : "/new logo.png"} alt="Logo" />
+            <img
+              src={isScrolled || !isHomePage ? "https://res.cloudinary.com/dgv0rxd60/image/upload/f_auto,q_auto,w_400/v1768389720/new_logo_blue.png" : "https://res.cloudinary.com/dgv0rxd60/image/upload/f_auto,q_auto,w_400/v1768389714/new_logo.png"}
+              alt="Logo"
+              width="150"
+              height="45"
+            />
           </Link>
         </div>
-        
+
         <nav className={styles.mainNav}>
           {navItems.map((item) => (
             <Link
@@ -128,9 +133,9 @@ export default function Header() {
             </Link>
           ))}
         </nav>
-        
+
         <nav className={styles.authNav}>
-          <Link href={getLocalizedPath('/register')} className={`${styles.glassButton} ${styles.register}`}>{t('register')}</Link>
+          <Link href={getLocalizedPath('/favorites')} className={`${styles.glassButton} ${styles.register}`}>{t('likes')}</Link>
           <div className={styles.languageSwitcher}>
             <button
               onClick={() => switchLanguage('en')}
@@ -148,7 +153,7 @@ export default function Header() {
         </nav>
 
         {/* Hamburger menu button for mobile */}
-        <button 
+        <button
           className={`${styles.hamburger} ${isMobileMenuOpen ? styles.hamburgerOpen : ''}`}
           onClick={toggleMobileMenu}
           aria-label="Toggle menu"
@@ -162,7 +167,7 @@ export default function Header() {
 
       {/* Mobile menu backdrop */}
       {isMobileMenuOpen && (
-        <div 
+        <div
           className={styles.mobileMenuBackdrop}
           onClick={toggleMobileMenu}
           aria-hidden="true"
@@ -172,22 +177,8 @@ export default function Header() {
       {/* Mobile menu */}
       <div className={`${styles.mobileMenu} ${isMobileMenuOpen ? styles.mobileMenuOpen : ''}`}>
         {/* Close button */}
-        <button 
-          className={styles.mobileMenuClose}
-          onClick={toggleMobileMenu}
-          aria-label="Close menu"
-        >
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path 
-              d="M18 6L6 18M6 6L18 18" 
-              stroke="currentColor" 
-              strokeWidth="2" 
-              strokeLinecap="round" 
-              strokeLinejoin="round"
-            />
-          </svg>
-        </button>
-        
+
+
         <nav className={styles.mobileNav}>
           {navItems
             .filter((item) => item.key !== 'developers') // Приховати developers в mobile menu
@@ -202,7 +193,7 @@ export default function Header() {
               </Link>
             ))}
         </nav>
-        
+
         <div className={styles.mobileLanguageSwitcher}>
           <span className={styles.mobileLanguageLabel}>{locale === 'ru' ? 'Язык' : 'Language'}:</span>
           <div className={styles.mobileLanguageButtons}>
@@ -226,14 +217,14 @@ export default function Header() {
             </button>
           </div>
         </div>
-        
+
         <div className={styles.mobileAuth}>
-          <Link 
-            href={getLocalizedPath('/register')} 
+          <Link
+            href={getLocalizedPath('/favorites')}
             className={`${styles.mobileAuthButton} ${styles.mobileAuthButtonRegister}`}
             onClick={() => setIsMobileMenuOpen(false)}
           >
-            {t('register')}
+            {t('likes')}
           </Link>
         </div>
       </div>

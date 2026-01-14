@@ -9,7 +9,10 @@ export async function generateMetadata() {
   };
 }
 
-export default function PrivacyPolicyPage() {
+import { unstable_setRequestLocale } from 'next-intl/server';
+
+export default function PrivacyPolicyPage({ params: { locale } }: { params: { locale: string } }) {
+  unstable_setRequestLocale(locale);
   return (
     <>
       <Header />
@@ -17,7 +20,7 @@ export default function PrivacyPolicyPage() {
         <div className={styles.content}>
           <h1 className={styles.title}>Privacy Policy</h1>
           <p className={styles.lastUpdated}>Last updated: {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
-          
+
           <section className={styles.section}>
             <h2 className={styles.sectionTitle}>1. Introduction</h2>
             <p className={styles.text}>

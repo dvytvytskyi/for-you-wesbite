@@ -14,14 +14,8 @@ interface Leader {
 export default function AboutHero() {
   const t = useTranslations('aboutUs');
   const locale = useLocale();
-  const [stat1Value, setStat1Value] = useState(0);
-  const [stat2Value, setStat2Value] = useState(0);
-  const [stat3Value, setStat3Value] = useState(0);
-  const [stat4Value, setStat4Value] = useState(0);
-  const statsRef = useRef<HTMLDivElement>(null);
   const milestonesRef = useRef<HTMLDivElement>(null);
   const topSectionRef = useRef<HTMLDivElement>(null);
-  const [isVisible, setIsVisible] = useState(false);
   const [isMilestonesVisible, setIsMilestonesVisible] = useState(false);
   const [isTopSectionVisible, setIsTopSectionVisible] = useState(false);
 
@@ -52,29 +46,6 @@ export default function AboutHero() {
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
-          if (entry.isIntersecting && !isVisible) {
-            setIsVisible(true);
-          }
-        });
-      },
-      { threshold: 0.3 }
-    );
-
-    if (statsRef.current) {
-      observer.observe(statsRef.current);
-    }
-
-    return () => {
-      if (statsRef.current) {
-        observer.unobserve(statsRef.current);
-      }
-    };
-  }, [isVisible]);
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
           if (entry.isIntersecting && !isMilestonesVisible) {
             setIsMilestonesVisible(true);
           }
@@ -94,73 +65,10 @@ export default function AboutHero() {
     };
   }, [isMilestonesVisible]);
 
-  useEffect(() => {
-    if (!isVisible) return;
-
-    const animateValue = (
-      setter: (value: number) => void,
-      start: number,
-      end: number,
-      duration: number,
-      suffix: string = ''
-    ) => {
-      const startTime = Date.now();
-      const endTime = startTime + duration;
-
-      const animate = () => {
-        const now = Date.now();
-        const progress = Math.min((now - startTime) / duration, 1);
-        const easeOutQuart = 1 - Math.pow(1 - progress, 4);
-        const current = Math.floor(start + (end - start) * easeOutQuart);
-        
-        setter(current);
-
-        if (now < endTime) {
-          requestAnimationFrame(animate);
-        } else {
-          setter(end);
-        }
-      };
-
-      animate();
-    };
-
-    // Parse numbers from stat strings
-    const parseStat = (stat: string): number => {
-      if (stat.includes('%')) {
-        return parseInt(stat.replace('%', ''));
-      }
-      if (stat.includes('+')) {
-        return parseInt(stat.replace('+', ''));
-      }
-      return parseInt(stat);
-    };
-
-    const stat1Num = parseStat(t('stat1Number'));
-    const stat2Num = parseStat(t('stat2Number'));
-    const stat3Num = parseStat(t('stat3Number'));
-    const stat4Num = parseStat(t('stat4Number'));
-
-    animateValue(setStat1Value, 0, stat1Num, 2000);
-    animateValue(setStat2Value, 0, stat2Num, 2000);
-    animateValue(setStat3Value, 0, stat3Num, 2000);
-    animateValue(setStat4Value, 0, stat4Num, 2000);
-  }, [isVisible, t]);
-
-  const formatStat = (value: number, original: string): string => {
-    if (original.includes('%')) {
-      return `${value}%`;
-    }
-    if (original.includes('+')) {
-      return `${value}+`;
-    }
-    return value.toString().padStart(2, '0');
-  };
-
   return (
     <div className={styles.container}>
       {/* Top Section */}
-      <div 
+      <div
         className={`${styles.topSection} ${isTopSectionVisible ? styles.visible : ''}`}
         ref={topSectionRef}
       >
@@ -196,31 +104,9 @@ export default function AboutHero() {
             style={{ objectFit: 'cover' }}
             sizes="100vw"
             loading="lazy"
-            unoptimized
           />
         </div>
       </div>
-
-      {/* Statistics Section */}
-      <div className={styles.statsSection} ref={statsRef}>
-        <div className={styles.statItem}>
-          <div className={styles.statNumber}>{formatStat(stat1Value, t('stat1Number'))}</div>
-          <div className={styles.statLabel}>{t('stat1Label')}</div>
-        </div>
-        <div className={styles.statItem}>
-          <div className={styles.statNumber}>{formatStat(stat2Value, t('stat2Number'))}</div>
-          <div className={styles.statLabel}>{t('stat2Label')}</div>
-        </div>
-        <div className={styles.statItem}>
-          <div className={styles.statNumber}>{formatStat(stat3Value, t('stat3Number'))}</div>
-          <div className={styles.statLabel}>{t('stat3Label')}</div>
-        </div>
-        <div className={styles.statItem}>
-          <div className={styles.statNumber}>{formatStat(stat4Value, t('stat4Number'))}</div>
-          <div className={styles.statLabel}>{t('stat4Label')}</div>
-        </div>
-      </div>
-
 
       {/* Partners Section */}
       <div className={styles.partnersSection}>
@@ -296,7 +182,7 @@ export default function AboutHero() {
 
       {/* FAQ Section */}
       <FAQSection t={t} />
-    </div>
+    </div >
   );
 }
 
@@ -389,8 +275,7 @@ export function TeamSection({ t }: { t: any }) {
 }
 
 export function OfficeSection({ t }: { t: any }) {
-  const [selectedDate, setSelectedDate] = useState('');
-  const [selectedTime, setSelectedTime] = useState('');
+
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [message, setMessage] = useState('');
@@ -406,9 +291,9 @@ export function OfficeSection({ t }: { t: any }) {
       try {
         const mapboxgl = (await import('mapbox-gl')).default;
         // CSS is imported globally in app/globals.css
-        
-        // Get token from environment variable (available on client side)
-        const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || '';
+
+        // Get token from environment variable or use hardcoded fallback
+        const token = 'pk.eyJ1IjoiYWJpZXNwYW5hIiwiYSI6ImNsb3N4NzllYzAyOWYybWw5ZzNpNXlqaHkifQ.UxlTvUuSq9L5jt0jRtRR-A';
 
         if (!token || token.trim() === '') {
           if (mapContainerRef.current) {
@@ -424,9 +309,9 @@ export function OfficeSection({ t }: { t: any }) {
 
         const map = new mapboxgl.Map({
           container: mapContainerRef.current!,
-          style: 'mapbox://styles/abiespana/cmcxiep98004r01quhxspf3w9',
-          center: [55.2708, 25.2048], // Dubai office coordinates
-          zoom: 15,
+          style: 'mapbox://styles/abiespana/cmkdvczeg002301sdfd53hv5f',
+          center: [55.1689534, 25.0964000], // Dubai office coordinates
+          zoom: 16,
           interactive: true,
           accessToken: token, // Also pass as parameter
           // Optimize Mapbox loading - обмежуємо область та zoom для зменшення кількості тайлів
@@ -442,16 +327,51 @@ export function OfficeSection({ t }: { t: any }) {
           try {
             map.addControl(new mapboxgl.NavigationControl(), 'top-right');
 
-            // Add office marker
+            // Create custom marker element
+            const el = document.createElement('div');
+            el.className = 'office-marker';
+            el.style.position = 'relative';
+            el.style.display = 'flex';
+            el.style.flexDirection = 'column';
+            el.style.alignItems = 'center';
+
+            // SVG Icon
+            const svgContainer = document.createElement('div');
+            svgContainer.innerHTML = `
+              <svg width="40" height="50" viewBox="0 0 384 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M172.268 501.67C26.97 291.031 0 269.413 0 192 0 85.961 85.961 0 192 0s192 85.961 192 192c0 77.413-26.97 99.031-172.268 309.67-9.535 13.774-29.93 13.773-39.464 0zM192 272c44.183 0 80-35.817 80-80s-35.817-80-80-80-80 35.817-80 80 35.817 80 80 80z" fill="#003077"/>
+              </svg>
+            `;
+            el.appendChild(svgContainer);
+
+            // Text Label
+            const label = document.createElement('div');
+            label.textContent = 'ForYou Office';
+            label.style.marginTop = '10px';
+            label.style.backgroundColor = 'white';
+            label.style.color = '#003077';
+            label.style.padding = '6px 12px';
+            label.style.borderRadius = '8px';
+            label.style.fontSize = '14px';
+            label.style.fontWeight = '600';
+            label.style.whiteSpace = 'nowrap';
+            label.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+            label.style.fontFamily = 'Inter, sans-serif';
+
+            el.appendChild(label);
+
+            // Add office marker with offset to account for label
             const marker = new mapboxgl.Marker({
-              color: '#003077',
+              element: el,
+              anchor: 'bottom',
+              offset: [0, -42] // Shift up so the pin tip is at the coordinate (approx label height + margin)
             })
-              .setLngLat([55.2708, 25.2048])
+              .setLngLat([55.1689534, 25.0964000])
               .addTo(map);
 
             markerRef.current = marker;
-            
-            } catch (error) {}
+
+          } catch (error) { }
         });
 
         map.on('error', (e: any) => {
@@ -462,7 +382,7 @@ export function OfficeSection({ t }: { t: any }) {
         });
 
         map.on('style.load', () => {
-          });
+        });
 
         mapRef.current = map;
       } catch (error) {
@@ -472,13 +392,20 @@ export function OfficeSection({ t }: { t: any }) {
       }
     };
 
-    // Small delay to ensure container is rendered
-    const timer = setTimeout(() => {
-      loadMapbox();
-    }, 100);
+    // Lazy load map when visible
+    const observer = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting) {
+        loadMapbox();
+        observer.disconnect();
+      }
+    });
+
+    if (mapContainerRef.current) {
+      observer.observe(mapContainerRef.current);
+    }
 
     return () => {
-      clearTimeout(timer);
+      observer.disconnect();
       if (markerRef.current) {
         markerRef.current.remove();
       }
@@ -494,10 +421,7 @@ export function OfficeSection({ t }: { t: any }) {
   };
 
   // Generate time slots (9 AM to 6 PM, every hour)
-  const timeSlots = [];
-  for (let hour = 9; hour <= 18; hour++) {
-    timeSlots.push(`${hour.toString().padStart(2, '0')}:00`);
-  }
+
 
   return (
     <div className={styles.officeSection}>
@@ -511,34 +435,8 @@ export function OfficeSection({ t }: { t: any }) {
             <p className={styles.officeDescription}>{t('officeDescription')}</p>
             <form className={styles.officeForm} onSubmit={handleSubmit}>
               <h3 className={styles.formTitle}>{t('officeForm.title')}</h3>
-              
-              <div className={styles.formRow}>
-                <div className={styles.formField}>
-                  <label>{t('officeForm.dateLabel')}</label>
-                  <input
-                    type="date"
-                    value={selectedDate}
-                    onChange={(e) => setSelectedDate(e.target.value)}
-                    required
-                    min={new Date().toISOString().split('T')[0]}
-                  />
-                </div>
-                <div className={styles.formField}>
-                  <label>{t('officeForm.timeLabel')}</label>
-                  <select
-                    value={selectedTime}
-                    onChange={(e) => setSelectedTime(e.target.value)}
-                    required
-                  >
-                    <option value="">{t('officeForm.timeLabel')}</option>
-                    {timeSlots.map((time) => (
-                      <option key={time} value={time}>
-                        {time}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
+
+
 
               <div className={styles.formRow}>
                 <div className={styles.formField}>
@@ -618,7 +516,7 @@ export function FAQSection({ t }: { t: any }) {
   const faqItems = t.raw('faq') || [];
 
   return (
-    <div 
+    <div
       className={`${styles.faqSection} ${isVisible ? styles.visible : ''}`}
       ref={faqRef}
     >
@@ -626,7 +524,7 @@ export function FAQSection({ t }: { t: any }) {
         <h2 className={styles.faqTitle}>{t('faqTitle')}</h2>
         <div className={styles.faqList}>
           {faqItems.map((item: any, index: number) => (
-            <div 
+            <div
               key={index}
               className={`${styles.faqItem} ${openIndex === index ? styles.open : ''}`}
             >
@@ -635,19 +533,19 @@ export function FAQSection({ t }: { t: any }) {
                 onClick={() => setOpenIndex(openIndex === index ? null : index)}
               >
                 <span>{item.question}</span>
-                <svg 
-                  width="20" 
-                  height="20" 
-                  viewBox="0 0 24 24" 
-                  fill="none" 
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
                   xmlns="http://www.w3.org/2000/svg"
                   className={styles.faqIcon}
                 >
-                  <path 
-                    d="M6 9L12 15L18 9" 
-                    stroke="currentColor" 
-                    strokeWidth="2" 
-                    strokeLinecap="round" 
+                  <path
+                    d="M6 9L12 15L18 9"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
                     strokeLinejoin="round"
                   />
                 </svg>
@@ -711,7 +609,7 @@ export function LeadershipSection({ t }: { t: any }) {
 
 function LeaderCard({ name, description, photo, isExpanded, onToggle }: Leader & { isExpanded: boolean; onToggle: () => void }) {
   return (
-    <div 
+    <div
       className={`${styles.leaderCard} ${isExpanded ? styles.expanded : ''}`}
     >
       <div className={styles.leaderPhoto}>
@@ -732,7 +630,7 @@ function LeaderCard({ name, description, photo, isExpanded, onToggle }: Leader &
             {description}
           </p>
         </div>
-        <button 
+        <button
           className={styles.leaderToggle}
           onClick={onToggle}
         >

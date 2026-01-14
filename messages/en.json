@@ -2,6 +2,7 @@
   "header": {
     "signIn": "Sign In",
     "register": "Register",
+    "likes": "Likes",
     "nav": {
       "home": "Home",
       "properties": "Properties",
@@ -263,6 +264,7 @@
     }
   },
   "propertyCard": {
+    "exclusiveForYou": "Exclusive ForYou",
     "type": {
       "new": "New Building",
       "offPlan": "Off Plan",

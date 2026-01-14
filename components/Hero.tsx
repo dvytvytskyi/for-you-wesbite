@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import Image from 'next/image';
 import { useTranslations, useLocale } from 'next-intl';
 import { useRouter } from 'next/navigation';
-import { getAreas } from '@/lib/api';
+import { getAreasSimple } from '@/lib/api';
 import styles from './Hero.module.css';
 
 interface Area {
@@ -35,29 +36,32 @@ export default function Hero() {
   const [isBedroomsDropdownOpen, setIsBedroomsDropdownOpen] = useState(false);
   const [areas, setAreas] = useState<Area[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isDesktop, setIsDesktop] = useState(false);
   const areaDropdownRef = useRef<HTMLDivElement>(null);
   const bedroomsDropdownRef = useRef<HTMLDivElement>(null);
 
   const bedroomsOptions = ['all', '1', '2', '3', '4', '5+'];
 
+  // Check if desktop
+  useEffect(() => {
+    const checkDesktop = () => setIsDesktop(window.innerWidth > 768);
+    checkDesktop();
+    window.addEventListener('resize', checkDesktop);
+    return () => window.removeEventListener('resize', checkDesktop);
+  }, []);
+
   // Load areas from API - фільтруємо тільки райони Дубаю та беремо топ 20
   useEffect(() => {
     const loadAreas = async () => {
       try {
-        const apiAreas = await getAreas();
+        const apiAreas = await getAreasSimple();
         if (apiAreas && Array.isArray(apiAreas)) {
-          // Фільтруємо тільки райони Дубаю
-          const dubaiAreas = apiAreas.filter(area => 
-            area.city?.nameEn?.toLowerCase() === 'dubai' || 
-            area.city?.nameRu?.toLowerCase() === 'дубай'
-          );
-          
-          // Сортуємо за кількістю проектів (за спаданням) та беремо топ 20
-          const topAreas = dubaiAreas
-            .sort((a, b) => (b.projectsCount?.total || 0) - (a.projectsCount?.total || 0))
+          // Сортуємо за назвою та беремо топ 20
+          const sortedAreas = [...apiAreas]
+            .sort((a, b) => (locale === 'ru' ? a.nameRu : a.nameEn).localeCompare(locale === 'ru' ? b.nameRu : b.nameEn))
             .slice(0, 20);
-          
-          setAreas(topAreas);
+
+          setAreas(sortedAreas as any);
         }
       } catch (error) {
         // Error handling removed for performance
@@ -71,7 +75,7 @@ export default function Hero() {
 
   const handleSearch = () => {
     const localePrefix = locale === 'en' ? '' : `/${locale}`;
-    
+
     // Якщо нічого не вибрано, просто переходимо на /properties
     if (!selectedArea && selectedBedrooms === 'all') {
       router.push(`${localePrefix}/properties`);
@@ -81,7 +85,7 @@ export default function Hero() {
     // Якщо є вибрані фільтри, додаємо їх до URL
     const params = new URLSearchParams();
     if (selectedArea) {
-      params.set('areaId', selectedArea.id);
+      params.set('location', selectedArea.id);
     }
     if (selectedBedrooms !== 'all') {
       params.set('bedrooms', selectedBedrooms);
@@ -127,24 +131,35 @@ export default function Hero() {
   return (
     <section className={styles.hero}>
       <div className={styles.videoContainer}>
-        <video
-          autoPlay
-          muted
-          loop
-          playsInline
+        <Image
+          src="https://res.cloudinary.com/dgv0rxd60/video/upload/f_auto,q_auto:eco,w_800,so_0/v1762957287/3ea514df-18e3-4c44-8177-fdc048fca302_fldvse.jpg"
+          alt="Dubai Skyline"
+          fill
+          priority
           className={styles.video}
-        >
-          <source src="https://res.cloudinary.com/dgv0rxd60/video/upload/v1762957287/3ea514df-18e3-4c44-8177-fdc048fca302_fldvse.mp4" type="video/mp4" />
-        </video>
+          style={{ objectFit: 'cover' }}
+        />
+        {isDesktop && (
+          <video
+            autoPlay
+            muted
+            loop
+            playsInline
+            className={styles.video}
+            poster="https://res.cloudinary.com/dgv0rxd60/video/upload/f_auto,q_auto:eco,w_800,so_0/v1762957287/3ea514df-18e3-4c44-8177-fdc048fca302_fldvse.jpg"
+          >
+            <source src="https://res.cloudinary.com/dgv0rxd60/video/upload/f_auto,q_auto:eco,w_1920/v1762957287/3ea514df-18e3-4c44-8177-fdc048fca302_fldvse.mp4" type="video/mp4" />
+          </video>
+        )}
         <div className={styles.gradientTop}></div>
         <div className={styles.overlay}></div>
         <div className={styles.gradientBottom}></div>
       </div>
-      
+
       <div className={styles.content}>
         <h1 className={styles.title}>{t('title')}</h1>
         <p className={styles.subtitle}>{t('subtitle')}</p>
-        
+
         <div className={styles.searchBlock}>
           <div className={styles.searchInputWrapper} ref={areaDropdownRef}>
             <svg
@@ -195,7 +210,7 @@ export default function Hero() {
                 />
               </svg>
             </button>
-            
+
             {isAreaDropdownOpen && (
               <div className={styles.dropdownMenu}>
                 {loading ? (
@@ -217,7 +232,7 @@ export default function Hero() {
               </div>
             )}
           </div>
-          
+
           <div className={styles.dropdownWrapper} ref={bedroomsDropdownRef}>
             <button
               type="button"
@@ -242,7 +257,7 @@ export default function Hero() {
                 />
               </svg>
             </button>
-            
+
             {isBedroomsDropdownOpen && (
               <div className={styles.dropdownMenu}>
                 {bedroomsOptions.map((option) => (
@@ -258,9 +273,9 @@ export default function Hero() {
               </div>
             )}
           </div>
-          
-          <button 
-            onClick={handleSearch} 
+
+          <button
+            onClick={handleSearch}
             className={styles.searchButton}
           >
             {t('search.searchButton')}

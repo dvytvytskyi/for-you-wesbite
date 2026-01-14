@@ -88,7 +88,7 @@
     min-height: 300px;
     border-radius: 0 !important;
   }
-  
+
   .imageContainer {
     border-radius: 0 !important;
     touch-action: pan-x pan-y;
@@ -97,13 +97,13 @@
     -webkit-touch-callout: none;
     -webkit-user-drag: none;
   }
-  
+
   .imageWrapper {
     touch-action: pan-x pan-y;
     pointer-events: auto;
     border-radius: 0 !important;
   }
-  
+
   .heroImage {
     pointer-events: none;
     border-radius: 0 !important;
@@ -146,12 +146,10 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(
-    90deg,
-    #f0f0f0 0%,
-    #e0e0e0 50%,
-    #f0f0f0 100%
-  );
+  background: linear-gradient(90deg,
+      #f0f0f0 0%,
+      #e0e0e0 50%,
+      #f0f0f0 100%);
   background-size: 200% 100%;
   animation: heroImageShimmer 1.5s infinite;
   z-index: 0;
@@ -161,6 +159,7 @@
   0% {
     background-position: -200% 0;
   }
+
   100% {
     background-position: 200% 0;
   }
@@ -196,6 +195,7 @@
     transform: translateX(100%);
     opacity: 0;
   }
+
   to {
     transform: translateX(0);
     opacity: 1;
@@ -207,6 +207,7 @@
     transform: translateX(-100%);
     opacity: 0;
   }
+
   to {
     transform: translateX(0);
     opacity: 1;
@@ -218,6 +219,7 @@
     transform: translateX(0);
     opacity: 1;
   }
+
   to {
     transform: translateX(-100%);
     opacity: 0;
@@ -229,6 +231,7 @@
     transform: translateX(0);
     opacity: 1;
   }
+
   to {
     transform: translateX(100%);
     opacity: 0;
@@ -406,11 +409,11 @@
     margin: 0;
     width: 100%;
   }
-  
+
   .contentWrapper {
     gap: 24px;
   }
-  
+
   .leftColumn,
   .rightColumn {
     width: 100%;
@@ -425,6 +428,25 @@
 
 .header {
   margin-bottom: 24px;
+}
+
+.exclusiveBadge {
+  background: linear-gradient(135deg, #FFD700 0%, #EBA44E 100%);
+  color: #003077;
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  box-shadow: 0 4px 12px rgba(235, 164, 78, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 12px;
+  width: fit-content;
 }
 
 .title {
@@ -795,12 +817,10 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(
-    90deg,
-    #f0f0f0 0%,
-    #e0e0e0 50%,
-    #f0f0f0 100%
-  );
+  background: linear-gradient(90deg,
+      #f0f0f0 0%,
+      #e0e0e0 50%,
+      #f0f0f0 100%);
   background-size: 200% 100%;
   animation: unitImageShimmer 1.5s infinite;
   z-index: 1;
@@ -810,6 +830,7 @@
   0% {
     background-position: -200% 0;
   }
+
   100% {
     background-position: 200% 0;
   }
@@ -861,11 +882,11 @@
     user-select: none;
     -webkit-user-select: none;
   }
-  
+
   .mapContainer :global(.mapboxgl-canvas-container) {
     touch-action: pan-y pinch-zoom;
   }
-  
+
   .mapContainer :global(.mapboxgl-canvas) {
     touch-action: pan-y pinch-zoom;
   }
@@ -1108,17 +1129,17 @@
     left: 12px;
     right: 12px;
   }
-  
+
   .typeBadge {
     font-size: 12px;
     padding: 6px 12px;
   }
-  
+
   .favoriteButton {
     width: 36px;
     height: 36px;
   }
-  
+
   .imageIndicator {
     bottom: 12px;
     right: 12px;
@@ -1126,19 +1147,19 @@
     padding: 6px 12px;
     opacity: 1;
   }
-  
+
   .mainInfo {
     margin-bottom: 24px;
   }
-  
+
   .header {
     margin-bottom: 16px;
   }
-  
+
   .priceSection {
     margin-bottom: 16px;
   }
-  
+
   .descriptionSection,
   .facilitiesSection,
   .unitsSection,
@@ -1147,121 +1168,121 @@
   .developerImagesSection {
     margin-bottom: 24px;
   }
-  
+
   .sectionTitle {
     font-size: 18px;
     margin-bottom: 12px;
   }
-  
+
   .description {
     font-size: 14px;
     line-height: 1.6;
   }
-  
+
   .facilitiesList {
     gap: 8px;
   }
-  
+
   .facilityItem {
     font-size: 13px;
     padding: 8px 14px;
   }
-  
+
   .unitsHeader {
     margin-bottom: 12px;
   }
-  
+
   .unitCard {
     flex: 0 0 280px;
     min-width: 280px;
     max-width: 280px;
   }
-  
+
   .unitHeader {
     padding: 12px;
   }
-  
+
   .unitDetails {
     padding: 12px;
   }
-  
+
   .unitPrice {
     font-size: 16px;
   }
-  
+
   .unitSize {
     font-size: 12px;
   }
-  
+
   .mapContainer {
     height: 300px;
     border-radius: 8px;
   }
-  
+
   .contactForm {
     padding: 20px;
     border-radius: 8px;
   }
-  
+
   .contactTitle {
     font-size: 18px;
   }
-  
+
   .contactDescription {
     font-size: 13px;
   }
-  
+
   .agentAvatar {
     padding: 12px;
     margin-bottom: 16px;
   }
-  
+
   .avatarPlaceholder {
     width: 40px;
     height: 40px;
   }
-  
+
   .agentName {
     font-size: 14px;
   }
-  
+
   .agentRole {
     font-size: 12px;
   }
-  
+
   .form {
     gap: 12px;
   }
-  
+
   .input {
     padding: 10px;
     font-size: 14px;
   }
-  
+
   .textarea {
     min-height: 80px;
   }
-  
+
   .submitButton {
     padding: 10px 20px;
     font-size: 14px;
   }
-  
+
   .contactMethods {
     margin-top: 16px;
     padding-top: 16px;
     gap: 10px;
   }
-  
+
   .contactMethod {
     font-size: 13px;
   }
-  
+
   .contactMethod svg {
     width: 18px;
     height: 18px;
   }
-  
+
   .areaImagesHeader,
   .developerImagesHeader {
     flex-direction: column;
@@ -1275,28 +1296,28 @@
     gap: 12px;
     margin-top: 12px;
   }
-  
+
   .areaImageWrapper,
   .developerImageWrapper {
     border-radius: 6px;
   }
-  
+
   .developerLogoWrapper {
     margin-bottom: 12px;
   }
-  
+
   .paymentPlan {
     font-size: 13px;
   }
-  
+
   .developer {
     font-size: 13px;
   }
-  
+
   .detailItem {
     font-size: 13px;
   }
-  
+
   .detailItem svg {
     width: 18px;
     height: 18px;

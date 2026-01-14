@@ -20,7 +20,7 @@
 }
 
 /* On desktop, allow clicks through overlay to map, but popup can be clicked */
-.overlay > .popup {
+.overlay>.popup {
   pointer-events: auto;
 }
 
@@ -28,6 +28,7 @@
   from {
     opacity: 0;
   }
+
   to {
     opacity: 1;
   }
@@ -37,6 +38,7 @@
   from {
     opacity: 1;
   }
+
   to {
     opacity: 0;
   }
@@ -67,6 +69,7 @@
     transform: translateX(-100%);
     opacity: 0;
   }
+
   to {
     transform: translateX(0);
     opacity: 1;
@@ -115,13 +118,43 @@
 }
 
 .imageContainer {
-  width: calc(100% - 24px);
-  height: 280px;
-  margin: 12px 12px 0 12px;
+  width: 100%;
+  height: 315px;
+  /* Fixed height for 560px width at 16:9 ratio */
+  flex-shrink: 0;
   position: relative;
   overflow: hidden;
   background: #f5f5f5;
-  border-radius: 8px;
+  border-radius: 0;
+}
+
+@supports (aspect-ratio: 1) {
+  .imageContainer {
+    height: auto;
+    aspect-ratio: 16 / 9;
+  }
+}
+
+.exclusiveBadge {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  background: linear-gradient(135deg, #FFD700 0%, #EBA44E 100%);
+  color: #003077;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  z-index: 10;
+  white-space: nowrap;
 }
 
 .imageWrapper {
@@ -170,6 +203,7 @@
     transform: translateX(100%);
     opacity: 0;
   }
+
   to {
     transform: translateX(0);
     opacity: 1;
@@ -181,6 +215,7 @@
     transform: translateX(-100%);
     opacity: 0;
   }
+
   to {
     transform: translateX(0);
     opacity: 1;
@@ -192,6 +227,7 @@
     transform: translateX(0);
     opacity: 1;
   }
+
   to {
     transform: translateX(-100%);
     opacity: 0;
@@ -203,6 +239,7 @@
     transform: translateX(0);
     opacity: 1;
   }
+
   to {
     transform: translateX(100%);
     opacity: 0;
@@ -268,12 +305,15 @@
   opacity: 1;
 }
 
-.content {
-  padding: 20px;
-  padding-bottom: 80px;
-  overflow-y: auto;
+.scrollArea {
   flex: 1;
-  height: calc(700px - 280px);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.content {
+  padding: 24px 20px;
 }
 
 .titleRow {
@@ -436,20 +476,20 @@
 }
 
 .bottomActions {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
   display: flex;
+  justify-content: center;
+  align-items: center;
   gap: 12px;
   padding: 16px 20px;
   background: #ffffff;
   border-top: 1px solid rgba(0, 0, 0, 0.1);
   z-index: 10;
+  flex-shrink: 0;
 }
 
 .actionButton {
-  flex: 1;
+  flex: 0 1 auto;
+  min-width: 160px;
   padding: 12px 20px;
   border: 1px solid #003077;
   background: #ffffff;
@@ -459,6 +499,10 @@
   font-size: 14px;
   font-weight: 400;
   cursor: pointer;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
   transition: all 0.3s ease;
 }
 
@@ -501,8 +545,8 @@
   }
 
   .popup {
-    width: 90vw;
-    max-width: 500px;
+    width: 100%;
+    max-width: 100%;
     height: 85vh;
     max-height: 700px;
     margin: 0;
@@ -510,17 +554,19 @@
     animation: slideInFromBottom 0.3s ease;
     position: fixed;
     bottom: 0;
-    left: 50%;
-    transform: translateX(-50%);
+    left: 0;
+    right: 0;
+    transform: none;
   }
 
   @keyframes slideInFromBottom {
     from {
-      transform: translateX(-50%) translateY(100%);
+      transform: translateY(100%);
       opacity: 0;
     }
+
     to {
-      transform: translateX(-50%) translateY(0);
+      transform: translateY(0);
       opacity: 1;
     }
   }
@@ -531,11 +577,12 @@
 
   @keyframes slideOutToBottom {
     from {
-      transform: translateX(-50%) translateY(0);
+      transform: translateY(0);
       opacity: 1;
     }
+
     to {
-      transform: translateX(-50%) translateY(100%);
+      transform: translateY(100%);
       opacity: 0;
     }
   }
@@ -554,9 +601,12 @@
   }
 
   .imageContainer {
-    width: calc(100% - 24px);
-    height: 240px;
-    margin: 12px 12px 0 12px;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 16 / 9;
+    flex-shrink: 0;
+    margin: 0;
+    border-radius: 0;
   }
 
   .imageNav {
@@ -584,9 +634,7 @@
 
   .content {
     padding: 16px;
-    padding-bottom: 100px;
-    height: calc(85vh - 240px);
-    max-height: calc(700px - 240px);
+    padding-bottom: 20px;
   }
 
   .title {
@@ -622,12 +670,22 @@
 
   .bottomActions {
     padding: 12px 16px;
+    padding-bottom: calc(12px + env(safe-area-inset-bottom, 12px));
     gap: 10px;
   }
 
   .actionButton {
-    padding: 10px 16px;
-    font-size: 13px;
+    padding: 12px 16px;
+    font-size: 14px;
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+  }
+
+  .hideOnMobile {
+    display: none !important;
   }
 }
-

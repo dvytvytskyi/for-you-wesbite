@@ -5,6 +5,7 @@ import PropertyDetail from '@/components/PropertyDetail';
 import PropertyDetailSkeleton from '@/components/PropertyDetailSkeleton';
 import { getProperty } from '@/lib/api';
 import { notFound } from 'next/navigation';
+import { unstable_setRequestLocale } from 'next-intl/server';
 
 interface PropertyDetailPageProps {
   params: Promise<{
@@ -14,8 +15,9 @@ interface PropertyDetailPageProps {
 }
 
 export default async function PropertyDetailPage({ params }: PropertyDetailPageProps) {
-  const { id } = await params;
-  
+  const { id, locale } = await params;
+  unstable_setRequestLocale(locale);
+
   // Pre-fetch property data on server for faster initial render
   let property = null;
   try {

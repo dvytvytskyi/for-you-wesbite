@@ -2,10 +2,14 @@ import axios, { AxiosInstance, AxiosError } from 'axios';
 
 // API Configuration
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://admin.foryou-realestate.com/api';
-const API_KEY = process.env.NEXT_PUBLIC_API_KEY || 'fyr_8f968d115244e76d209a26f5177c5c998aca0e8dbce4a6e9071b2bc43b78f6d2';
-const API_SECRET = process.env.NEXT_PUBLIC_API_SECRET || '5c8335f9c7e476cbe77454fd32532cc68f57baf86f7f96e6bafcf682f98b275bc579d73484cf5bada7f4cd7d071b122778b71f414fb96b741c5fe60394d1795f';
+const API_KEY = process.env.NEXT_PUBLIC_API_KEY || 'fyr_7084daf35cf6427f60e06bccd675f133b8a19ce4866cf941156bb4f38fba4016';
+const API_SECRET = process.env.NEXT_PUBLIC_API_SECRET || '2e9e9a3a8080f207cf1c684baaeff40dcd4404c10f4d2207340bb48ee8ccdccda3f4e2fde5bd74fa4d8f463e361c45c9437206a97abb772415263e3a69655a73';
 
-// API configuration logging removed for performance
+if (typeof window !== 'undefined') {
+  console.log('🌐 API Client Initialized:');
+  console.log('   Base URL:', API_BASE_URL);
+  console.log('   Key starts with:', API_KEY.substring(0, 10));
+}
 
 // Create axios instance
 const apiClient: AxiosInstance = axios.create({
@@ -18,15 +22,15 @@ apiClient.interceptors.request.use(
   (config) => {
     // Always add API key and secret
     config.headers['Content-Type'] = 'application/json';
-    
+
     // Ensure API key and secret are set
     if (!API_KEY || !API_SECRET) {
       // API keys validation - errors handled silently for performance
     }
-    
+
     config.headers['X-Api-Key'] = API_KEY;
     config.headers['X-Api-Secret'] = API_SECRET;
-    
+
     // Add JWT token if available (for authenticated users)
     if (typeof window !== 'undefined') {
       const token = localStorage.getItem('token');
@@ -34,9 +38,9 @@ apiClient.interceptors.request.use(
         config.headers.Authorization = `Bearer ${token}`;
       }
     }
-    
+
     // Debug logging removed for performance
-    
+
     return config;
   },
   (error) => {
@@ -50,7 +54,7 @@ apiClient.interceptors.response.use(
   (error: AxiosError) => {
     if (error.response) {
       // Error logging removed for performance
-      
+
       if (error.response.status === 401) {
         // Unauthorized - clear token and redirect to login
         if (typeof window !== 'undefined') {
@@ -94,6 +98,8 @@ export interface PropertyFilters {
   sortOrder?: 'ASC' | 'DESC';
   page?: number; // Page number for server-side pagination
   limit?: number; // Items per page for server-side pagination
+  isForYouChoice?: boolean;
+  summary?: boolean;
 }
 
 export interface Property {
@@ -102,7 +108,11 @@ export interface Property {
   name: string;
   description: string;
   photos: string[];
-  
+  images?: Array<{
+    small: string;
+    full: string;
+  }>;
+
   // Country and city can be null for off-plan properties
   country: {
     id: string;
@@ -117,7 +127,7 @@ export interface Property {
     nameRu: string;
     nameAr: string;
   } | null;
-  
+
   // For off-plan properties: area is a string "areaName, cityName" (e.g., "Dubai Marina, Dubai") or null
   // For secondary properties: area is an object with full area details
   area: string | {
@@ -135,7 +145,7 @@ export interface Property {
     };
     images?: string[];
   } | null;
-  
+
   developer: {
     id: string;
     name: string;
@@ -145,7 +155,7 @@ export interface Property {
   } | null;
   latitude: number;
   longitude: number;
-  
+
   // Off-plan fields
   priceFrom?: number | null;
   priceFromAED?: number | null;
@@ -170,7 +180,7 @@ export interface Property {
     balconySizeSqft: number | null;
     planImage: string | null;
   }> | null;
-  
+
   // Secondary fields (always null for off-plan)
   price?: number | null; // Always null for off-plan
   priceAED?: number | null; // Always null for off-plan
@@ -178,7 +188,7 @@ export interface Property {
   bathrooms?: number;
   size?: number | null; // Always null for off-plan
   sizeSqft?: number | null; // Always null for off-plan
-  
+
   // Common fields
   facilities: Array<{
     id: string;
@@ -189,6 +199,7 @@ export interface Property {
   }>;
   createdAt: string;
   updatedAt: string;
+  isForYouChoice?: boolean;
 }
 
 // Public Data API
@@ -274,6 +285,39 @@ export interface GetPropertiesResult {
   total: number;
 }
 
+export interface MapMarker {
+  id: string;
+  lat: number;
+  lng: number;
+  priceAED: number;
+  propertyType: 'off-plan' | 'secondary';
+}
+
+// Cache for map markers
+let markersCache: MapMarker[] | null = null;
+let markersCacheTimestamp = 0;
+const MARKERS_CACHE_DURATION = 60 * 1000; // 1 minute
+
+export async function getMapMarkers(): Promise<MapMarker[]> {
+  try {
+    // Check cache
+    if (markersCache && (Date.now() - markersCacheTimestamp) < MARKERS_CACHE_DURATION) {
+      return markersCache;
+    }
+
+    const response = await apiClient.get<ApiResponse<MapMarker[]>>('/public/map');
+    if (response.data.success && Array.isArray(response.data.data)) {
+      markersCache = response.data.data;
+      markersCacheTimestamp = Date.now();
+      return response.data.data;
+    }
+    return [];
+  } catch (error) {
+    console.error('Failed to get map markers', error);
+    return [];
+  }
+}
+
 export async function getProperties(filters?: PropertyFilters, useCache: boolean = true): Promise<GetPropertiesResult> {
   try {
     // Create cache key from filters (including page and limit for server-side pagination)
@@ -293,17 +337,17 @@ export async function getProperties(filters?: PropertyFilters, useCache: boolean
       page: filters?.page,
       limit: filters?.limit,
     });
-    
+
     // Check cache
     if (useCache) {
       const cached = propertiesCache.get(cacheKey);
       if (cached && (Date.now() - cached.timestamp) < PROPERTIES_CACHE_DURATION) {
         if (process.env.NODE_ENV === 'development') {
-          
-          
-          
-          
-          
+
+
+
+
+
           // Check if cached data has old photo sources
           if (cached.result.properties.length > 0) {
             const firstProp = cached.result.properties[0];
@@ -311,15 +355,15 @@ export async function getProperties(filters?: PropertyFilters, useCache: boolean
               const hasAlnair = firstProp.photos.some((p: string) => p.includes('alnair'));
               const hasReelly = firstProp.photos.some((p: string) => p.includes('reelly'));
               if (hasAlnair && !hasReelly) {
-                
-                
+
+
                 propertiesCache.delete(cacheKey);
                 // Don't return cached result, fetch fresh data instead
               } else {
                 return cached.result;
               }
             } else {
-        return cached.result;
+              return cached.result;
             }
           } else {
             return cached.result;
@@ -329,10 +373,10 @@ export async function getProperties(filters?: PropertyFilters, useCache: boolean
         }
       }
     }
-    
+
     // First, try to get properties from /api/properties (if user is authenticated)
     const params = new URLSearchParams();
-    
+
     if (filters?.propertyType) params.append('propertyType', filters.propertyType);
     if (filters?.developerId) params.append('developerId', filters.developerId);
     if (filters?.cityId) params.append('cityId', filters.cityId);
@@ -348,180 +392,185 @@ export async function getProperties(filters?: PropertyFilters, useCache: boolean
     const sortOrder = filters?.sortOrder || 'DESC';
     params.append('sortBy', sortBy);
     params.append('sortOrder', sortOrder);
-    
+
     // Use page and limit from filters if provided, otherwise default to 100 items for client-side pagination
     const frontendPage = filters?.page || 1;
     const frontendLimit = filters?.limit || 100;
     params.append('page', frontendPage.toString());
     params.append('limit', frontendLimit.toString());
-    
+
+    if (filters?.isForYouChoice !== undefined) {
+      params.append('isForYouChoice', filters.isForYouChoice.toString());
+    }
+    if (filters?.summary) params.append('summary', 'true');
+
     const url = `/properties?${params.toString()}`;
     const fullUrl = `${API_BASE_URL}${url}`;
-    
+
     // Debug: log the sort parameters and headers
     if (process.env.NODE_ENV === 'development') {
-      
-      
-      
-      
-      
-      
-      
-      
-      
-      
-      
-      
-      
+
+
+
+
+
+
+
+
+
+
+
+
+
       // Validate URL is properly encoded
       try {
         new URL(fullUrl);
-        
+
       } catch (e) {
-        
+
       }
     }
-    
+
     // Try regular endpoint first (should work with API Key/Secret now)
     try {
       const response = await apiClient.get<ApiResponse<Property[]>>(url);
-      
+
       if (process.env.NODE_ENV === 'development') {
-        
-        
-        
-        
-        
-        
-        
-        
+
+
+
+
+
+
+
+
         // Log FULL response structure to understand what backend returns
-        
-        
+
+
         if (response.data.data && typeof response.data.data === 'object') {
-          
+
           if ('data' in response.data.data && Array.isArray(response.data.data.data)) {
-            
-            
+
+
             // Check photo sources in ALL properties
-            const propertiesWithAlnairPhotos = response.data.data.data.filter((p: any) => 
+            const propertiesWithAlnairPhotos = response.data.data.data.filter((p: any) =>
               p.photos && Array.isArray(p.photos) && p.photos.some((photo: string) => photo && photo.includes('alnair'))
             );
-            const propertiesWithReellyPhotos = response.data.data.data.filter((p: any) => 
+            const propertiesWithReellyPhotos = response.data.data.data.filter((p: any) =>
               p.photos && Array.isArray(p.photos) && p.photos.some((photo: string) => photo && photo.includes('reelly'))
             );
-            
-            
-            
-            
+
+
+
+
             // Check bathroomsFrom/To for off-plan properties
             const offPlanProperties = response.data.data.data.filter((p: any) => p.propertyType === 'off-plan');
-            const offPlanWithBathrooms = offPlanProperties.filter((p: any) => 
+            const offPlanWithBathrooms = offPlanProperties.filter((p: any) =>
               p.bathroomsFrom !== null || p.bathroomsTo !== null
             );
-            
-            
-            
+
+
+
             // Check priceFromAED for off-plan properties
-            const offPlanWithNullPriceFromAED = offPlanProperties.filter((p: any) => 
+            const offPlanWithNullPriceFromAED = offPlanProperties.filter((p: any) =>
               p.priceFrom !== null && p.priceFrom !== undefined && p.priceFrom > 0 &&
               (p.priceFromAED === null || p.priceFromAED === undefined || p.priceFromAED === 0)
             );
-            
-            
+
+
             // Summary removed for performance
-            
+
             // Log first property in detail
             if (response.data.data.data.length > 0) {
               const firstProperty = response.data.data.data[0];
-              
-              
-              
-              
-              
-              
+
+
+
+
+
+
               if (Array.isArray(firstProperty.photos) && firstProperty.photos.length > 0) {
-                
-                
+
+
               }
-              
-              
-              
-              
-              
-              
-              
-              
-              
-              
-              
-              
-              
+
+
+
+
+
+
+
+
+
+
+
+
+
             }
           }
         }
       }
-      
-      // Handle paginated response structure from /api/properties
-      // Expected structure: { success: true, data: { data: Property[], pagination: { total, page, limit, totalPages } } }
+
+      // Ultra-robust extraction of data and total count from any backend structure
       let data: any[] = [];
       let totalCount = 0;
-      
-      if (response.data.data) {
-        // Check if response has pagination structure
-        if (typeof response.data.data === 'object' && 'data' in response.data.data && Array.isArray(response.data.data.data)) {
-          // New structure: { data: { data: Property[], pagination: { total, ... } } }
-          data = response.data.data.data;
-          
-          // Extract total from pagination object
-          if (response.data.data.pagination && typeof response.data.data.pagination.total === 'number') {
-            totalCount = response.data.data.pagination.total;
-          } else if (typeof response.data.data.total === 'number') {
-            // Fallback: check if total is directly in data object
-            totalCount = response.data.data.total;
-          }
-          
-              if (process.env.NODE_ENV === 'development') {
-            
-            
-            
-            
-            
-            
-          }
-        } else if (Array.isArray(response.data.data)) {
-          // Old structure: { data: Property[] } (direct array)
-          data = response.data.data;
-          totalCount = data.length;
-          
-        } else {
-          
-          
-          throw new Error('Unexpected response structure from /api/properties endpoint');
+      const apiResponse = response.data as any;
+
+      // 1. Find the main data array (search in 'data', 'data.data', or 'properties')
+      if (apiResponse.data) {
+        if (Array.isArray(apiResponse.data)) {
+          data = apiResponse.data;
+        } else if (typeof apiResponse.data === 'object' && Array.isArray(apiResponse.data.data)) {
+          data = apiResponse.data.data;
+        } else if (typeof apiResponse.data === 'object' && Array.isArray(apiResponse.data.properties)) {
+          data = apiResponse.data.properties;
         }
+      } else if (Array.isArray(apiResponse.properties)) {
+        data = apiResponse.properties;
       }
-      
+
+      // 2. Find total count in ANY possible location
+      totalCount = apiResponse.total ||
+        apiResponse.totalCount ||
+        (apiResponse.pagination && apiResponse.pagination.total) ||
+        (apiResponse.data && apiResponse.data.total) ||
+        (apiResponse.data && apiResponse.data.totalCount) ||
+        (apiResponse.data && apiResponse.data.pagination && apiResponse.data.pagination.total);
+
+      // 3. Final fallback: use the length of returned data
+      if (!totalCount && data.length > 0) {
+        totalCount = data.length;
+      }
+
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`[API] Extracted ${data.length} items, Total: ${totalCount}`);
+      }
+
       // Ensure data is always an array
-      if (!Array.isArray(data)) {
-        if (data === null || data === undefined) {
-          data = [];
-        } else {
-          data = [];
-        }
-      }
-      
+      if (!Array.isArray(data)) data = [];
+
       // Log RAW data from API BEFORE normalization (to see what API actually returns)
       if (process.env.NODE_ENV === 'development' && data.length > 0) {
         // Log first property with photos and first property without photos
         const propertyWithPhotos = data.find((p: any) => p.photos && Array.isArray(p.photos) && p.photos.length > 0);
         const propertyWithoutPhotos = data.find((p: any) => !p.photos || !Array.isArray(p.photos) || p.photos.length === 0);
-        
+
       }
-      
+
       // Normalize photos array for each property
       // API returns photos as string[] (array of URLs) or [] (empty array if no photos)
       // Ensure photos is always an array of strings
       data = data.map((property: any) => {
+        // Ensure images is always an array
+        if (!property.images || !Array.isArray(property.images)) {
+          property.images = [];
+
+          // Fallback: populate from photos if images is missing (optional safety)
+          if (Array.isArray(property.photos) && property.photos.length > 0) {
+            property.images = property.photos.map((url: string) => ({ small: url, full: url }));
+          }
+        }
+
         // If photos is already a valid array, use it directly
         if (Array.isArray(property.photos)) {
           // Filter out empty strings, null, or undefined from photos array
@@ -531,7 +580,7 @@ export async function getProperties(filters?: PropertyFilters, useCache: boolean
           // Return early - photos is already properly formatted
           return property;
         }
-        
+
         // If photos is missing or not an array, try to normalize it
         if (!property.photos) {
           // Check for alternative photo fields
@@ -562,7 +611,7 @@ export async function getProperties(filters?: PropertyFilters, useCache: boolean
           // Unknown format, set to empty array
           property.photos = [];
         }
-        
+
         // Normalize numeric fields - ensure they are numbers, not strings
         // This is important because API might return strings
         if (property.bedroomsFrom !== null && property.bedroomsFrom !== undefined) {
@@ -589,21 +638,21 @@ export async function getProperties(filters?: PropertyFilters, useCache: boolean
         if (property.priceFromAED !== null && property.priceFromAED !== undefined) {
           property.priceFromAED = typeof property.priceFromAED === 'string' ? parseFloat(property.priceFromAED) : property.priceFromAED;
         }
-        
+
         // Calculate priceFromAED if missing but priceFrom exists (USD to AED conversion: 1 USD = 3.673 AED)
         if (property.propertyType === 'off-plan') {
-          if ((property.priceFromAED === null || property.priceFromAED === undefined || property.priceFromAED === 0) && 
-              property.priceFrom !== null && property.priceFrom !== undefined && property.priceFrom > 0) {
+          if ((property.priceFromAED === null || property.priceFromAED === undefined || property.priceFromAED === 0) &&
+            property.priceFrom !== null && property.priceFrom !== undefined && property.priceFrom > 0) {
             property.priceFromAED = Math.round(property.priceFrom * 3.673);
           }
-          
+
           // For off-plan properties, bathroomsFrom/To should always be null according to new schema
           // If API returns values, set them to null
           if (property.bathroomsFrom !== null || property.bathroomsTo !== null) {
             property.bathroomsFrom = null;
             property.bathroomsTo = null;
           }
-          
+
           // Calculate sizeFromSqft/sizeToSqft if missing but sizeFrom/sizeTo exists (m² to sqft: 1 m² = 10.764 sqft)
           if (property.sizeFrom !== null && property.sizeFrom !== undefined && property.sizeFrom > 0) {
             if (property.sizeFromSqft === null || property.sizeFromSqft === undefined || property.sizeFromSqft === 0) {
@@ -615,7 +664,7 @@ export async function getProperties(filters?: PropertyFilters, useCache: boolean
               property.sizeToSqft = Math.round(property.sizeTo * 10.764 * 100) / 100; // Round to 2 decimals
             }
           }
-          
+
           // Fix area if it's incomplete (e.g., "Du" instead of "areaName, cityName")
           if (typeof property.area === 'string' && property.area.length <= 3 && property.city) {
             // If area is too short (like "Du"), try to reconstruct it from city
@@ -625,48 +674,48 @@ export async function getProperties(filters?: PropertyFilters, useCache: boolean
             }
           }
         }
-        
+
         return property;
       });
-      
+
       if (process.env.NODE_ENV === 'development') {
-        
-        
-        
+
+
+
         // Log sample property to check photos (after normalization)
         if (data.length > 0) {
           const sampleProperty = data[0];
-          
-          
+
+
           // Check if photos are valid URLs
           if (Array.isArray(sampleProperty.photos) && sampleProperty.photos.length > 0) {
             sampleProperty.photos.forEach((photo: string, index: number) => {
               if (photo && !photo.startsWith('http://') && !photo.startsWith('https://') && !photo.startsWith('/')) {
-                
+
               }
             });
           } else {
-            
+
           }
-          
+
           // Count properties with and without photos
           const propertiesWithPhotos = data.filter((p: any) => Array.isArray(p.photos) && p.photos.length > 0).length;
           const propertiesWithoutPhotos = data.length - propertiesWithPhotos;
-          
-          
+
+
           // Log full property data for first 3 properties to diagnose issues
           if (data.length > 0) {
-            
+
             data.slice(0, 3).forEach((prop: any, index: number) => {
-              
-              
-              
-              
-              
-              
-              
-              
-              
+
+
+
+
+
+
+
+
+
               // Check for alternative field names
               const altFields = [
                 'bedroomFrom', 'bedroomTo', 'bedroom',
@@ -679,19 +728,19 @@ export async function getProperties(filters?: PropertyFilters, useCache: boolean
           }
         }
       }
-      
+
       // Apply client-side sorting as backup (in case server doesn't sort correctly)
       // Always sort, even if server should have sorted (to ensure consistency)
       const sortBy = filters?.sortBy || 'createdAt';
       const sortOrder = filters?.sortOrder || 'DESC';
-      
+
       if (data.length > 0) {
         // Create a stable copy for sorting
         const sortedData = [...data];
-        
+
         sortedData.sort((a, b) => {
           let aValue: number | string, bValue: number | string;
-          
+
           switch (sortBy) {
             case 'name':
               aValue = (a.name || '').toLowerCase();
@@ -702,7 +751,7 @@ export async function getProperties(filters?: PropertyFilters, useCache: boolean
               } else {
                 return aValue > bValue ? -1 : aValue < bValue ? 1 : 0;
               }
-            
+
             case 'price':
             case 'priceFrom':
               // Use USD prices for comparison
@@ -726,7 +775,7 @@ export async function getProperties(filters?: PropertyFilters, useCache: boolean
                   aValue = 0;
                 }
               }
-              
+
               if (b.propertyType === 'off-plan') {
                 const priceFrom = b.priceFrom;
                 if (typeof priceFrom === 'number' && !isNaN(priceFrom)) {
@@ -746,14 +795,14 @@ export async function getProperties(filters?: PropertyFilters, useCache: boolean
                   bValue = 0;
                 }
               }
-              
+
               // Debug log for price sorting
               if (process.env.NODE_ENV === 'development') {
                 const indexA = sortedData.indexOf(a);
                 const indexB = sortedData.indexOf(b);
               }
               break;
-            
+
             case 'size':
             case 'sizeFrom':
               // Use m² for comparison
@@ -777,7 +826,7 @@ export async function getProperties(filters?: PropertyFilters, useCache: boolean
                   aValue = 0;
                 }
               }
-              
+
               if (b.propertyType === 'off-plan') {
                 const sizeFrom = b.sizeFrom;
                 if (typeof sizeFrom === 'number' && !isNaN(sizeFrom)) {
@@ -798,19 +847,19 @@ export async function getProperties(filters?: PropertyFilters, useCache: boolean
                 }
               }
               break;
-            
+
             case 'createdAt':
               aValue = new Date(a.createdAt || 0).getTime();
               bValue = new Date(b.createdAt || 0).getTime();
               break;
-            
+
             default:
               // Default to createdAt if sortBy is unknown
               aValue = new Date(a.createdAt || 0).getTime();
               bValue = new Date(b.createdAt || 0).getTime();
               break;
           }
-          
+
           // Handle null/undefined/NaN values for numeric comparisons
           if (typeof aValue === 'number') {
             if (isNaN(aValue) || aValue == null) aValue = 0;
@@ -818,7 +867,7 @@ export async function getProperties(filters?: PropertyFilters, useCache: boolean
           if (typeof bValue === 'number') {
             if (isNaN(bValue) || bValue == null) bValue = 0;
           }
-          
+
           // Numeric comparison
           if (sortOrder === 'ASC') {
             return (aValue as number) - (bValue as number);
@@ -826,18 +875,18 @@ export async function getProperties(filters?: PropertyFilters, useCache: boolean
             return (bValue as number) - (aValue as number);
           }
         });
-        
+
         // Replace the array
         data = sortedData;
       }
-      
+
       // Debug: log first few properties to verify sorting
       // Return with total count
       const result: GetPropertiesResult = {
         properties: data,
         total: totalCount || data.length,
       };
-      
+
       // Cache the result
       if (useCache) {
         propertiesCache.set(cacheKey, {
@@ -852,32 +901,127 @@ export async function getProperties(filters?: PropertyFilters, useCache: boolean
           }
         }
       }
-      
+
       return result;
     } catch (error: any) {
-      // ❌ FALLBACK DISABLED: Do not use /api/public/data as fallback
-      // The /api/properties endpoint should always work with API Key/Secret
-      // If it fails, it's a configuration issue that needs to be fixed
-      
-      
-      
-      
-      if (error.response) {
-        // Error response handling removed for performance
-      } else {
-        // Error handling removed for performance
+      // ✅ FALLBACK RE-ENABLED: If /api/properties fails, use /api/public/data
+      // This helps when the primary endpoint has auth issues but public data works
+      console.warn(`Failed to load from /api/properties (${error.response?.status}), falling back to /api/public/data...`);
+
+      try {
+        const publicData = await getPublicData();
+        let properties = publicData.properties || [];
+
+        // Apply client-side filtering if filters are provided
+        if (filters) {
+          properties = properties.filter(p => {
+            // Property Type
+            if (filters.propertyType && p.propertyType !== filters.propertyType) return false;
+
+            // Search
+            if (filters.search) {
+              const search = filters.search.toLowerCase();
+              const nameMatch = p.name && p.name.toLowerCase().includes(search);
+              const descMatch = p.description && p.description.toLowerCase().includes(search);
+              if (!nameMatch && !descMatch) return false;
+            }
+
+            // City
+            if (filters.cityId && p.city?.id !== filters.cityId) return false;
+
+            // Area
+            const currentAreaId = (p.area && typeof p.area === 'object') ? p.area.id : null;
+            if (filters.areaId && currentAreaId !== filters.areaId) return false;
+            if (filters.areaIds && filters.areaIds.length > 0 && (!currentAreaId || !filters.areaIds.includes(currentAreaId))) return false;
+
+            // Developer
+            if (filters.developerId && p.developer?.id !== filters.developerId) return false;
+
+            // Bedrooms
+            if (filters.bedrooms) {
+              const beds = filters.bedrooms.split(',').map(b => parseInt(b.trim(), 10));
+              if (p.propertyType === 'off-plan') {
+                const pFrom = p.bedroomsFrom || 0;
+                const pTo = p.bedroomsTo || 0;
+                if (!beds.some(b => b >= pFrom && b <= pTo)) return false;
+              } else {
+                if (!beds.includes(p.bedrooms || 0)) return false;
+              }
+            }
+
+            // Price (USD)
+            if (filters.priceFrom) {
+              const val = typeof filters.priceFrom === 'string' ? parseFloat(filters.priceFrom) : filters.priceFrom;
+              const pPrice = p.propertyType === 'off-plan' ? (p.priceFrom || 0) : (p.price || 0);
+              if (pPrice < val) return false;
+            }
+            if (filters.priceTo) {
+              const val = typeof filters.priceTo === 'string' ? parseFloat(filters.priceTo) : filters.priceTo;
+              const pPrice = p.propertyType === 'off-plan' ? (p.priceFrom || 0) : (p.price || 0);
+              if (pPrice > val) return false;
+            }
+
+            // Size
+            if (filters.sizeFrom) {
+              const pSize = p.propertyType === 'off-plan' ? (p.sizeFrom || 0) : (p.size || 0);
+              if (pSize < filters.sizeFrom) return false;
+            }
+            if (filters.sizeTo) {
+              const pSize = p.propertyType === 'off-plan' ? (p.sizeFrom || 0) : (p.size || 0);
+              if (pSize > filters.sizeTo) return false;
+            }
+
+            // isForYouChoice
+            if (filters.isForYouChoice && !p.isForYouChoice) return false;
+
+            return true;
+          });
+        }
+
+        // Sorting (logic is similar to the one above)
+        const sortBy = filters?.sortBy || 'createdAt';
+        const sortOrder = filters?.sortOrder || 'DESC';
+
+        properties.sort((a, b) => {
+          let aVal: any, bVal: any;
+          if (sortBy === 'name') {
+            aVal = (a.name || '').toLowerCase();
+            bVal = (b.name || '').toLowerCase();
+            return sortOrder === 'ASC' ? (aVal < bVal ? -1 : 1) : (aVal > bVal ? -1 : 1);
+          } else if (sortBy === 'price' || sortBy === 'priceFrom') {
+            aVal = a.propertyType === 'off-plan' ? (a.priceFrom || 0) : (a.price || 0);
+            bVal = b.propertyType === 'off-plan' ? (b.priceFrom || 0) : (b.price || 0);
+          } else if (sortBy === 'size' || sortBy === 'sizeFrom') {
+            aVal = a.propertyType === 'off-plan' ? (a.sizeFrom || 0) : (a.size || 0);
+            bVal = b.propertyType === 'off-plan' ? (b.sizeFrom || 0) : (b.size || 0);
+          } else {
+            aVal = new Date(a.createdAt || 0).getTime();
+            bVal = new Date(b.createdAt || 0).getTime();
+          }
+          return sortOrder === 'ASC' ? aVal - bVal : bVal - aVal;
+        });
+
+        const total = properties.length;
+        const page = filters?.page || 1;
+        const limit = filters?.limit || 36;
+        const paginatedProps = properties.slice((page - 1) * limit, page * limit);
+
+        return {
+          properties: paginatedProps.map(p => normalizeProperty(p)),
+          total
+        };
+      } catch (fallbackError) {
+        console.error('Fallback to public data also failed:', fallbackError);
+        throw new Error(`Failed to load properties: ${error.message || 'Unknown error'}`);
       }
-      
-      // Throw error instead of using fallback
-      throw new Error(`Failed to load properties from /api/properties endpoint: ${error.message || 'Unknown error'}`);
     }
   } catch (error: any) {
-    
+
     if (error.response) {
-      
-      
-      
-      
+
+
+
+
       // Check if the error message gives us a hint
     }
     throw error;
@@ -891,27 +1035,27 @@ export async function getProperty(id: string): Promise<Property> {
   try {
     const response = await apiClient.get<ApiResponse<Property>>(`/properties/${id}`);
     let property = response.data.data;
-    
+
     // Normalize property data (same as in getProperties)
     property = normalizeProperty(property);
-    
+
     return property;
   } catch (error: any) {
     // If 403 or 401, try to get from public data endpoint
     if (error.response?.status === 403 || error.response?.status === 401) {
-      
-      
+
+
       try {
         // Get all data from public endpoint
         const publicData = await getPublicData();
-        
+
         if (publicData.properties && Array.isArray(publicData.properties)) {
           let property = publicData.properties.find(p => p.id === id);
-          
+
           if (property) {
             // Normalize property data
             property = normalizeProperty(property);
-          
+
             return property;
           } else {
             throw new Error('Property not found in public data');
@@ -920,16 +1064,48 @@ export async function getProperty(id: string): Promise<Property> {
           throw new Error('Properties not found in public data structure');
         }
       } catch (publicDataError: any) {
-        
+
         throw new Error(`Property not found: ${publicDataError.message || 'Unknown error'}`);
       }
     }
-    
+
     // For other errors, log and rethrow
-    
+
     throw error;
   }
 }
+
+// Cache for property summaries
+const summaryCache = new Map<string, { data: Property, timestamp: number }>();
+const SUMMARY_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+/**
+ * Get single property summary by ID (optimized for map popups)
+ */
+export async function getPropertySummary(id: string): Promise<Property> {
+  try {
+    // Check cache
+    const cached = summaryCache.get(id);
+    if (cached && (Date.now() - cached.timestamp) < SUMMARY_CACHE_DURATION) {
+      return cached.data;
+    }
+
+    const response = await apiClient.get<ApiResponse<any>>(`/public/properties/${id}/summary`);
+    let property = response.data.data;
+
+    // Use normalization to ensure data consistency
+    const normalized = normalizeProperty(property);
+
+    // Save to cache
+    summaryCache.set(id, { data: normalized, timestamp: Date.now() });
+
+    return normalized;
+  } catch (error) {
+    console.warn(`[API] Failed to fetch property summary for ${id}, falling back to full getProperty`, error);
+    return getProperty(id);
+  }
+}
+
 
 // Helper function to normalize property data
 function normalizeProperty(property: any): Property {
@@ -970,20 +1146,20 @@ function normalizeProperty(property: any): Property {
   if (property.sizeSqft !== null && property.sizeSqft !== undefined) {
     property.sizeSqft = typeof property.sizeSqft === 'string' ? parseFloat(property.sizeSqft) : property.sizeSqft;
   }
-  
+
   // Calculate priceFromAED if missing but priceFrom exists (USD to AED conversion: 1 USD = 3.673 AED)
   if (property.propertyType === 'off-plan') {
-    if ((property.priceFromAED === null || property.priceFromAED === undefined || property.priceFromAED === 0) && 
-        property.priceFrom !== null && property.priceFrom !== undefined && property.priceFrom > 0) {
+    if ((property.priceFromAED === null || property.priceFromAED === undefined || property.priceFromAED === 0) &&
+      property.priceFrom !== null && property.priceFrom !== undefined && property.priceFrom > 0) {
       property.priceFromAED = Math.round(property.priceFrom * 3.673);
     }
-    
+
     // For off-plan properties, bathroomsFrom/To should always be null
     if (property.bathroomsFrom !== null || property.bathroomsTo !== null) {
       property.bathroomsFrom = null;
       property.bathroomsTo = null;
     }
-    
+
     // Calculate sizeFromSqft/sizeToSqft if missing but sizeFrom/sizeTo exists (m² to sqft: 1 m² = 10.764 sqft)
     if (property.sizeFrom !== null && property.sizeFrom !== undefined && property.sizeFrom > 0) {
       if (property.sizeFromSqft === null || property.sizeFromSqft === undefined || property.sizeFromSqft === 0) {
@@ -994,14 +1170,14 @@ function normalizeProperty(property: any): Property {
       if (property.sizeToSqft === null || property.sizeToSqft === undefined || property.sizeToSqft === 0) {
         property.sizeToSqft = Math.round(property.sizeTo * 10.764 * 100) / 100;
       }
-                }
-              } else {
+    }
+  } else {
     // For secondary properties, calculate priceAED if missing but price exists
-    if ((property.priceAED === null || property.priceAED === undefined || property.priceAED === 0) && 
-        property.price !== null && property.price !== undefined && property.price > 0) {
+    if ((property.priceAED === null || property.priceAED === undefined || property.priceAED === 0) &&
+      property.price !== null && property.price !== undefined && property.price > 0) {
       property.priceAED = Math.round(property.price * 3.673);
     }
-    
+
     // Calculate sizeSqft if missing but size exists
     if (property.size !== null && property.size !== undefined && property.size > 0) {
       if (property.sizeSqft === null || property.sizeSqft === undefined || property.sizeSqft === 0) {
@@ -1009,8 +1185,19 @@ function normalizeProperty(property: any): Property {
       }
     }
   }
-  
+
   // Normalize photos array
+  // If photos is missing, try images (summary endpoint uses 'images' field)
+  if (!property.photos || (Array.isArray(property.photos) && property.photos.length === 0)) {
+    if (property.images && Array.isArray(property.images) && property.images.length > 0) {
+      if (typeof property.images[0] === 'string') {
+        property.photos = property.images;
+      } else if (typeof property.images[0] === 'object' && property.images[0].small) {
+        property.photos = property.images.map((img: any) => img.small);
+      }
+    }
+  }
+
   if (!property.photos) {
     property.photos = [];
   } else if (typeof property.photos === 'string') {
@@ -1026,7 +1213,7 @@ function normalizeProperty(property: any): Property {
   } else if (!Array.isArray(property.photos)) {
     property.photos = [];
   }
-  
+
   // Normalize units if they exist
   if (property.units && Array.isArray(property.units)) {
     property.units = property.units.map((unit: any) => {
@@ -1040,7 +1227,7 @@ function normalizeProperty(property: any): Property {
         // Calculate priceAED if missing
         unit.priceAED = Math.round(unit.price * 3.673);
       }
-      
+
       // Normalize unit size fields
       if (unit.totalSize !== null && unit.totalSize !== undefined) {
         unit.totalSize = typeof unit.totalSize === 'string' ? parseFloat(unit.totalSize) : unit.totalSize;
@@ -1051,7 +1238,7 @@ function normalizeProperty(property: any): Property {
         // Calculate totalSizeSqft if missing
         unit.totalSizeSqft = Math.round(unit.totalSize * 10.764 * 100) / 100;
       }
-      
+
       if (unit.balconySize !== null && unit.balconySize !== undefined) {
         unit.balconySize = typeof unit.balconySize === 'string' ? parseFloat(unit.balconySize) : unit.balconySize;
       }
@@ -1061,11 +1248,11 @@ function normalizeProperty(property: any): Property {
         // Calculate balconySizeSqft if missing
         unit.balconySizeSqft = Math.round(unit.balconySize * 10.764 * 100) / 100;
       }
-      
+
       return unit;
     });
   }
-  
+
   return property as Property;
 }
 
@@ -1100,13 +1287,13 @@ export async function getPublicData(forceRefresh = false): Promise<PublicData> {
       timeout: 120000, // 2 minutes timeout for large data
     });
     const data = response.data.data;
-    
+
     // Cache the data
     publicDataCache = data;
     publicDataCacheTime = now;
-    
+
     if (process.env.NODE_ENV === 'development') {
-      
+
       if (data.properties && Array.isArray(data.properties)) {
         const uniqueAreaIds = [...new Set(data.properties.map(p => {
           if (typeof p.area === 'object' && p.area !== null) {
@@ -1114,25 +1301,25 @@ export async function getPublicData(forceRefresh = false): Promise<PublicData> {
           }
           return null;
         }).filter(Boolean))];
-        
-        
+
+
         // Show all unique area IDs (for debugging)
         // Check if we have areas data and compare with properties
         if (data.areas && Array.isArray(data.areas)) {
           const areaIdsFromAreas = data.areas.map(a => a.id);
-          
-          
-          
+
+
+
           // Check if properties use area IDs that exist in areas
           const areaIdsInProperties = uniqueAreaIds.filter((id): id is string => id !== null);
           const missingAreaIds = areaIdsInProperties.filter(id => !areaIdsFromAreas.includes(id));
         }
       }
     }
-    
+
     return data;
   } catch (error: any) {
-    
+
     throw error;
   }
 }
@@ -1153,12 +1340,48 @@ export function clearPropertiesCache(): void {
   propertiesCache.clear();
 }
 
-/**
- * Clear ALL caches (properties + public data)
- */
 export function clearAllCaches(): void {
   clearPropertiesCache();
   clearPublicDataCache();
+}
+
+/**
+ * Get simple list of areas (ID and name only)
+ */
+export async function getAreasSimple(): Promise<Array<{ id: string; nameEn: string; nameRu: string; nameAr: string; cityId: string }>> {
+  try {
+    const response = await apiClient.get<ApiResponse<any[]>>('/public/areas-simple');
+    return response.data.data;
+  } catch (error) {
+    console.error('Failed to fetch simple areas', error);
+    return [];
+  }
+}
+
+/**
+ * Get simple list of developers (ID and name only)
+ */
+export async function getDevelopersSimple(): Promise<Array<{ id: string; name: string }>> {
+  try {
+    const response = await apiClient.get<ApiResponse<any[]>>('/public/developers-simple');
+    return response.data.data;
+  } catch (error) {
+    console.error('Failed to fetch simple developers', error);
+    return [];
+  }
+}
+
+/**
+ * Get simple list of facilities
+ */
+export async function getFacilitiesSimple(): Promise<Array<{ id: string; nameEn: string; nameRu: string; nameAr: string; iconName: string }>> {
+  try {
+    const response = await apiClient.get<ApiResponse<any[]>>('/public/facilities-list');
+    return response.data.data;
+  } catch (error) {
+    console.error('Failed to fetch simple facilities', error);
+    return [];
+  }
 }
 
 /**
@@ -1167,14 +1390,14 @@ export function clearAllCaches(): void {
 export async function submitInvestment(data: InvestmentRequest): Promise<Investment> {
   try {
     const response = await apiClient.post<ApiResponse<Investment>>('/investments', data);
-    
+
     return response.data.data;
   } catch (error: any) {
-    
+
     if (error.response) {
-      
-      
-      
+
+
+
       // Throw a more user-friendly error
       const errorMessage = error.response.data?.message || error.response.data?.error || 'Failed to submit investment';
       throw new Error(errorMessage);
@@ -1243,7 +1466,7 @@ export function clearAreasCache(): void {
 export async function getAreas(cityId?: string, useCache: boolean = true): Promise<Area[]> {
   try {
     const cacheKey = cityId || 'all';
-    
+
     // Check cache first
     if (useCache) {
       const cached = areasCache.get(cacheKey);
@@ -1251,19 +1474,19 @@ export async function getAreas(cityId?: string, useCache: boolean = true): Promi
         return cached.areas;
       }
     }
-    
+
     const params = cityId ? { cityId } : {};
     const url = '/public/areas';
-    
+
     const response = await apiClient.get<ApiResponse<Area[]>>(url, { params });
     let areas = response.data.data;
-    
+
     // Log only image-related info
     if (process.env.NODE_ENV === 'development') {
       const areasWithImages = areas.filter(a => a.images && Array.isArray(a.images) && a.images.length > 0).length;
-      
+
     }
-    
+
     // If most areas don't have images, try to get them from properties
     const areasWithoutImages = areas.filter(a => !a.images || !Array.isArray(a.images) || a.images.length === 0);
     if (areasWithoutImages.length > areas.length * 0.8) { // If more than 80% don't have images
@@ -1271,51 +1494,51 @@ export async function getAreas(cityId?: string, useCache: boolean = true): Promi
         // Load properties to get area images - use reasonable limit for performance
         const result = await getProperties({ limit: 1000 }, true); // Reduced to 1000 for better performance
         const properties = result.properties || [];
-        
+
         // Build area name to ID map with multiple variations
         const areaNameToIdMap = new Map<string, string>();
         areas.forEach(area => {
           const nameLower = area.nameEn.toLowerCase().trim();
           areaNameToIdMap.set(nameLower, area.id);
-          
+
           // Also add variations without "Dubai, " prefix
           const nameWithoutDubai = nameLower.replace(/^dubai,\s*/, '').trim();
           if (nameWithoutDubai !== nameLower) {
             areaNameToIdMap.set(nameWithoutDubai, area.id);
           }
-          
+
           // Add variation with "Dubai, " prefix
           if (!nameLower.startsWith('dubai,')) {
             areaNameToIdMap.set(`dubai, ${nameLower}`, area.id);
           }
         });
-        
+
         // Group properties by area and get first image
         const areaImagesMap = new Map<string, string>();
         const areaPropertiesCount = new Map<string, number>();
-        
+
         properties.forEach(property => {
           if (property.photos && property.photos.length > 0) {
             let areaId: string | null = null;
             let matchedAreaName = '';
-            
+
             if (typeof property.area === 'string') {
               // Off-plan: area is "areaName, cityName"
               const areaName = property.area.split(',')[0].trim();
               const areaNameLower = areaName.toLowerCase();
-              
+
               // Try direct lookup
               areaId = areaNameToIdMap.get(areaNameLower) || null;
-              
+
               if (!areaId) {
                 // Try to find by matching
                 const area = areas.find(a => {
                   const aNameLower = a.nameEn.toLowerCase().trim();
                   const aNameNoDubai = aNameLower.replace(/^dubai,\s*/, '').trim();
-                  return aNameLower === areaNameLower || 
-                         aNameNoDubai === areaNameLower ||
-                         aNameLower.includes(areaNameLower) ||
-                         areaNameLower.includes(aNameNoDubai);
+                  return aNameLower === areaNameLower ||
+                    aNameNoDubai === areaNameLower ||
+                    aNameLower.includes(areaNameLower) ||
+                    areaNameLower.includes(aNameNoDubai);
                 });
                 areaId = area?.id || null;
                 matchedAreaName = area?.nameEn || '';
@@ -1327,43 +1550,43 @@ export async function getAreas(cityId?: string, useCache: boolean = true): Promi
               // Secondary: area is an object
               areaId = property.area.id;
               matchedAreaName = property.area.nameEn || '';
-              
+
               // Also try to match by name (for cases where area.nameEn has "Dubai, " prefix)
               if (!areaId && property.area.nameEn) {
                 const propertyAreaName = property.area.nameEn;
                 const areaNameWithoutPrefix = propertyAreaName.replace(/^Dubai,\s*/i, '').trim();
-                
+
                 // Try exact match first
-                let matchedArea = areas.find(a => 
+                let matchedArea = areas.find(a =>
                   a.nameEn.toLowerCase() === propertyAreaName.toLowerCase() ||
                   a.nameEn.toLowerCase() === areaNameWithoutPrefix.toLowerCase()
                 );
-                
+
                 // If no exact match, try partial match
                 if (!matchedArea) {
                   matchedArea = areas.find(a => {
                     const aNameLower = a.nameEn.toLowerCase();
                     const propNameLower = propertyAreaName.toLowerCase();
                     const propNameNoPrefix = areaNameWithoutPrefix.toLowerCase();
-                    
-                    return aNameLower.includes(propNameNoPrefix) || 
-                           propNameNoPrefix.includes(aNameLower) ||
-                           aNameLower.includes(propNameLower) ||
-                           propNameLower.includes(aNameLower);
+
+                    return aNameLower.includes(propNameNoPrefix) ||
+                      propNameNoPrefix.includes(aNameLower) ||
+                      aNameLower.includes(propNameLower) ||
+                      propNameLower.includes(aNameLower);
                   });
                 }
-                
+
                 if (matchedArea) {
                   areaId = matchedArea.id;
                   matchedAreaName = matchedArea.nameEn;
                 }
               }
             }
-            
+
             if (areaId) {
               // Count properties per area
               areaPropertiesCount.set(areaId, (areaPropertiesCount.get(areaId) || 0) + 1);
-              
+
               // Only set image if we don't have one yet (first property wins)
               if (!areaImagesMap.has(areaId)) {
                 areaImagesMap.set(areaId, property.photos[0]);
@@ -1371,12 +1594,12 @@ export async function getAreas(cityId?: string, useCache: boolean = true): Promi
             }
           }
         });
-        
+
         if (process.env.NODE_ENV === 'development') {
-      const areasWithoutImages = areas.filter(a => !a.images || !Array.isArray(a.images) || a.images.length === 0);
+          const areasWithoutImages = areas.filter(a => !a.images || !Array.isArray(a.images) || a.images.length === 0);
           const areasGettingImagesFromProperties = areasWithoutImages.filter(a => areaImagesMap.has(a.id)).length;
-          }
-        
+        }
+
         // Add images to areas that don't have them
         let imagesAdded = 0;
         areas = areas.map(area => {
@@ -1389,11 +1612,11 @@ export async function getAreas(cityId?: string, useCache: boolean = true): Promi
           }
           return area;
         });
-        
-        } catch (propError: any) {
+
+      } catch (propError: any) {
       }
     }
-    
+
     // Cache the result
     if (useCache) {
       areasCache.set(cacheKey, {
@@ -1401,7 +1624,7 @@ export async function getAreas(cityId?: string, useCache: boolean = true): Promi
         timestamp: Date.now(),
         cityId,
       });
-      
+
       // Limit cache size
       if (areasCache.size > 10) {
         const firstKey = areasCache.keys().next().value;
@@ -1409,9 +1632,9 @@ export async function getAreas(cityId?: string, useCache: boolean = true): Promi
           areasCache.delete(firstKey);
         }
       }
-      
+
     }
-    
+
     return areas;
   } catch (error: any) {
     // If 404, fallback to /public/data
@@ -1420,48 +1643,48 @@ export async function getAreas(cityId?: string, useCache: boolean = true): Promi
         // Get areas from public data
         const publicData = await getPublicData(true);
         const areasFromData = publicData.areas || [];
-        
+
         if (process.env.NODE_ENV === 'development') {
           // Check how many areas already have images from /public/data
           // Note: Areas from /public/data don't have images field in the type, but might have it in actual data
           const areasWithImagesFromData = areasFromData.filter(a => (a as any).images && Array.isArray((a as any).images) && (a as any).images.length > 0);
-          
-          
-          
+
+
+
         }
-        
+
         // Try to get properties ONLY if we need images (not for counts - counts should come from backend)
         let properties: Property[] = [];
         const areasWithoutImages = areasFromData.filter(a => !(a as any).images || !Array.isArray((a as any).images) || (a as any).images.length === 0);
-        
+
         if (areasWithoutImages.length > 0) {
           try {
             // Load only a limited number of properties for images (not all 26K!)
             // Use limit to avoid loading all secondary properties
             const result = await getProperties({ limit: 1000 });
             properties = result.properties || [];
-          
-        } catch (propError: any) {
+
+          } catch (propError: any) {
             // If properties fail, continue without images
           }
         } else {
         }
-        
+
         // Get best property image for each area
         // Use the first property with photos for each area
         const areaImagesMap = new Map<string, string>();
         const areaPropertiesMap = new Map<string, Property[]>();
         const areaNameToIdMap = new Map<string, string>(); // For faster lookup by name
-        
+
         // Build name to ID map
         areasFromData.forEach(area => {
           areaNameToIdMap.set(area.nameEn.toLowerCase(), area.id);
         });
-        
+
         let matchedCount = 0;
         let unmatchedCount = 0;
         const unmatchedAreaNames = new Set<string>();
-        
+
         // Group properties by area using improved matching
         properties.forEach(property => {
           if (property.photos && property.photos.length > 0) {
@@ -1469,90 +1692,90 @@ export async function getAreas(cityId?: string, useCache: boolean = true): Promi
             if (typeof property.area === 'string') {
               // Off-plan: area is "areaName, cityName"
               const areaName = property.area.split(',')[0].trim();
-              
+
               // Try multiple matching strategies (same as main logic)
               // 1. Exact lowercase match
               areaId = areaNameToIdMap.get(areaName.toLowerCase()) || null;
-              
+
               // 2. Try exact match (case-sensitive)
               if (!areaId) {
-              const area = areasFromData.find(a => a.nameEn === areaName);
-              areaId = area?.id || null;
+                const area = areasFromData.find(a => a.nameEn === areaName);
+                areaId = area?.id || null;
               }
-              
+
               // 3. Try case-insensitive match
               if (!areaId) {
                 const area = areasFromData.find(a => a.nameEn.toLowerCase() === areaName.toLowerCase());
                 areaId = area?.id || null;
               }
-              
+
               // 4. Try partial match
               if (!areaId) {
-                const area = areasFromData.find(a => 
+                const area = areasFromData.find(a =>
                   a.nameEn.toLowerCase().includes(areaName.toLowerCase()) ||
                   areaName.toLowerCase().includes(a.nameEn.toLowerCase())
                 );
                 areaId = area?.id || null;
               }
-              
+
               // 5. Try removing "Area" prefix
               if (!areaId) {
                 const normalizedName = areaName.replace(/^Area\s+/i, '').trim();
                 areaId = areaNameToIdMap.get(normalizedName.toLowerCase()) || null;
                 if (!areaId) {
-                  const area = areasFromData.find(a => 
+                  const area = areasFromData.find(a =>
                     a.nameEn.toLowerCase() === normalizedName.toLowerCase() ||
                     a.nameEn.toLowerCase().replace(/^area\s+/, '') === normalizedName.toLowerCase()
                   );
                   areaId = area?.id || null;
                 }
               }
-              
+
               if (!areaId) {
                 unmatchedAreaNames.add(areaName);
                 if (process.env.NODE_ENV === 'development' && unmatchedCount < 5) {
-                  
+
                   unmatchedCount++;
                 }
               }
             } else if (typeof property.area === 'object' && property.area !== null) {
               // Secondary: area is an object
               areaId = property.area.id || null;
-              
+
               // Also try to match by name if ID doesn't match
               if (!areaId && property.area && typeof property.area === 'object' && property.area.nameEn) {
                 const areaName = property.area.nameEn;
-                const areaByName = areasFromData.find(a => 
-                  a.nameEn === areaName || 
+                const areaByName = areasFromData.find(a =>
+                  a.nameEn === areaName ||
                   a.nameEn.toLowerCase() === areaName.toLowerCase()
                 );
                 areaId = areaByName?.id || null;
               }
             }
-            
+
             if (areaId) {
               if (!areaPropertiesMap.has(areaId)) {
                 areaPropertiesMap.set(areaId, []);
               }
               areaPropertiesMap.get(areaId)!.push(property);
-              
+
               // Use first property's first photo for the area
               if (!areaImagesMap.has(areaId)) {
                 areaImagesMap.set(areaId, property.photos[0]);
                 matchedCount++;
                 if (process.env.NODE_ENV === 'development' && matchedCount <= 10) {
                   const area = areasFromData.find(a => a.id === areaId);
-                  
+
                 }
               }
             }
           }
         });
-        
+
         if (process.env.NODE_ENV === 'development') {
-          
+
         }
-        
+
         // Calculate projectsCount for each area
         // NOTE: This is a fallback - ideally backend should provide counts
         // We only use loaded properties (limited to 1000) for counts, which may be inaccurate
@@ -1564,39 +1787,39 @@ export async function getAreas(cityId?: string, useCache: boolean = true): Promi
           } else {
             // Only filter if we have properties loaded (limited set)
             if (properties.length > 0) {
-            areaProperties = properties.filter(p => {
-              if (typeof p.area === 'string') {
-                // Off-plan: area is "areaName, cityName"
-                const areaName = p.area.split(',')[0].trim();
-                return areaName === area.nameEn;
-              } else {
-                // Secondary: area is an object
-                return p.area?.id === area.id;
-              }
-            });
+              areaProperties = properties.filter(p => {
+                if (typeof p.area === 'string') {
+                  // Off-plan: area is "areaName, cityName"
+                  const areaName = p.area.split(',')[0].trim();
+                  return areaName === area.nameEn;
+                } else {
+                  // Secondary: area is an object
+                  return p.area?.id === area.id;
+                }
+              });
             }
           }
-          
+
           // Counts are approximate since we only loaded 1000 properties
           const offPlanCount = areaProperties.filter(p => p.propertyType === 'off-plan').length;
           const secondaryCount = areaProperties.filter(p => p.propertyType === 'secondary').length;
-          
+
           // If we have limited properties, counts may be inaccurate
           // Set to 0 if we don't have enough data to be confident
           const totalCount = properties.length < 100 ? 0 : areaProperties.length;
-          
+
           // Get image - FIRST check if area already has images from /public/data
           let areaImages: string[] | null = null;
-          
+
           // Priority 1: Use images from /public/data if available
           const areaImagesFromData = (area as any).images;
           if (areaImagesFromData && Array.isArray(areaImagesFromData) && areaImagesFromData.length > 0) {
             areaImages = areaImagesFromData;
-          } 
+          }
           // Priority 2: Use images from properties (areaImagesMap)
           else if (areaImagesMap.has(area.id)) {
             areaImages = [areaImagesMap.get(area.id)!];
-          } 
+          }
           // Priority 3: Try to find from areaProperties
           else if (areaProperties.length > 0) {
             const propertyWithPhoto = areaProperties.find(p => p.photos && p.photos.length > 0);
@@ -1604,7 +1827,7 @@ export async function getAreas(cityId?: string, useCache: boolean = true): Promi
               areaImages = [propertyWithPhoto.photos[0]];
             }
           }
-          
+
           return {
             id: area.id,
             nameEn: area.nameEn,
@@ -1639,21 +1862,21 @@ export async function getAreas(cityId?: string, useCache: boolean = true): Promi
             images: areaImages,
           };
         });
-        
+
         // Filter by cityId if provided
-        const filteredAreas = cityId 
+        const filteredAreas = cityId
           ? areasWithCounts.filter(a => a.cityId === cityId)
           : areasWithCounts;
-        
+
         return filteredAreas;
       } catch (fallbackError: any) {
-        
+
         throw fallbackError;
       }
     }
-    
+
     // For other errors, throw as usual
-    
+
     throw error;
   }
 }
@@ -1666,7 +1889,7 @@ export async function getAreaById(areaIdOrSlug: string): Promise<Area | null> {
     const areas = await getAreas();
     // Try to find by ID first
     let area = areas.find(a => a.id === areaIdOrSlug);
-    
+
     // If not found by ID, try to find by slug (nameEn converted to slug)
     if (!area) {
       const slug = areaIdOrSlug.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
@@ -1678,10 +1901,10 @@ export async function getAreaById(areaIdOrSlug: string): Promise<Area | null> {
         return areaSlug === slug || a.id === areaIdOrSlug;
       });
     }
-    
+
     return area || null;
   } catch (error: any) {
-    
+
     return null;
   }
 }
@@ -1713,14 +1936,14 @@ export interface Developer {
 export async function getDevelopers(): Promise<Developer[]> {
   try {
     const url = '/public/developers';
-    
+
     const response = await apiClient.get<ApiResponse<any[]>>(url);
     let developers = response.data.data;
-    
+
     // Process developers: handle description (can be JSON string or object)
     const processedDevelopers: Developer[] = developers.map((dev: any) => {
       let description: { title: string; description: string } | null = null;
-      
+
       if (dev.description) {
         // If description is a string, try to parse it as JSON
         if (typeof dev.description === 'string') {
@@ -1747,7 +1970,7 @@ export async function getDevelopers(): Promise<Developer[]> {
           };
         }
       }
-      
+
       return {
         id: dev.id,
         name: dev.name,
@@ -1762,72 +1985,72 @@ export async function getDevelopers(): Promise<Developer[]> {
         createdAt: dev.createdAt,
       };
     });
-    
+
     if (process.env.NODE_ENV === 'development') {
       const developersWithImages = processedDevelopers.filter(d => d.images && Array.isArray(d.images) && d.images.length > 0).length;
       const developersWithDescription = processedDevelopers.filter(d => d.description).length;
       const developersWithLogo = processedDevelopers.filter(d => d.logo).length;
-      
-      
-      
-      
-      
+
+
+
+
+
     }
-    
+
     return processedDevelopers;
   } catch (error: any) {
     // If 404, fallback to /public/data
     if (error.response?.status === 404) {
-      
-      
+
+
       try {
         // Get developers from public data
-        
+
         const publicData = await getPublicData(true);
-        
-        
+
+
         const developersFromData = publicData.developers || [];
-        
-        
-        
+
+
+
         if (!Array.isArray(developersFromData)) {
-          
+
           return [];
         }
-        
+
         if (developersFromData.length === 0) {
-          
-          
+
+
           return [];
         }
-        
-        
-        
+
+
+
         // Try to get properties to calculate counts (optional - don't fail if this fails)
         let properties: Property[] = [];
         try {
-          
+
           // Load only a limited number of properties for counts (not all 26K!)
           const result = await getProperties({ limit: 1000 });
           properties = result.properties || [];
-          
-          
+
+
         } catch (propError: any) {
-          
+
           // Continue without properties - counts will be 0
         }
-        
+
         // Calculate projectsCount for each developer
-        
+
         const developersWithCounts: Developer[] = developersFromData.map(developer => {
           const developerProperties = properties.filter(p => p.developer?.id === developer.id);
-          
+
           const offPlanCount = developerProperties.filter(p => p.propertyType === 'off-plan').length;
           const secondaryCount = developerProperties.filter(p => p.propertyType === 'secondary').length;
-          
+
           // Counts are approximate since we only loaded 1000 properties
           const totalCount = properties.length < 100 ? 0 : developerProperties.length;
-          
+
           return {
             id: developer.id,
             name: developer.name,
@@ -1841,21 +2064,21 @@ export async function getDevelopers(): Promise<Developer[]> {
             },
           };
         });
-        
-        
-        
+
+
+
         return developersWithCounts;
       } catch (fallbackError: any) {
-        
-        
+
+
         // Return empty array instead of throwing, so page can still render
-        
+
         return [];
       }
     }
-    
+
     // For other errors, throw as usual
-    
+
     throw error;
   }
 }
@@ -1869,7 +2092,7 @@ export async function getDeveloperById(developerId: string): Promise<Developer |
     const developer = developers.find(d => d.id === developerId);
     return developer || null;
   } catch (error: any) {
-    
+
     return null;
   }
 }
@@ -1880,14 +2103,14 @@ export async function getDeveloperById(developerId: string): Promise<Developer |
 export async function submitInvestmentPublic(data: InvestmentRequest): Promise<Investment> {
   try {
     const response = await apiClient.post<ApiResponse<Investment>>('/investments/public', data);
-    
+
     return response.data.data;
   } catch (error: any) {
-    
+
     if (error.response) {
-      
-      
-      
+
+
+
       // Throw a more user-friendly error
       const errorMessage = error.response.data?.message || error.response.data?.error || 'Failed to submit investment';
       throw new Error(errorMessage);
@@ -1989,7 +2212,7 @@ export async function getNews(page: number = 1, limit: number = 12): Promise<Get
     }
 
     const data = response.data.data;
-    
+
     // Handle different response structures
     let newsArray: NewsItem[] = [];
     let total = 0;
@@ -2037,10 +2260,10 @@ export async function getNews(page: number = 1, limit: number = 12): Promise<Get
       limit: currentLimit,
     };
   } catch (error) {
-    
+
     if (axios.isAxiosError(error)) {
       const axiosError = error as AxiosError<ApiError>;
-      
+
       if (axiosError.response?.status === 404) {
         // No news found, return empty result
         return {
@@ -2050,12 +2273,12 @@ export async function getNews(page: number = 1, limit: number = 12): Promise<Get
           limit,
         };
       }
-      
+
       // CORS error or network error
       if (axiosError.code === 'ERR_NETWORK' || axiosError.message.includes('CORS') || axiosError.message.includes('Access-Control')) {
         throw new Error('CORS error: Backend server is not allowing requests from this origin. Please check CORS configuration on the backend.');
       }
-      
+
       throw new Error(axiosError.response?.data?.message || axiosError.message || 'Failed to fetch news');
     }
     throw error;
@@ -2086,7 +2309,7 @@ export async function getNewsBySlug(slug: string): Promise<NewsDetail | null> {
 
     return news;
   } catch (error) {
-    
+
     if (axios.isAxiosError(error)) {
       const axiosError = error as AxiosError<ApiError>;
       if (axiosError.response?.status === 404) {

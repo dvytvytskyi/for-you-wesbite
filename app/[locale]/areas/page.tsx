@@ -2,7 +2,10 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import AreasList from '@/components/AreasList';
 
-export default function AreasPage() {
+import { unstable_setRequestLocale } from 'next-intl/server';
+
+export default function AreasPage({ params: { locale } }: { params: { locale: string } }) {
+  unstable_setRequestLocale(locale);
   return (
     <>
       <Header />
