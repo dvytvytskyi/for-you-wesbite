@@ -318,11 +318,12 @@
 
 @media (max-width: 900px) {
     .developerDetail {
-        padding-top: 60px;
+        padding-top: 0;
     }
 
     .heroSection {
         margin-bottom: 40px;
+        margin-top: -10px;
     }
 
     .heroImageContainer {
@@ -330,7 +331,8 @@
     }
 
     .imageWrapper {
-        height: 250px;
+        height: 300px;
+        border-radius: 0 0 12px 12px;
     }
 
     .container {
@@ -340,7 +342,7 @@
     }
 
     .heroTitle {
-        font-size: 32px;
+        font-size: 28px;
     }
 
     .logoWrapper {

@@ -574,84 +574,20 @@
 
 @media (max-width: 600px) {
   .container {
-    padding: 80px 20px 20px 20px;
-  }
-
-  .title {
-    font-size: 32px;
+    padding: 20px 12px 60px 12px;
   }
 
   .developersGrid {
     grid-template-columns: 1fr;
-    gap: 16px;
+    gap: 20px;
   }
 
   .developerCard {
-    padding: 16px;
-    height: 200px;
-  }
-
-  .logoWrapper {
-    height: 80px;
-  }
-
-  .logoContainer,
-  .logoPlaceholder {
-    width: 80px;
-    height: 80px;
-  }
-
-  .logoPlaceholder {
-    font-size: 32px;
+    height: 310px;
   }
 
   .developerName {
-    font-size: 14px;
-  }
-
-  .viewButton {
-    font-size: 12px;
-    padding: 6px 16px;
-  }
-
-  .developerDetails {
-    padding: 20px;
-  }
-
-  .detailsHeader {
-    gap: 16px;
-    margin-bottom: 24px;
-    padding-bottom: 24px;
-  }
-
-  .detailsLogoContainer,
-  .detailsLogoPlaceholder {
-    width: 80px;
-    height: 80px;
-  }
-
-  .detailsLogoPlaceholder {
-    border-radius: 16px;
-  }
-
-  .detailsLogoPlaceholderText {
-    font-size: 32px;
-  }
-
-  .detailsName {
-    font-size: 24px;
-  }
-
-  .description p {
-    font-size: 14px;
-  }
-
-  .imagesGrid {
-    grid-template-columns: 1fr;
-  }
-
-  .imageItem {
-    height: 200px;
+    font-size: 15px;
   }
 }
 
