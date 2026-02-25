@@ -514,6 +514,7 @@ export default function PropertiesList() {
                         currentPage={validPage}
                         index={index}
                         isSelected={selectedPropertyId === property.id}
+                        isMapView={viewMode === 'map'}
                         onSelect={() => handleSelectProperty(property.id)}
                         onRequestCallback={openCallbackModal}
                       />

@@ -1177,6 +1177,7 @@ export default function PropertyDetail({ propertyId, initialProperty = null }: P
               propertyPriceFrom={property.priceFromAED ?? undefined}
               propertyPrice={property.priceAED ?? undefined}
               propertyType={property.propertyType}
+              propertyName={getName()}
             />
           </div>
         </div>

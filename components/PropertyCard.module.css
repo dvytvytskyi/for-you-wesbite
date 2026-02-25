@@ -13,6 +13,7 @@
   box-sizing: border-box;
   min-width: 0;
   flex-shrink: 1;
+  position: relative;
 }
 
 .card:hover {
@@ -22,6 +23,16 @@
 .cardSelected {
   border: 1.5px solid #003077;
   box-shadow: 0 4px 20px rgba(0, 48, 119, 0.15);
+  cursor: pointer;
+}
+
+.fullCardLink {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10;
   cursor: pointer;
 }
 
@@ -215,6 +226,10 @@
 .imageContainer:hover .imageNav {
   opacity: 1;
   pointer-events: auto;
+}
+
+.imageNav {
+  z-index: 11;
 }
 
 .imageNav:hover {
@@ -435,6 +450,7 @@
   transition: all 0.3s ease;
   color: #ffffff;
   flex-shrink: 0;
+  z-index: 11;
 }
 
 .favoriteButton:hover {
@@ -530,7 +546,7 @@
   cursor: pointer;
   transition: all 0.3s ease;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-  z-index: 6;
+  z-index: 11;
 }
 
 .viewAllButton:hover {

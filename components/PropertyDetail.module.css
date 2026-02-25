@@ -260,6 +260,13 @@
   pointer-events: none;
 }
 
+.badgesGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: auto;
+}
+
 .typeBadge {
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(10px);

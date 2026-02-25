@@ -9,6 +9,7 @@ import styles from './PropertyPopup.module.css';
 import { useFavorites } from '@/lib/favoritesContext';
 import { Property as ApiProperty } from '@/lib/api';
 import { getOptimizedImageUrl } from '@/lib/images';
+import { formatNumber, generateWhatsAppLink, getLeadReference } from '@/lib/utils';
 
 interface Property {
   id: string;
@@ -306,7 +307,23 @@ export default function PropertyPopup({ property, onClose, onRequestCallback }: 
           </button>
 
           <a
-            href="https://wa.me/971501234567"
+            href={generateWhatsAppLink({
+              phone: '971501769699', // using main line instead of 971501234567
+              locale,
+              propertyName: getName(),
+              propertyPrice: property.priceAED || property.priceFromAED || property.price.aed,
+              contextType: 'property',
+            })}
+            onClick={() => {
+              import('@/lib/api').then(({ trackUserActivity }) => {
+                trackUserActivity({
+                  referenceId: getLeadReference(),
+                  action: 'click_whatsapp',
+                  propertyId: property.id,
+                  url: window.location.href,
+                });
+              });
+            }}
             target="_blank"
             rel="noopener noreferrer"
             className={styles.whatsappButton}

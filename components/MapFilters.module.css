@@ -46,6 +46,11 @@
   transition: all 0.2s ease;
 }
 
+.searchInput::placeholder {
+  color: rgba(0, 48, 119, 0.6);
+  opacity: 1;
+}
+
 .searchInput:focus,
 .rangeInput:focus,
 .dropdownSearchInput:focus {

@@ -16,11 +16,12 @@ interface PropertyCardProps {
   currentPage?: number;
   index?: number;
   isSelected?: boolean;
+  isMapView?: boolean;
   onSelect?: () => void;
   onRequestCallback?: (projectName?: string) => void;
 }
 
-function PropertyCard({ property, currentPage = 1, index = 10, isSelected = false, onSelect, onRequestCallback }: PropertyCardProps) {
+function PropertyCard({ property, currentPage = 1, index = 10, isSelected = false, isMapView = false, onSelect, onRequestCallback }: PropertyCardProps) {
   const t = useTranslations('propertyCard');
   const locale = useLocale();
   const { isFavorite, toggleFavorite } = useFavorites();
@@ -320,6 +321,12 @@ function PropertyCard({ property, currentPage = 1, index = 10, isSelected = fals
     <div
       className={`${styles.card} ${isSelected ? styles.cardSelected : ''}`}
       onClick={(e) => {
+        if (!isMapView) {
+          // Direct navigation in list mode
+          handleClick();
+          return;
+        }
+
         if (onSelect) {
           e.preventDefault();
           onSelect();
@@ -327,6 +334,13 @@ function PropertyCard({ property, currentPage = 1, index = 10, isSelected = fals
       }}
       onMouseEnter={handleMouseEnter}
     >
+      {!isMapView && (
+        <Link
+          href={getLocalizedPath(`/properties/${property.slug}`)}
+          className={styles.fullCardLink}
+          onClick={handleClick}
+        />
+      )}
       <div
         className={styles.imageContainer}
         onTouchStart={handleTouchStart}
@@ -620,7 +634,7 @@ function PropertyCard({ property, currentPage = 1, index = 10, isSelected = fals
           })()}
         </div>
       </div>
-      {isSelected && (
+      {isSelected && isMapView && (
         <div className={styles.selectedActions} onClick={(e) => e.stopPropagation()}>
           <Link
             href={getLocalizedPath(`/properties/${property.slug}`)}
@@ -657,6 +671,7 @@ export default memo(PropertyCard, (prevProps, nextProps) => {
   return (
     prevProps.property.id === nextProps.property.id &&
     prevProps.isSelected === nextProps.isSelected &&
+    prevProps.isMapView === nextProps.isMapView &&
     prevProps.property.images?.[0]?.small === nextProps.property.images?.[0]?.small &&
     prevProps.property.photos?.[0] === nextProps.property.photos?.[0] &&
     prevProps.property.priceAED === nextProps.property.priceAED &&

@@ -4,6 +4,7 @@ import { getMessages, getTranslations, unstable_setRequestLocale } from 'next-in
 import { notFound } from 'next/navigation';
 import { locales } from '@/i18n';
 import { FavoritesProvider } from '@/lib/favoritesContext';
+import Tracker from '@/components/Tracker';
 
 export function generateStaticParams() {
   return locales.map((locale) => ({ locale }));
@@ -104,6 +105,7 @@ export default async function LocaleLayout({
         />
       </head>
       <body>
+        <Tracker />
         <NextIntlClientProvider messages={messages}>
           <FavoritesProvider>
             {children}

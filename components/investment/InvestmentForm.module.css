@@ -168,6 +168,92 @@
   margin-bottom: 24px;
 }
 
+.directContact {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.phoneRow {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+}
+
+.contactPhone,
+.contactWhatsapp {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 11px 16px;
+  border-radius: 8px;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  border: 1px solid rgba(0, 48, 119, 0.1);
+}
+
+.contactPhone {
+  flex: 1;
+  background: #ffffff;
+  color: #003077;
+}
+
+.contactPhone:hover {
+  background: #f8faff;
+  border-color: #003077;
+}
+
+.contactLike {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  border-radius: 8px;
+  border: 1px solid rgba(0, 48, 119, 0.1);
+  background: #ffffff;
+  color: #003077;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.contactLike:hover {
+  background: #f8faff;
+  border-color: #003077;
+}
+
+.contactLike.active {
+  background: #003077;
+  color: #ffffff;
+  border-color: #003077;
+}
+
+.contactLike svg {
+  width: 22px;
+  height: 22px;
+}
+
+.contactWhatsapp {
+  width: 100%;
+  background: #25D366;
+  color: #ffffff;
+}
+
+.contactWhatsapp:hover {
+  background: #1da851;
+  border-color: #1da851;
+}
+
+@media (max-width: 480px) {
+  .directContact {
+    grid-template-columns: 1fr;
+  }
+}
+
 .agentAvatar {
   width: 50px;
   height: 50px;

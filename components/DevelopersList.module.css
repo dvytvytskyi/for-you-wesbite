@@ -109,7 +109,9 @@
   transition: transform 0.6s ease;
 }
 
-/* removed hover scale */
+.developerCard:hover .mainCardImage {
+  transform: scale(1.05);
+}
 
 .imagePlaceholder {
   width: 100%;

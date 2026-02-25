@@ -9,7 +9,7 @@
 .container {
   max-width: 1600px;
   margin: 0 auto;
-  padding: 60px 40px 40px 40px;
+  padding: 50px 40px 40px 40px;
 }
 
 .container.visible {
@@ -40,54 +40,59 @@
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-  gap: 32px;
+  grid-template-columns: repeat(1, 1fr);
+  gap: 30px;
+}
+
+@media (min-width: 600px) {
+  .grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (min-width: 1440px) {
+  .grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
 }
 
 .card {
+  background: #ffffff;
   border-radius: 12px;
   overflow: hidden;
-  position: relative;
-  cursor: pointer;
   text-decoration: none;
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-  background: #ffffff;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+  display: flex;
+  flex-direction: column;
+  height: 320px;
+  position: relative;
+  box-shadow: 0 4px 20px rgba(0, 48, 119, 0.04);
 }
 
 .card:hover {
-  transform: translateY(-8px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 12px 30px rgba(0, 48, 119, 0.08);
 }
 
-.cardImage {
+.cardImageSection {
+  flex: 0 0 60%;
   position: relative;
-  width: 100%;
-  height: 400px;
+  background: #f0f4f8;
   overflow: hidden;
-  border-radius: 12px;
 }
 
-.cardOverlayTop {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 30%;
-  background: linear-gradient(to bottom, rgb(0 0 0 / 26%) 0%, rgb(0 0 0 / 3%) 50%, rgba(0, 0, 0, 0) 100%);
-  z-index: 2;
-  pointer-events: none;
+.mainImage {
+  object-fit: cover;
+  transition: transform 0.6s ease;
 }
 
-.cardOverlayBottom {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 70%;
-  background: linear-gradient(to top, rgba(0, 0, 0, 0.6) 0%, rgba(0, 0, 0, 0.3) 50%, rgba(0, 0, 0, 0) 100%);
-  z-index: 2;
-  pointer-events: none;
+.card:hover .mainImage {
+  transform: scale(1.05);
 }
 
 .imageSkeleton {
@@ -97,104 +102,103 @@
   right: 0;
   bottom: 0;
   background: linear-gradient(90deg,
-      rgba(255, 255, 255, 0.2) 0%,
-      rgba(255, 255, 255, 0.4) 50%,
-      rgba(255, 255, 255, 0.2) 100%);
+      rgba(0, 48, 119, 0.05) 0%,
+      rgba(0, 48, 119, 0.1) 50%,
+      rgba(0, 48, 119, 0.05) 100%);
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
   z-index: 1;
 }
 
-@keyframes shimmer {
-  0% {
-    background-position: -200% 0;
-  }
-
-  100% {
-    background-position: 200% 0;
-  }
+.overlappingStatsWrapper {
+  position: absolute;
+  top: 60%;
+  right: 16px;
+  transform: translateY(-50%);
+  z-index: 15;
 }
 
-.cardContent {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  padding: 32px;
-  z-index: 3;
+.statsFrame {
+  background: #ffffff;
+  padding: 6px 14px;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  border: 1px solid rgba(0, 48, 119, 0.05);
+  min-width: 50px;
+}
+
+.cardInfoSection {
+  flex: 0 0 40%;
+  padding: 30px 16px 20px 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 8px;
+  background: #ffffff;
+  position: relative;
+  z-index: 10;
 }
 
 .cardTitle {
-  font-family: 'Inter', sans-serif;
-  font-size: 24px;
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 19px;
   font-weight: 600;
-  color: #ffffff;
-  margin: 0 0 8px 0;
+  color: #003077;
+  margin: 0;
+  line-height: 1.1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.cardCity {
+.cardDescription {
   font-family: 'Inter', sans-serif;
-  font-size: 16px;
-  font-weight: 400;
-  color: #ffffff;
-  margin: 0 0 16px 0;
+  font-size: 12xeljdjpx;
+  line-height: 1.5;
+  color: #5a7192;
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 300;
   opacity: 0.9;
-}
-
-.cardInfo {
-  display: flex;
-  align-items: baseline;
-  gap: 6px;
 }
 
 .projectsCount {
   font-family: 'Inter', sans-serif;
-  font-size: 18px;
-  font-weight: 600;
-  color: #ffffff;
+  font-size: 15px;
+  font-weight: 700;
+  color: #003077;
+  line-height: 1.1;
 }
 
 .projectsLabel {
   font-family: 'Inter', sans-serif;
-  font-size: 16px;
-  font-weight: 400;
-  color: #ffffff;
-  opacity: 0.9;
+  font-size: 8px;
+  font-weight: 600;
+  color: #8a99ae;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin-top: 2px;
 }
 
-.cardArrow {
-  position: absolute;
-  bottom: 32px;
-  right: 32px;
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 3;
-  transition: transform 0.3s ease;
-}
-
-.cardArrow svg {
-  width: 24px;
-  height: 24px;
-}
-
-.card:hover .cardArrow {
-  transform: translateX(4px);
-}
-
-@media (max-width: 1400px) {
+@media (max-width: 1440px) {
   .grid {
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-    gap: 28px;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
   }
 }
 
-@media (max-width: 1200px) {
+@media (max-width: 1024px) {
   .grid {
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 24px;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
   }
 
   .title {
@@ -202,62 +206,21 @@
   }
 }
 
-@media (max-width: 900px) {
+@media (max-width: 768px) {
   .areasList {
-    padding: 100px 0 60px 0;
+    padding: 80px 0 60px 0;
   }
 
   .container {
     padding: 40px 20px 20px 20px;
   }
 
-  .header {
-    margin-bottom: 40px;
-  }
-
   .title {
     font-size: 40px;
   }
 
-  .grid {
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 20px;
-  }
-
-  .cardImage {
-    height: 350px;
-  }
-
-  .cardContent {
-    padding: 24px;
-  }
-
-  .cardTitle {
-    font-size: 22px;
-  }
-
-  .cardCity {
-    font-size: 14px;
-  }
-
-  .projectsCount {
-    font-size: 16px;
-  }
-
-  .projectsLabel {
-    font-size: 14px;
-  }
-
-  .cardArrow {
-    bottom: 24px;
-    right: 24px;
-    width: 28px;
-    height: 28px;
-  }
-
-  .cardArrow svg {
-    width: 20px;
-    height: 20px;
+  .card {
+    height: 300px;
   }
 }
 
@@ -279,23 +242,12 @@
     gap: 20px;
   }
 
-  .cardImage {
-    height: 320px;
-    margin: 0 4px;
-    overflow: visible;
+  .card {
+    height: 310px;
   }
 
   .cardTitle {
-    font-size: 20px;
-  }
-
-  .cardCity {
-    font-size: 13px;
-  }
-
-  .projectsCount,
-  .projectsLabel {
-    font-size: 14px;
+    font-size: 17px;
   }
 }
 

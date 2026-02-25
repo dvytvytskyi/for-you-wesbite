@@ -276,6 +276,7 @@ export interface InvestmentRequest {
   userPhone?: string;
   userFirstName?: string;
   userLastName?: string;
+  referenceId?: string;
 }
 
 export interface Investment {
@@ -1492,6 +1493,48 @@ export async function submitInvestmentPublic(data: InvestmentRequest): Promise<I
       throw new Error(errorMessage);
     }
     throw error;
+  }
+}
+
+/**
+ * Initialize user session
+ */
+export interface UserSessionPayload {
+  utmSource?: string;
+  utmMedium?: string;
+  utmCampaign?: string;
+  referrer?: string;
+  locale?: string;
+  userAgent?: string;
+}
+
+export async function initUserSession(payload: UserSessionPayload): Promise<{ referenceId: string; sessionId: string } | null> {
+  try {
+    const response = await apiClient.post<ApiResponse<{ referenceId: string; sessionId: string }>>('/user-activity/init', payload);
+    return response.data?.data || null;
+  } catch (error: any) {
+    console.error('Failed to initialize user session:', error);
+    // Silent fail for tracker
+    return null;
+  }
+}
+
+/**
+ * Track user activity
+ */
+export interface UserActivityPayload {
+  referenceId: string;
+  action: string;
+  propertyId?: string;
+  url?: string;
+}
+
+export async function trackUserActivity(payload: UserActivityPayload): Promise<void> {
+  try {
+    if (!payload.referenceId) return;
+    await apiClient.post('/user-activity/track', payload);
+  } catch (error: any) {
+    console.error('Failed to track user activity:', error);
   }
 }
 

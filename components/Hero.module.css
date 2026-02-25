@@ -139,8 +139,13 @@
   transition: all 0.3s ease;
 }
 
-.searchInput::placeholder {
-  color: rgba(255, 255, 255, 0.7);
+.searchInput::placeholder,
+.areaSelect::placeholder {
+  color: rgba(255, 255, 255, 0.85);
+  opacity: 1;
+  /* Ensure opacity is not reduced by browser defaults */
+  font-weight: 400;
+  /* Increased from 300 for better visibility */
 }
 
 .searchInput:focus {
@@ -383,6 +388,11 @@
     top: auto;
     bottom: calc(100% + 8px);
     transform-origin: bottom;
+  }
+
+  .areaSelect::placeholder {
+    color: #ffffff;
+    opacity: 0.95;
   }
 }
 

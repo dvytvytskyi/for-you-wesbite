@@ -18,6 +18,7 @@ interface Area {
   image: string;
   city?: string;
   cityRu?: string;
+  description?: string | null;
 }
 
 const ITEMS_PER_PAGE = 20;
@@ -53,7 +54,7 @@ function AreaCard({ area, getLocalizedPath, getAreaName, getCityName, t }: AreaC
       href={getLocalizedPath(`/areas/${area.slug}`)}
       className={styles.card}
     >
-      <div className={styles.cardImage}>
+      <div className={styles.cardImageSection}>
         {isImageLoading && (
           <div className={styles.imageSkeleton}></div>
         )}
@@ -61,12 +62,8 @@ function AreaCard({ area, getLocalizedPath, getAreaName, getCityName, t }: AreaC
           src={imageUrl}
           alt={getAreaName(area)}
           fill
-          style={{
-            objectFit: 'cover',
-            opacity: isImageLoading ? 0 : 1,
-            transition: 'opacity 0.3s ease'
-          }}
-          sizes="(max-width: 1200px) 50vw, (max-width: 900px) 100vw, 33vw"
+          className={styles.mainImage}
+          sizes="(max-width: 768px) 100vw, 33vw"
           loading="lazy"
           unoptimized={imageUrl.startsWith('http')}
           onLoad={() => setIsImageLoading(false)}
@@ -74,23 +71,20 @@ function AreaCard({ area, getLocalizedPath, getAreaName, getCityName, t }: AreaC
             setIsImageLoading(false);
           }}
         />
-        <div className={styles.cardOverlayTop}></div>
-        <div className={styles.cardOverlayBottom}></div>
-        <div className={styles.cardContent}>
-          <h3 className={styles.cardTitle}>{getAreaName(area)}</h3>
-          {getCityName(area) && (
-            <p className={styles.cardCity}>{getCityName(area)}</p>
-          )}
-          <div className={styles.cardInfo}>
-            <span className={styles.projectsCount}>{area.projectsCount}</span>
-            <span className={styles.projectsLabel}>{t('projects')}</span>
-          </div>
+      </div>
+
+      <div className={styles.overlappingStatsWrapper}>
+        <div className={styles.statsFrame}>
+          <span className={styles.projectsCount}>{area.projectsCount}</span>
+          <span className={styles.projectsLabel}>{t('projects')}</span>
         </div>
-        <div className={styles.cardArrow}>
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M9 5L16 12L9 19" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </div>
+      </div>
+
+      <div className={styles.cardInfoSection}>
+        <h3 className={styles.cardTitle}>{getAreaName(area)}</h3>
+        {area.description && (
+          <p className={styles.cardDescription}>{area.description}</p>
+        )}
       </div>
     </Link>
   );
@@ -148,6 +142,7 @@ export default function AreasList() {
             image: imageUrl,
             city: area.city?.nameEn || '',
             cityRu: area.city?.nameRu || '',
+            description: locale === 'ru' ? (area.description?.description || '') : (area.description?.description || ''),
           };
         });
 
