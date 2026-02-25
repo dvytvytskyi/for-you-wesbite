@@ -4,7 +4,7 @@ import { useTranslations, useLocale } from 'next-intl';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useState, useEffect, useRef } from 'react';
-import { getAreaById, Area as ApiArea, getProperties, Property } from '@/lib/api';
+import { getAreaById, Area as ApiArea, getProperties, Property, getDevelopersSimple, getDevelopers } from '@/lib/api';
 import PropertyCard from '@/components/PropertyCard';
 import styles from './AreaDetail.module.css';
 
@@ -48,6 +48,19 @@ export default function AreaDetail({ slug }: AreaDetailProps) {
   const [loadingProperties, setLoadingProperties] = useState(false);
   const [totalProperties, setTotalProperties] = useState(0);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [filters, setFilters] = useState({
+    type: 'new' as 'new' | 'secondary',
+    search: '',
+    priceFrom: '',
+    priceTo: '',
+    sizeFrom: '',
+    sizeTo: '',
+    developerId: undefined as string | undefined
+  });
+  const [developers, setDevelopers] = useState<{ id: string, name: string }[]>([]);
+  const [isDeveloperOpen, setIsDeveloperOpen] = useState(false);
+  const developerRef = useRef<HTMLDivElement>(null);
+  const [developerSearch, setDeveloperSearch] = useState('');
 
   // Прибираємо автоматичне прокручування при завантаженні сторінки
   useEffect(() => {
@@ -55,10 +68,23 @@ export default function AreaDetail({ slug }: AreaDetailProps) {
     if (typeof window !== 'undefined' && 'scrollRestoration' in window.history) {
       window.history.scrollRestoration = 'manual';
     }
-    
+
     // Скролимо вгору при монтуванні компонента
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
-    
+
+    // Load developers for filter
+    const loadDevs = async () => {
+      try {
+        let devs = await getDevelopersSimple();
+        if (!devs || devs.length === 0) {
+          const fullDevs = await getDevelopers();
+          devs = fullDevs.map(d => ({ id: d.id, name: d.name }));
+        }
+        setDevelopers(devs.sort((a, b) => a.name.localeCompare(b.name)));
+      } catch (err) { }
+    };
+    loadDevs();
+
     // Також перевіряємо, чи немає hash в URL
     if (window.location.hash) {
       window.history.replaceState(null, '', window.location.pathname);
@@ -75,11 +101,11 @@ export default function AreaDetail({ slug }: AreaDetailProps) {
 
       setLoading(true);
       setError(null);
-      
+
       try {
         // Load area data
         const apiArea = await getAreaById(slug);
-        
+
         if (!apiArea) {
           setError('Area not found');
           setLoading(false);
@@ -101,10 +127,11 @@ export default function AreaDetail({ slug }: AreaDetailProps) {
               .filter(img => img && img.startsWith('http'));
           } else if (typeof apiArea.images === 'string') {
             // Single string - check if it contains comma
-            const trimmed = apiArea.images.trim();
+            const imagesStr = apiArea.images as string;
+            const trimmed = imagesStr.trim();
             if (trimmed.includes(',')) {
               // Split by comma and take first valid URL
-              const urls = trimmed.split(',').map(url => url.trim()).filter(url => url && url.startsWith('http'));
+              const urls = trimmed.split(',').map((url: string) => url.trim()).filter((url: string) => url && url.startsWith('http'));
               normalizedImages = urls.length > 0 ? [urls[0]] : [];
             } else if (trimmed.startsWith('http')) {
               normalizedImages = [trimmed];
@@ -121,9 +148,9 @@ export default function AreaDetail({ slug }: AreaDetailProps) {
                 })
                 .filter(img => img && img.startsWith('http'));
             } else if (typeof imagesValue === 'string') {
-              const trimmed = imagesValue.trim();
+              const trimmed = (imagesValue as string).trim();
               if (trimmed.includes(',')) {
-                const urls = trimmed.split(',').map(url => url.trim()).filter(url => url && url.startsWith('http'));
+                const urls = trimmed.split(',').map((url: string) => url.trim()).filter((url: string) => url && url.startsWith('http'));
                 normalizedImages = urls.length > 0 ? [urls[0]] : [];
               } else if (trimmed.startsWith('http')) {
                 normalizedImages = [trimmed];
@@ -154,12 +181,14 @@ export default function AreaDetail({ slug }: AreaDetailProps) {
           const propertiesResult = await getProperties({ areaId: apiArea.id, limit: 36 }, true);
           setProperties(propertiesResult.properties || []);
           setTotalProperties(propertiesResult.total || 0);
-        } catch (err) {setProperties([]);
+        } catch (err) {
+          setProperties([]);
           setTotalProperties(0);
         } finally {
           setLoadingProperties(false);
         }
-      } catch (err: any) {setError(err.message || 'Failed to load area');
+      } catch (err: any) {
+        setError(err.message || 'Failed to load area');
       } finally {
         setLoading(false);
       }
@@ -168,30 +197,128 @@ export default function AreaDetail({ slug }: AreaDetailProps) {
     loadAreaData();
   }, [slug, locale]);
 
+  // Handle local property filtering
+  const loadFilteredProperties = async (currentFilters: typeof filters) => {
+    if (!area) return;
+    setLoadingProperties(true);
+    try {
+      const apiFilters: any = {
+        areaId: area.id,
+        propertyType: currentFilters.type === 'new' ? 'off-plan' : 'secondary',
+        search: currentFilters.search || undefined,
+        // Send both variants of param names for maximum compatibility
+        priceFrom: currentFilters.priceFrom || undefined,
+        priceTo: currentFilters.priceTo || undefined,
+        priceMin: currentFilters.priceFrom || undefined,
+        priceMax: currentFilters.priceTo || undefined,
+        sizeFrom: currentFilters.sizeFrom || undefined,
+        sizeTo: currentFilters.sizeTo || undefined,
+        sizeMin: currentFilters.sizeFrom || undefined,
+        sizeMax: currentFilters.sizeTo || undefined,
+        developerId: currentFilters.developerId,
+        limit: 100
+      };
+
+      const result = await getProperties(apiFilters, true);
+      setProperties(result.properties || []);
+      setTotalProperties(result.total || 0);
+    } catch (err) {
+      setProperties([]);
+    } finally {
+      setLoadingProperties(false);
+    }
+  };
+
+  useEffect(() => {
+    if (area) {
+      const timer = setTimeout(() => {
+        loadFilteredProperties(filters);
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [filters, area]);
+
+  const handleFilterChange = (field: string, value: any) => {
+    setFilters(prev => ({ ...prev, [field]: value }));
+  };
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (developerRef.current && !developerRef.current.contains(event.target as Node)) {
+        setIsDeveloperOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const formatNumberWithCommas = (value: string) => {
+    const numericValue = value.replace(/\D/g, '');
+    if (!numericValue) return '';
+    return new Intl.NumberFormat('en-US').format(parseInt(numericValue, 10));
+  };
+
+  // Filter properties client-side as well for accuracy and instant feedback
+  const filteredProperties = properties.filter(prop => {
+    // Search filter
+    if (filters.search) {
+      const searchLower = filters.search.toLowerCase();
+      const name = prop.name || '';
+      if (!name.toLowerCase().includes(searchLower)) return false;
+    }
+
+    // Developer filter
+    if (filters.developerId && prop.developer?.id !== filters.developerId) {
+      return false;
+    }
+
+    // Price filtering
+    const price = prop.propertyType === 'off-plan'
+      ? (prop.priceFromAED || (prop.priceFrom ? Math.round(prop.priceFrom * 3.673) : 0))
+      : (prop.priceAED || (prop.price ? Math.round(prop.price * 3.673) : 0));
+
+    const pFrom = filters.priceFrom ? parseInt(filters.priceFrom, 10) : 0;
+    const pTo = filters.priceTo ? parseInt(filters.priceTo, 10) : Infinity;
+
+    if (price < pFrom || (pTo !== Infinity && price > pTo)) return false;
+
+    // Size filtering (sqft)
+    const size = prop.propertyType === 'off-plan'
+      ? (prop.sizeFromSqft || (prop.sizeFrom ? Math.round(prop.sizeFrom * 10.764) : 0))
+      : (prop.sizeSqft || (prop.size ? Math.round(prop.size * 10.764) : 0));
+
+    const sFrom = filters.sizeFrom ? parseInt(filters.sizeFrom, 10) : 0;
+    const sTo = filters.sizeTo ? parseInt(filters.sizeTo, 10) : Infinity;
+
+    if (size < sFrom || (sTo !== Infinity && size > sTo)) return false;
+
+    return true;
+  });
+
   const getLocalizedPath = (path: string) => {
     return locale === 'en' ? path : `/${locale}${path}`;
   };
 
   const loadMoreProperties = async () => {
     if (!area || loadingMore) return;
-    
+
     setLoadingMore(true);
     try {
       // Load all remaining properties - use totalProperties or a large number
       const limitToLoad = totalProperties > 0 ? totalProperties : 1000;
-      const propertiesResult = await getProperties({ 
-        areaId: area.id, 
+      const propertiesResult = await getProperties({
+        areaId: area.id,
         limit: limitToLoad
       }, true);
-      
+
       // Replace all properties with the full list
       setProperties(propertiesResult.properties || []);
-      
+
       // Update total if we got more accurate count
       if (propertiesResult.total && propertiesResult.total > totalProperties) {
         setTotalProperties(propertiesResult.total);
       }
-    } catch (err) {} finally {
+    } catch (err) { } finally {
       setLoadingMore(false);
     }
   };
@@ -226,6 +353,11 @@ export default function AreaDetail({ slug }: AreaDetailProps) {
     return area.nameEn;
   };
 
+  const getSectionTitle = () => {
+    const name = getAreaName();
+    return locale === 'ru' ? `Узнайте больше о ${name}` : `Learn more about ${name}`;
+  };
+
   if (loading) {
     return (
       <section className={styles.areaDetail}>
@@ -251,99 +383,32 @@ export default function AreaDetail({ slug }: AreaDetailProps) {
   return (
     <section className={styles.areaDetail} ref={sectionRef}>
       <div className={styles.container}>
-        {/* Заголовок */}
-        <div className={styles.header}>
-          <h1 className={styles.title}>{getAreaName()}</h1>
-          {area.projectsCount && (
-            <div className={styles.projectsCount}>
-              <span className={styles.countNumber}>{area.projectsCount.total}</span>
-              <span className={styles.countLabel}>{t('projects')}</span>
+        <div className={styles.heroSection}>
+          {area.images && area.images.length > 0 && (
+            <div className={styles.heroImageContainer}>
+              <div className={styles.imageWrapper}>
+                <Image
+                  src={area.images[0]}
+                  alt={getAreaName()}
+                  fill
+                  className={styles.heroImage}
+                  sizes="70vw"
+                  unoptimized
+                />
+                <div className={styles.heroOverlay}>
+                  <div className={styles.heroContent}>
+                    <h1 className={styles.heroTitle}>{getAreaName()}</h1>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
         </div>
 
-        {/* Галерея зображень - слайд-шоу */}
-        {area.images && Array.isArray(area.images) && area.images.length > 0 && (
-          <div className={styles.imagesSection}>
-            <div className={styles.sliderContainer}>
-              <div className={styles.sliderWrapper}>
-                <div 
-                  className={styles.sliderTrack}
-                  style={{ transform: `translateX(-${currentSlide * 100}%)` }}
-                >
-                  {area.images.slice(0, 8).map((image, index) => (
-                    <div
-                      key={index}
-                      className={styles.slide}
-                      onClick={() => setSelectedImage(image)}
-                    >
-                      <Image
-                        src={image}
-                        alt={`${getAreaName()} - Image ${index + 1}`}
-                        fill
-                        style={{ objectFit: 'cover' }}
-                        sizes="100vw"
-                        unoptimized
-                      />
-                    </div>
-                  ))}
-                </div>
-              </div>
-              
-              {/* Навігаційні кнопки */}
-              {Array.isArray(area.images) && area.images.length > 1 && (
-                <>
-                  <button
-                    className={`${styles.sliderButton} ${styles.prevButton}`}
-                    onClick={() => setCurrentSlide((prev) => 
-                      prev === 0 ? area.images!.length - 1 : prev - 1
-                    )}
-                    aria-label="Previous image"
-                  >
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M15 19L8 12L15 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                  </button>
-                  <button
-                    className={`${styles.sliderButton} ${styles.nextButton}`}
-                    onClick={() => setCurrentSlide((prev) => 
-                      prev === area.images!.length - 1 ? 0 : prev + 1
-                    )}
-                    aria-label="Next image"
-                  >
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M9 5L16 12L9 19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                  </button>
-                  
-                  {/* Індикатори слайдів */}
-                  <div className={styles.sliderIndicators}>
-                    {area.images.slice(0, 8).map((_, index) => (
-                      <button
-                        key={index}
-                        className={`${styles.indicator} ${currentSlide === index ? styles.active : ''}`}
-                        onClick={() => setCurrentSlide(index)}
-                        aria-label={`Go to slide ${index + 1}`}
-                      />
-                    ))}
-                  </div>
-                  
-                  {/* Счетчик слайдів */}
-                  <div className={styles.sliderCounter}>
-                    {currentSlide + 1} / {area.images.length}
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-        )}
-
         {/* Опис */}
         {area.description && (
           <div className={styles.descriptionSection}>
-            {area.description.title && (
-              <h2 className={styles.sectionTitle}>{area.description.title}</h2>
-            )}
+            <h2 className={styles.sectionTitle}>{getSectionTitle()}</h2>
             {area.description.description && (
               <p className={styles.descriptionText}>{area.description.description}</p>
             )}
@@ -362,40 +427,145 @@ export default function AreaDetail({ slug }: AreaDetailProps) {
           </div>
         )}
 
+        {/* Фільтри */}
+        <div className={styles.localFilters}>
+          <div className={styles.filterColumn}>
+            <div className={styles.filterRow}>
+              <div className={styles.typeToggle}>
+                <button
+                  className={`${styles.typeButton} ${filters.type === 'new' ? styles.active : ''}`}
+                  onClick={() => handleFilterChange('type', 'new')}
+                >
+                  {locale === 'ru' ? 'Off-plan' : 'Off-plan'}
+                </button>
+                <button
+                  className={`${styles.typeButton} ${filters.type === 'secondary' ? styles.active : ''}`}
+                  onClick={() => handleFilterChange('type', 'secondary')}
+                >
+                  {locale === 'ru' ? 'Вторичка' : 'Secondary'}
+                </button>
+              </div>
+
+              <div className={styles.searchBox}>
+                <input
+                  type="text"
+                  placeholder={locale === 'ru' ? 'Поиск проекта...' : 'Search project...'}
+                  value={filters.search}
+                  onChange={(e) => handleFilterChange('search', e.target.value)}
+                  className={styles.filterInput}
+                />
+              </div>
+
+              <div className={styles.developerBox} ref={developerRef}>
+                <button
+                  className={styles.filterDropdownButton}
+                  onClick={() => setIsDeveloperOpen(!isDeveloperOpen)}
+                >
+                  <span>{filters.developerId ? developers.find(d => d.id === filters.developerId)?.name : (locale === 'ru' ? 'Забудовник' : 'Developer')}</span>
+                  <svg width="10" height="6" viewBox="0 0 10 6" fill="none">
+                    <path d="M1 1L5 5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </button>
+                {isDeveloperOpen && (
+                  <div className={styles.filterDropdownMenu}>
+                    <div className={styles.dropdownSearch}>
+                      <input
+                        type="text"
+                        placeholder="..."
+                        value={developerSearch}
+                        onChange={(e) => setDeveloperSearch(e.target.value)}
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    </div>
+                    <div
+                      className={`${styles.dropdownItem} ${!filters.developerId ? styles.active : ''}`}
+                      onClick={() => { handleFilterChange('developerId', undefined); setIsDeveloperOpen(false); }}
+                    >
+                      {locale === 'ru' ? 'Все забудовники' : 'All Developers'}
+                    </div>
+                    {developers
+                      .filter(d => d.name.toLowerCase().includes(developerSearch.toLowerCase()))
+                      .map(dev => (
+                        <div
+                          key={dev.id}
+                          className={`${styles.dropdownItem} ${filters.developerId === dev.id ? styles.active : ''}`}
+                          onClick={() => { handleFilterChange('developerId', dev.id); setIsDeveloperOpen(false); }}
+                        >
+                          {dev.name}
+                        </div>
+                      ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className={styles.filterRow}>
+              <div className={styles.priceSizeBox}>
+                <div className={styles.rangeGroup}>
+                  <div className={styles.inputWrapper}>
+                    <span className={styles.inputLabel}>AED</span>
+                    <input
+                      type="text"
+                      placeholder={locale === 'ru' ? 'от' : 'from'}
+                      value={formatNumberWithCommas(filters.priceFrom)}
+                      onChange={(e) => handleFilterChange('priceFrom', e.target.value.replace(/\D/g, ''))}
+                      className={styles.filterInputWithLabel}
+                    />
+                  </div>
+                  <div className={styles.inputWrapper}>
+                    <span className={styles.inputLabel}>AED</span>
+                    <input
+                      type="text"
+                      placeholder={locale === 'ru' ? 'до' : 'to'}
+                      value={formatNumberWithCommas(filters.priceTo)}
+                      onChange={(e) => handleFilterChange('priceTo', e.target.value.replace(/\D/g, ''))}
+                      className={styles.filterInputWithLabel}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className={styles.priceSizeBox}>
+                <div className={styles.rangeGroup}>
+                  <div className={styles.inputWrapper}>
+                    <span className={styles.inputLabel}>sqft</span>
+                    <input
+                      type="text"
+                      placeholder={locale === 'ru' ? 'от' : 'from'}
+                      value={formatNumberWithCommas(filters.sizeFrom)}
+                      onChange={(e) => handleFilterChange('sizeFrom', e.target.value.replace(/\D/g, ''))}
+                      className={styles.filterInputWithLabel}
+                    />
+                  </div>
+                  <div className={styles.inputWrapper}>
+                    <span className={styles.inputLabel}>sqft</span>
+                    <input
+                      type="text"
+                      placeholder={locale === 'ru' ? 'до' : 'to'}
+                      value={formatNumberWithCommas(filters.sizeTo)}
+                      onChange={(e) => handleFilterChange('sizeTo', e.target.value.replace(/\D/g, ''))}
+                      className={styles.filterInputWithLabel}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Список проектів */}
-        {properties.length > 0 && (
+        {loadingProperties ? (
+          <div className={styles.propertiesLoading}>{locale === 'ru' ? 'Загрузка...' : 'Loading...'}</div>
+        ) : filteredProperties.length > 0 ? (
           <div className={styles.propertiesSection}>
-            <h2 className={styles.sectionTitle}>
-              {locale === 'ru' ? 'Проекты в этом районе' : 'Properties in this area'}
-              {totalProperties > 0 && (
-                <span className={styles.propertiesCount}>
-                  {' '}({properties.length} {locale === 'ru' ? 'из' : 'of'} {totalProperties})
-                </span>
-              )}
-            </h2>
             <div className={styles.propertiesGrid}>
-              {properties.map((property) => (
+              {filteredProperties.map((property) => (
                 <PropertyCard key={property.id} property={property} />
               ))}
             </div>
-            {totalProperties > properties.length && (
-              <div className={styles.loadMoreContainer}>
-                <button 
-                  className={styles.loadMoreButton}
-                  onClick={loadMoreProperties}
-                  disabled={loadingMore}
-                >
-                  {loadingMore 
-                    ? (locale === 'ru' ? 'Загрузка...' : 'Loading...')
-                    : (locale === 'ru' 
-                        ? `Загрузить еще (${totalProperties - properties.length} ${totalProperties - properties.length === 1 ? 'проект' : totalProperties - properties.length < 5 ? 'проекта' : 'проектов'})`
-                        : `Load more (${totalProperties - properties.length} ${totalProperties - properties.length === 1 ? 'property' : 'properties'})`
-                      )
-                  }
-                </button>
-              </div>
-            )}
           </div>
+        ) : (
+          <div className={styles.noProperties}>{locale === 'ru' ? 'Проектов не найдено' : 'No properties found'}</div>
         )}
 
         {/* Модальне вікно для зображення */}

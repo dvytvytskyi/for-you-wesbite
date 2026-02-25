@@ -34,7 +34,7 @@
 .partnersList {
   display: flex;
   gap: 60px;
-  animation: scrollPartners 40s linear infinite;
+  animation: scrollPartners 20s linear infinite;
   will-change: transform;
 }
 
@@ -99,17 +99,28 @@
 }
 
 @media (max-width: 768px) {
+  .partnersSection {
+    padding: 30px 0;
+  }
+
   .partnersTitle {
-    font-size: 14px;
+    font-size: 16px;
+    margin-bottom: 30px;
   }
 
   .partnerLogo {
-    height: 50px;
+    height: 90px;
     padding: 0 15px;
   }
 
   .partnerLogo img {
-    max-height: 50px;
-    max-width: 150px;
+    max-height: 90px;
+    max-width: 200px;
+  }
+
+  /* Faster animation on mobile */
+  .partnersList {
+    animation-duration: 8s;
+    gap: 40px;
   }
 }

@@ -479,7 +479,7 @@
 .partnersList {
   display: flex;
   gap: 60px;
-  animation: scrollPartners 40s linear infinite;
+  animation: scrollPartners 10s linear infinite;
   will-change: transform;
 }
 
@@ -619,12 +619,16 @@
     padding: 60px 0;
   }
 
+  .partnersList {
+    gap: 30px;
+  }
+
   .partnersContainer {
     padding: 0 20px;
   }
 
   .partnersTitle {
-    font-size: 14px;
+    font-size: 16px;
     margin-bottom: 40px;
   }
 
@@ -662,7 +666,11 @@
 
 @media (max-width: 768px) {
   .partnersTitle {
-    font-size: 14px;
+    font-size: 16px;
+  }
+
+  .partnersList {
+    gap: 20px;
   }
 
   .partnerLogo {
@@ -783,6 +791,7 @@
   margin: 0;
   display: -webkit-box;
   -webkit-line-clamp: 4;
+  line-clamp: 4;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
@@ -880,12 +889,12 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 60px;
-  align-items: start;
+  align-items: stretch;
 }
 
 .officeMapContainer {
   width: 100%;
-  aspect-ratio: 1;
+  height: 100%;
   border-radius: 12px;
   overflow: hidden;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
@@ -960,7 +969,7 @@
 .formField select,
 .formField textarea {
   font-family: 'Inter', sans-serif;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 400;
   color: #000000;
   padding: 12px 16px;
@@ -1006,25 +1015,7 @@
   min-height: 100px;
 }
 
-.phoneInputWrapper {
-  position: relative;
-  display: flex;
-  align-items: center;
-}
 
-.phonePrefix {
-  position: absolute;
-  left: 16px;
-  font-family: 'Inter', sans-serif;
-  font-size: 14px;
-  font-weight: 400;
-  color: #000000;
-  z-index: 1;
-}
-
-.phoneInputWrapper input {
-  padding-left: 32px;
-}
 
 .submitButton {
   font-family: 'Inter', sans-serif;
@@ -1100,25 +1091,296 @@
   max-width: 1600px;
   margin: 0 auto;
   padding: 0 40px;
+  display: flex;
+  gap: 60px;
+  align-items: stretch;
 }
 
 .faqTitle {
   font-family: 'Inter', sans-serif;
-  font-size: 48px;
+  font-size: 56px;
   font-weight: 400;
   color: #003077;
-  margin: 0 0 60px 0;
-  text-align: center;
-  line-height: 1.2;
+  margin: 0 0 40px 0;
+  text-align: left;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+.faqLeft {
+  flex: 1;
+  max-width: 400px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.faqRight {
+  flex: 1.5;
+  width: 100%;
 }
 
 .faqList {
   display: flex;
   flex-direction: column;
   gap: 20px;
-  max-width: 900px;
-  margin: 0 auto;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  max-height: 800px;
+  /* Limit height to keep roughly even with left side */
+  overflow-y: auto;
+  padding-right: 10px;
+  /* Space for scrollbar */
 }
+
+/* Custom Scrollbar for FAQ List */
+.faqList::-webkit-scrollbar {
+  width: 6px;
+}
+
+.faqList::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+.faqList::-webkit-scrollbar-thumb {
+  background: #ccc;
+  border-radius: 3px;
+}
+
+.faqList::-webkit-scrollbar-thumb:hover {
+  background: #aaa;
+}
+
+.faqContactBlock {
+  background: #f8f9fc;
+  border-radius: 24px;
+  padding: 32px;
+  margin-top: 40px;
+}
+
+.faqContactTitle {
+  font-family: 'Inter', sans-serif;
+  font-size: 24px;
+  font-weight: 500;
+  color: #003077;
+  margin: 0 0 12px 0;
+}
+
+.faqContactText {
+  font-family: 'Inter', sans-serif;
+  font-size: 16px;
+  font-weight: 400;
+  color: rgb(93 93 93 / 80%);
+  margin: 0 0 24px 0;
+  line-height: 1.5;
+}
+
+.faqContactButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px 28px;
+  background: #003077;
+  color: #ffffff;
+  border-radius: 12px;
+  font-family: 'Inter', sans-serif;
+  font-size: 16px;
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.faqContactButton:hover {
+  background: #003f94;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 48, 119, 0.2);
+}
+
+/* Modal Styles */
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+  backdrop-filter: blur(4px);
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s ease;
+}
+
+.modalOverlay.open {
+  opacity: 1;
+  visibility: visible;
+}
+
+.modalContent {
+  background: #ffffff;
+  border-radius: 24px;
+  width: 100%;
+  max-width: 500px;
+  padding: 40px;
+  position: relative;
+  transform: translateY(20px);
+  transition: all 0.3s ease;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+}
+
+.modalOverlay.open .modalContent {
+  transform: translateY(0);
+}
+
+.modalClose {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: #999;
+  padding: 8px;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modalClose:hover {
+  background: #f5f5f5;
+  color: #333;
+}
+
+.modalTitle {
+  font-family: 'Inter', sans-serif;
+  font-size: 32px;
+  font-weight: 500;
+  color: #003077;
+  margin: 0 0 12px 0;
+  text-align: center;
+}
+
+.modalSubtitle {
+  font-family: 'Inter', sans-serif;
+  font-size: 16px;
+  color: #666;
+  text-align: center;
+  margin: 0 0 32px 0;
+}
+
+.modalForm {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.modalInputGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.modalLabel {
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+}
+
+.modalInput,
+.modalTextarea {
+  width: 100%;
+  padding: 14px 16px;
+  border: 1px solid #e0e0e0;
+  border-radius: 12px;
+  font-family: 'Inter', sans-serif;
+  font-size: 16px;
+  color: #333;
+  transition: all 0.2s ease;
+  background: #f8f9fc;
+}
+
+.modalInput:focus,
+.modalTextarea:focus {
+  outline: none;
+  border-color: #003077;
+  background: #fff;
+  box-shadow: 0 0 0 4px rgba(0, 48, 119, 0.05);
+}
+
+.modalTextarea {
+  min-height: 120px;
+  resize: vertical;
+}
+
+.modalSubmit {
+  background: #003077;
+  color: white;
+  border: none;
+  padding: 16px;
+  border-radius: 12px;
+  font-family: 'Inter', sans-serif;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-top: 10px;
+}
+
+.modalSubmit:hover {
+  background: #003f94;
+  transform: translateY(-1px);
+}
+
+.modalSubmit:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.successContent {
+  text-align: center;
+  padding: 20px 0;
+}
+
+.successIcon {
+  width: 80px;
+  height: 80px;
+  background: #e8f5e9;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 24px auto;
+  color: #2e7d32;
+}
+
+.successTitle {
+  font-family: 'Inter', sans-serif;
+  font-size: 28px;
+  font-weight: 600;
+  color: #003077;
+  margin: 0 0 16px 0;
+}
+
+.successText {
+  font-family: 'Inter', sans-serif;
+  font-size: 16px;
+  color: #666;
+  line-height: 1.5;
+  margin: 0;
+}
+
+
 
 .faqItem {
   border: 1px solid rgba(0, 0, 0, 0.1);
@@ -1201,25 +1463,37 @@
   }
 
   .faqContainer {
+    flex-direction: column;
+    gap: 40px;
     padding: 0 20px;
+  }
+
+  .faqLeft {
+    max-width: 100%;
+    position: static;
+  }
+
+  .faqRight {
+    width: 100%;
   }
 
   .faqTitle {
     font-size: 36px;
-    margin-bottom: 40px;
+    margin-bottom: 24px;
+    text-align: left;
   }
 
-  .faqQuestion {
-    font-size: 16px;
-    padding: 20px;
+  .faqContactBlock {
+    margin-top: 24px;
   }
 
-  .faqAnswer {
-    padding: 0 20px;
+  .modalContent {
+    padding: 24px;
+    margin: 20px;
   }
 
-  .faqItem.open .faqAnswer {
-    padding: 0 20px 20px 20px;
+  .modalTitle {
+    font-size: 24px;
   }
 }
 
@@ -1233,6 +1507,17 @@
     padding: 16px;
   }
 
+  .modalInput,
+  .modalTextarea,
+  .formField input,
+  .formField textarea {
+    font-size: 16px !important;
+  }
+
+  .formTitle {
+    display: none;
+  }
+
   .faqAnswer {
     padding: 0 16px;
   }
@@ -1243,5 +1528,55 @@
 
   .faqAnswer p {
     font-size: 14px;
+  }
+}
+
+.officeSuccess {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 40px 0;
+  animation: fadeIn 0.5s ease;
+}
+
+.officeSuccessIcon {
+  width: 80px;
+  height: 80px;
+  background: rgba(0, 48, 119, 0.05);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 24px;
+  color: #003077;
+}
+
+.officeSuccessTitle {
+  font-family: 'Inter', sans-serif;
+  font-size: 24px;
+  font-weight: 600;
+  color: #003077;
+  margin: 0 0 12px 0;
+}
+
+.officeSuccessText {
+  font-family: 'Inter', sans-serif;
+  font-size: 16px;
+  color: #666;
+  margin: 0;
+  line-height: 1.5;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }

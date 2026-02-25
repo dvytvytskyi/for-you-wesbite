@@ -31,7 +31,7 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    background-color: #EBA44E;
+    background-color: #003077;
     color: white;
     border: none;
     border-radius: 8px;
@@ -44,7 +44,7 @@
 }
 
 .shareButton:hover {
-    background-color: #d49346;
+    background-color: #003f94;
     transform: translateY(-2px);
 }
 
@@ -117,12 +117,16 @@
 }
 
 @media (max-width: 600px) {
+    .container {
+        padding: 0 16px;
+    }
+
     .grid {
         grid-template-columns: 1fr;
     }
 
     .favoritesList {
-        padding-top: 100px;
+        padding-top: 90px;
     }
 
     .title {

@@ -16,17 +16,17 @@ export interface ScrollState {
  */
 export function saveScrollState(page: number): void {
   if (typeof window === 'undefined') return;
-  
+
   const scrollPosition = window.scrollY || document.documentElement.scrollTop;
   const state: ScrollState = {
     scrollPosition,
     currentPage: page,
     timestamp: Date.now(),
   };
-  
+
   try {
     sessionStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  } catch (error) {}
+  } catch (error) { }
 }
 
 /**
@@ -34,33 +34,26 @@ export function saveScrollState(page: number): void {
  */
 export function restoreScrollState(): { page: number; scrollPosition: number } | null {
   if (typeof window === 'undefined') return null;
-  
+
   try {
     const stored = sessionStorage.getItem(STORAGE_KEY);
     if (!stored) return null;
-    
+
     const state: ScrollState = JSON.parse(stored);
-    
-    // Only restore if state is recent (within 5 minutes)
-    const isRecent = Date.now() - state.timestamp < 5 * 60 * 1000;
+
+    // Only restore if state is recent (within 10 minutes)
+    const isRecent = Date.now() - state.timestamp < 10 * 60 * 1000;
     if (!isRecent) {
       sessionStorage.removeItem(STORAGE_KEY);
       return null;
     }
-    
-    // Restore scroll position after a short delay to ensure page is rendered
-    setTimeout(() => {
-      window.scrollTo({
-        top: state.scrollPosition,
-        behavior: 'auto', // Use 'auto' for instant scroll, not 'smooth'
-      });
-    }, 100);
-    
+
     return {
       page: state.currentPage,
       scrollPosition: state.scrollPosition,
     };
-  } catch (error) {sessionStorage.removeItem(STORAGE_KEY);
+  } catch (error) {
+    sessionStorage.removeItem(STORAGE_KEY);
     return null;
   }
 }
@@ -72,6 +65,6 @@ export function clearScrollState(): void {
   if (typeof window === 'undefined') return;
   try {
     sessionStorage.removeItem(STORAGE_KEY);
-  } catch (error) {}
+  } catch (error) { }
 }
 

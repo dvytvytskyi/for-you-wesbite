@@ -47,13 +47,11 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(
-    to bottom,
-    rgba(0, 0, 0, 0.4) 0%,
-    rgba(0, 0, 0, 0) 25%,
-    rgba(0, 0, 0, 0) 75%,
-    rgba(0, 0, 0, 0.95) 100%
-  );
+  background: linear-gradient(to bottom,
+      rgba(0, 0, 0, 0.4) 0%,
+      rgba(0, 0, 0, 0) 25%,
+      rgba(0, 0, 0, 0) 75%,
+      rgba(0, 0, 0, 0.95) 100%);
   z-index: 2;
   pointer-events: none;
 }
@@ -65,12 +63,10 @@
   bottom: 0;
   left: 0;
   width: 50%;
-  background: linear-gradient(
-    135deg,
-    rgba(0, 0, 0, 0.8) 0%,
-    rgba(0, 0, 0, 0.4) 25%,
-    rgba(0, 0, 0, 0) 50%
-  );
+  background: linear-gradient(135deg,
+      rgba(0, 0, 0, 0.8) 0%,
+      rgba(0, 0, 0, 0.4) 25%,
+      rgba(0, 0, 0, 0) 50%);
   z-index: 2;
   pointer-events: none;
 }
@@ -338,9 +334,17 @@
 
 @media (max-width: 900px) {
   .projectImage {
-    height: 500px;
+    height: 630px;
     margin-top: 40px;
     margin-bottom: 40px;
+  }
+
+  .imageWrapper::after {
+    width: 100%;
+    background: linear-gradient(to bottom,
+        rgba(0, 0, 0, 0.7) 0%,
+        rgba(0, 0, 0, 0.3) 50%,
+        rgba(0, 0, 0, 0.8) 100%);
   }
 
   .container {
@@ -357,12 +361,17 @@
   }
 
   .rightColumn {
-    justify-content: center;
+    display: none;
   }
 
   .contactForm {
     max-width: 100%;
     padding: 32px;
+  }
+
+  .formInput,
+  .modalInput {
+    font-size: 16px !important;
   }
 
   .formTitle {
@@ -372,7 +381,7 @@
 
 @media (max-width: 600px) {
   .projectImage {
-    height: 600px;
+    height: 720px;
     margin-top: 30px;
     margin-bottom: 30px;
   }
@@ -412,6 +421,7 @@
   from {
     opacity: 0;
   }
+
   to {
     opacity: 1;
   }
@@ -434,6 +444,7 @@
     transform: translateY(30px);
     opacity: 0;
   }
+
   to {
     transform: translateY(0);
     opacity: 1;
@@ -633,26 +644,127 @@
   }
 
   .modalLeft {
-    padding: 40px 30px;
+    padding: 24px 20px;
   }
 
   .modalRight {
-    padding: 40px 30px;
+    padding: 24px 20px 10px 20px;
     order: -1;
   }
 
   .agentImageWrapper {
-    width: 150px;
-    height: 150px;
-    margin-bottom: 20px;
+    width: 100px;
+    height: 100px;
+    margin-bottom: 12px;
   }
 
   .modalTitle {
-    font-size: 28px;
+    font-size: 24px;
+    margin-bottom: 8px;
+  }
+
+  .modalDescription {
+    font-size: 13px;
+    margin-bottom: 20px;
+  }
+
+  .modalForm {
+    gap: 12px;
   }
 
   .agentName {
+    font-size: 20px;
+    margin-bottom: 4px;
+  }
+
+  .agentTitle {
+    font-size: 12px;
+  }
+
+  .modalCloseButton {
+    top: 10px;
+    right: 10px;
+    width: 32px;
+    height: 32px;
+  }
+
+  .modalSuccessTitle {
     font-size: 24px;
+  }
+
+  .modalSuccessIcon svg {
+    width: 48px;
+    height: 48px;
   }
 }
 
+.successMessage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  min-height: 250px;
+  text-align: center;
+  gap: 20px;
+  animation: modalFadeIn 0.5s ease;
+}
+
+.successIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 80px;
+  height: 80px;
+  background: rgba(235, 164, 78, 0.1);
+  border-radius: 50%;
+}
+
+.successTitle {
+  font-family: 'Inter', sans-serif;
+  font-size: 20px;
+  font-weight: 500;
+  color: #ffffff;
+  margin: 0;
+}
+
+.modalSuccess {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 0;
+  text-align: center;
+  gap: 24px;
+  animation: modalFadeIn 0.5s ease;
+}
+
+.modalSuccessIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100px;
+  height: 100px;
+  background: rgba(235, 164, 78, 0.1);
+  border-radius: 50%;
+}
+
+.modalSuccessTitle {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 32px;
+  font-weight: 400;
+  color: #003077;
+  margin: 0;
+}
+
+@keyframes modalFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

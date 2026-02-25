@@ -10,9 +10,11 @@ import PropertyPopup from './PropertyPopup';
 import { getProperty, getPropertySummary } from '@/lib/api';
 import { convertPropertyToMapFormat } from '@/lib/transformers';
 import { useLocale } from 'next-intl';
+import styles from './MapboxMap.module.css';
 
 interface Property {
   id: string;
+  slug: string;
   name: string;
   nameRu: string;
   location: {
@@ -55,6 +57,9 @@ interface Property {
 interface MapboxMapProps {
   accessToken?: string;
   properties?: Property[];
+  selectedId?: string | null;
+  onMarkerClick?: (id: string | null) => void;
+  onRequestCallback?: (projectName?: string) => void;
 }
 
 // Format price for marker display (e.g., 132000 -> "AED 132K")
@@ -94,7 +99,7 @@ function isPointInPolygon(point: [number, number], polygon: number[][]): boolean
   return inside;
 }
 
-export default function MapboxMap({ accessToken, properties = [] }: MapboxMapProps) {
+export default function MapboxMap({ accessToken, properties = [], selectedId, onMarkerClick, onRequestCallback }: MapboxMapProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const drawRef = useRef<MapboxDraw | null>(null);
@@ -102,6 +107,7 @@ export default function MapboxMap({ accessToken, properties = [] }: MapboxMapPro
   const [filteredProperties, setFilteredProperties] = useState<Property[]>(properties);
   const filteredPropertiesRef = useRef(filteredProperties);
   const propertiesRef = useRef(properties);
+  const selectedIdRef = useRef(selectedId);
 
   const markersRef = useRef<mapboxgl.Marker[]>([]);
   const markersMapRef = useRef<Map<string, mapboxgl.Marker>>(new Map());
@@ -121,6 +127,7 @@ export default function MapboxMap({ accessToken, properties = [] }: MapboxMapPro
   useEffect(() => { isDrawingRef.current = isDrawing; }, [isDrawing]);
   useEffect(() => { filteredPropertiesRef.current = filteredProperties; }, [filteredProperties]);
   useEffect(() => { propertiesRef.current = properties; }, [properties]);
+  useEffect(() => { selectedIdRef.current = selectedId; }, [selectedId]);
 
   // Sync properties prop with local state
   useEffect(() => {
@@ -159,6 +166,46 @@ export default function MapboxMap({ accessToken, properties = [] }: MapboxMapPro
     });
     setFilteredProperties(filtered);
   }, []);
+
+  // Effect to fly to selected property
+  useEffect(() => {
+    if (map.current && selectedId) {
+      const property = properties.find(p => p.id === selectedId);
+      if (property && property.coordinates) {
+        map.current.flyTo({
+          center: property.coordinates,
+          zoom: 16, // Increased to ensure clusters expand
+          speed: 1.2,
+          curve: 1.42,
+          essential: true
+        });
+      }
+    }
+
+    // Update paint properties for highlight
+    if (map.current && map.current.getLayer('unclustered-point-bg')) {
+      map.current.setPaintProperty('unclustered-point-bg', 'icon-color', [
+        'case',
+        ['==', ['get', 'id'], selectedId || ''],
+        '#E1251B', // Red for selected
+        ['boolean', ['get', 'isHighValue'], false],
+        '#EBA44E',
+        '#003077'
+      ]);
+
+      map.current.setLayoutProperty('unclustered-point-bg', 'icon-size', [
+        'case',
+        ['==', ['get', 'id'], selectedId || ''],
+        1.2,
+        1
+      ]);
+    }
+
+    // Close popup when selecting from list (unless it's the same property)
+    if (selectedId && selectedProperty && selectedProperty.id !== selectedId) {
+      setSelectedProperty(null);
+    }
+  }, [selectedId, properties]);
 
   // Setup Layers Function
   const setupLayers = useCallback((mapInstance: mapboxgl.Map) => {
@@ -225,12 +272,20 @@ export default function MapboxMap({ accessToken, properties = [] }: MapboxMapPro
         'text-size': 11,
         'text-offset': [0, 0],
         'text-allow-overlap': false,
-        'icon-allow-overlap': false
+        'icon-allow-overlap': false,
+        'icon-size': [
+          'case',
+          ['==', ['get', 'id'], selectedIdRef.current || ''],
+          1.2,
+          1
+        ]
       },
       paint: {
         'text-color': '#ffffff',
         'icon-color': [
           'case',
+          ['==', ['get', 'id'], selectedIdRef.current || ''],
+          '#E1251B', // Red for selected
           ['boolean', ['get', 'isHighValue'], false],
           '#EBA44E',
           '#003077'
@@ -273,6 +328,7 @@ export default function MapboxMap({ accessToken, properties = [] }: MapboxMapPro
           maxZoom: 18,
           maxBounds: uaeBounds,
           accessToken: token,
+          attributionControl: false,
         });
 
         drawRef.current = new MapboxDraw({
@@ -323,10 +379,6 @@ export default function MapboxMap({ accessToken, properties = [] }: MapboxMapPro
 
         map.current.on('load', () => {
           setIsMapLoading(false);
-          const mapboxLogo = map.current?.getContainer().querySelector('.mapboxgl-ctrl-logo');
-          if (mapboxLogo) (mapboxLogo as HTMLElement).style.display = 'none';
-          const attribution = map.current?.getContainer().querySelector('.mapboxgl-ctrl-attrib');
-          if (attribution) (attribution as HTMLElement).style.display = 'none';
 
           const polygonParam = searchParams.get('polygon');
           if (polygonParam) {
@@ -392,8 +444,8 @@ export default function MapboxMap({ accessToken, properties = [] }: MapboxMapPro
   // Separate Function for Interaction
   const handleInteraction = (e: mapboxgl.MapMouseEvent | mapboxgl.MapTouchEvent, mapInstance: mapboxgl.Map) => {
     if (isDrawingRef.current) return;
-    const isMobile = 'touches' in e;
-    const point = isMobile ? (e as any).point : (e as any).point;
+    const isMobileUI = window.innerWidth <= 768; // Added here for clarity
+    const point = (e as any).point;
     const bbox: [mapboxgl.PointLike, mapboxgl.PointLike] = [[point.x - 5, point.y - 5], [point.x + 5, point.y + 5]];
     const features = mapInstance.queryRenderedFeatures(bbox, { layers: ['clusters', 'cluster-count', 'unclustered-point-bg'] });
 
@@ -410,7 +462,6 @@ export default function MapboxMap({ accessToken, properties = [] }: MapboxMapPro
       const id = feature.properties?.id;
       const property = propertiesRef.current.find(p => p.id === id);
       if (property) {
-        const isMobileUI = window.innerWidth <= 768;
         mapInstance.flyTo({
           center: (feature.geometry as any).coordinates,
           zoom: Math.max(mapInstance.getZoom(), isMobileUI ? 13 : 14),
@@ -419,6 +470,7 @@ export default function MapboxMap({ accessToken, properties = [] }: MapboxMapPro
 
         // Show partial info immediately
         setSelectedProperty(property);
+        if (onMarkerClick) onMarkerClick(property.id);
 
         // Fetch full info if it's a partial property
         if (property.isPartial) {
@@ -435,7 +487,7 @@ export default function MapboxMap({ accessToken, properties = [] }: MapboxMapPro
                   setSelectedProperty(fullMapProperty);
                 } else {
                   // Fallback: if transformer fails, at least update the name/images on the existing object
-                  setSelectedProperty(prev => prev ? { ...prev, name: fullApiProperty.name, images: fullApiProperty.photos } : null);
+                  setSelectedProperty(prev => prev ? { ...prev, name: fullApiProperty.name, images: fullApiProperty.photos || [] } : null);
                 }
               });
             }
@@ -494,19 +546,28 @@ export default function MapboxMap({ accessToken, properties = [] }: MapboxMapPro
   }, [selectedProperty]);
 
   return (
-    <>
-      <div ref={mapContainer} style={{ width: '100%', height: '100%', position: 'relative' }} />
+    <div className={styles.mapWrapper}>
+      <div ref={mapContainer} style={{ width: '100%', height: '100%' }} />
       {isMapLoading && (
         <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', background: '#f0f0f0', zIndex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           Loading Map...
         </div>
       )}
-      <div style={{ position: 'absolute', bottom: '20px', right: '20px', display: 'flex', gap: '12px', zIndex: 1000 }}>
-        <button onClick={toggleMapStyle} style={{ background: '#003077', color: '#fff', border: 'none', borderRadius: '8px', padding: '10px 16px', cursor: 'pointer' }}>
+      <div className={styles.controlsContainer}>
+        <button
+          onClick={toggleMapStyle}
+          className={styles.mapStyleButton}
+        >
           {mapStyle === 'map' ? 'Satellite' : 'Map'}
         </button>
       </div>
-      {selectedProperty && <PropertyPopup property={selectedProperty} onClose={() => setSelectedProperty(null)} />}
-    </>
+      {selectedProperty && (
+        <PropertyPopup
+          property={selectedProperty}
+          onClose={() => setSelectedProperty(null)}
+          onRequestCallback={onRequestCallback}
+        />
+      )}
+    </div>
   );
 }

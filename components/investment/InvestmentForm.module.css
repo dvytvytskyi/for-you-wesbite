@@ -215,11 +215,19 @@
 
 @media (max-width: 768px) {
   .formContainer {
-    padding: 20px;
+    padding: 0;
   }
 
   .formRow {
     grid-template-columns: 1fr;
   }
-}
 
+  .mobileHidden {
+    display: none !important;
+  }
+
+  .input,
+  .textarea {
+    font-size: 16px !important;
+  }
+}

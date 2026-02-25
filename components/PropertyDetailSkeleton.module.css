@@ -4,7 +4,20 @@
   padding-top: 80px;
 }
 
-/* Breadcrumb Skeleton */
+@keyframes skeleton-pulse {
+  0% {
+    background-color: #f2f4f7;
+  }
+
+  50% {
+    background-color: #e5e9ef;
+  }
+
+  100% {
+    background-color: #f2f4f7;
+  }
+}
+
 .breadcrumb {
   max-width: 1200px;
   margin: 0 auto;
@@ -16,14 +29,8 @@
 
 .breadcrumbSkeleton {
   height: 14px;
-  background: linear-gradient(
-    90deg,
-    #f0f0f0 0%,
-    #e0e0e0 50%,
-    #f0f0f0 100%
-  );
-  background-size: 200% 100%;
-  animation: shimmer 1.5s infinite;
+  background: #f2f4f7;
+  animation: skeleton-pulse 1.8s infinite ease-in-out;
   border-radius: 4px;
 }
 
@@ -39,7 +46,6 @@
   width: 150px;
 }
 
-/* Hero Image Skeleton */
 .heroSection {
   width: 100%;
   margin-top: 24px;
@@ -49,17 +55,10 @@
 .heroImageSkeleton {
   width: 100%;
   height: 500px;
-  background: linear-gradient(
-    90deg,
-    #f0f0f0 0%,
-    #e0e0e0 50%,
-    #f0f0f0 100%
-  );
-  background-size: 200% 100%;
-  animation: shimmer 1.5s infinite;
+  background: #f2f4f7;
+  animation: skeleton-pulse 1.8s infinite ease-in-out;
 }
 
-/* Content Section */
 .content {
   max-width: 1200px;
   margin: 0 auto;
@@ -72,13 +71,11 @@
   align-items: flex-start;
 }
 
-/* Left Column */
 .leftColumn {
   flex: 1;
   min-width: 0;
 }
 
-/* Main Info */
 .mainInfo {
   margin-bottom: 40px;
 }
@@ -90,14 +87,8 @@
 .titleSkeleton {
   width: 70%;
   height: 32px;
-  background: linear-gradient(
-    90deg,
-    #f0f0f0 0%,
-    #e0e0e0 50%,
-    #f0f0f0 100%
-  );
-  background-size: 200% 100%;
-  animation: shimmer 1.5s infinite;
+  background: #f2f4f7;
+  animation: skeleton-pulse 1.8s infinite ease-in-out;
   border-radius: 4px;
   margin-bottom: 12px;
 }
@@ -105,14 +96,8 @@
 .locationSkeleton {
   width: 40%;
   height: 18px;
-  background: linear-gradient(
-    90deg,
-    #f0f0f0 0%,
-    #e0e0e0 50%,
-    #f0f0f0 100%
-  );
-  background-size: 200% 100%;
-  animation: shimmer 1.5s infinite;
+  background: #f2f4f7;
+  animation: skeleton-pulse 1.8s infinite ease-in-out;
   border-radius: 4px;
 }
 
@@ -123,14 +108,8 @@
 .priceSkeleton {
   width: 200px;
   height: 36px;
-  background: linear-gradient(
-    90deg,
-    #f0f0f0 0%,
-    #e0e0e0 50%,
-    #f0f0f0 100%
-  );
-  background-size: 200% 100%;
-  animation: shimmer 1.5s infinite;
+  background: #f2f4f7;
+  animation: skeleton-pulse 1.8s infinite ease-in-out;
   border-radius: 4px;
   margin-bottom: 8px;
 }
@@ -138,14 +117,8 @@
 .paymentPlanSkeleton {
   width: 150px;
   height: 18px;
-  background: linear-gradient(
-    90deg,
-    #f0f0f0 0%,
-    #e0e0e0 50%,
-    #f0f0f0 100%
-  );
-  background-size: 200% 100%;
-  animation: shimmer 1.5s infinite;
+  background: #f2f4f7;
+  animation: skeleton-pulse 1.8s infinite ease-in-out;
   border-radius: 4px;
 }
 
@@ -159,32 +132,19 @@
 .detailItemSkeleton {
   width: 100px;
   height: 20px;
-  background: linear-gradient(
-    90deg,
-    #f0f0f0 0%,
-    #e0e0e0 50%,
-    #f0f0f0 100%
-  );
-  background-size: 200% 100%;
-  animation: shimmer 1.5s infinite;
+  background: #f2f4f7;
+  animation: skeleton-pulse 1.8s infinite ease-in-out;
   border-radius: 4px;
 }
 
 .developerSkeleton {
   width: 50%;
   height: 18px;
-  background: linear-gradient(
-    90deg,
-    #f0f0f0 0%,
-    #e0e0e0 50%,
-    #f0f0f0 100%
-  );
-  background-size: 200% 100%;
-  animation: shimmer 1.5s infinite;
+  background: #f2f4f7;
+  animation: skeleton-pulse 1.8s infinite ease-in-out;
   border-radius: 4px;
 }
 
-/* Description Section */
 .descriptionSection {
   margin-bottom: 40px;
 }
@@ -192,14 +152,8 @@
 .sectionTitleSkeleton {
   width: 150px;
   height: 24px;
-  background: linear-gradient(
-    90deg,
-    #f0f0f0 0%,
-    #e0e0e0 50%,
-    #f0f0f0 100%
-  );
-  background-size: 200% 100%;
-  animation: shimmer 1.5s infinite;
+  background: #f2f4f7;
+  animation: skeleton-pulse 1.8s infinite ease-in-out;
   border-radius: 4px;
   margin-bottom: 16px;
 }
@@ -207,19 +161,12 @@
 .descriptionLine {
   width: 100%;
   height: 16px;
-  background: linear-gradient(
-    90deg,
-    #f0f0f0 0%,
-    #e0e0e0 50%,
-    #f0f0f0 100%
-  );
-  background-size: 200% 100%;
-  animation: shimmer 1.5s infinite;
+  background: #f2f4f7;
+  animation: skeleton-pulse 1.8s infinite ease-in-out;
   border-radius: 4px;
   margin-bottom: 8px;
 }
 
-/* Facilities Section */
 .facilitiesSection {
   margin-bottom: 40px;
 }
@@ -233,18 +180,11 @@
 .facilityItemSkeleton {
   width: 120px;
   height: 32px;
-  background: linear-gradient(
-    90deg,
-    #f0f0f0 0%,
-    #e0e0e0 50%,
-    #f0f0f0 100%
-  );
-  background-size: 200% 100%;
-  animation: shimmer 1.5s infinite;
+  background: #f2f4f7;
+  animation: skeleton-pulse 1.8s infinite ease-in-out;
   border-radius: 16px;
 }
 
-/* Map Section */
 .mapSection {
   margin-bottom: 40px;
 }
@@ -252,18 +192,11 @@
 .mapSkeleton {
   width: 100%;
   height: 400px;
-  background: linear-gradient(
-    90deg,
-    #f0f0f0 0%,
-    #e0e0e0 50%,
-    #f0f0f0 100%
-  );
-  background-size: 200% 100%;
-  animation: shimmer 1.5s infinite;
+  background: #f2f4f7;
+  animation: skeleton-pulse 1.8s infinite ease-in-out;
   border-radius: 8px;
 }
 
-/* Right Column - Investment Form */
 .rightColumn {
   width: 400px;
   flex-shrink: 0;
@@ -279,14 +212,8 @@
 .formTitleSkeleton {
   width: 200px;
   height: 24px;
-  background: linear-gradient(
-    90deg,
-    #f0f0f0 0%,
-    #e0e0e0 50%,
-    #f0f0f0 100%
-  );
-  background-size: 200% 100%;
-  animation: shimmer 1.5s infinite;
+  background: #f2f4f7;
+  animation: skeleton-pulse 1.8s infinite ease-in-out;
   border-radius: 4px;
   margin-bottom: 20px;
 }
@@ -294,14 +221,8 @@
 .formFieldSkeleton {
   width: 100%;
   height: 48px;
-  background: linear-gradient(
-    90deg,
-    #f0f0f0 0%,
-    #e0e0e0 50%,
-    #f0f0f0 100%
-  );
-  background-size: 200% 100%;
-  animation: shimmer 1.5s infinite;
+  background: #f2f4f7;
+  animation: skeleton-pulse 1.8s infinite ease-in-out;
   border-radius: 8px;
   margin-bottom: 16px;
 }
@@ -309,29 +230,12 @@
 .formButtonSkeleton {
   width: 100%;
   height: 48px;
-  background: linear-gradient(
-    90deg,
-    #f0f0f0 0%,
-    #e0e0e0 50%,
-    #f0f0f0 100%
-  );
-  background-size: 200% 100%;
-  animation: shimmer 1.5s infinite;
+  background: #f2f4f7;
+  animation: skeleton-pulse 1.8s infinite ease-in-out;
   border-radius: 8px;
   margin-top: 8px;
 }
 
-/* Shimmer Animation */
-@keyframes shimmer {
-  0% {
-    background-position: -200% 0;
-  }
-  100% {
-    background-position: 200% 0;
-  }
-}
-
-/* Responsive */
 @media (max-width: 1024px) {
   .contentWrapper {
     flex-direction: column;
@@ -363,4 +267,3 @@
     height: 300px;
   }
 }
-

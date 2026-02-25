@@ -4,11 +4,12 @@ import { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
 import { useTranslations, useLocale } from 'next-intl';
 import { useRouter } from 'next/navigation';
-import { getAreasSimple } from '@/lib/api';
+import { getAreas } from '@/lib/api';
 import styles from './Hero.module.css';
 
 interface Area {
   id: string;
+  slug: string;
   nameEn: string;
   nameRu: string;
   nameAr: string;
@@ -36,6 +37,7 @@ export default function Hero() {
   const [isBedroomsDropdownOpen, setIsBedroomsDropdownOpen] = useState(false);
   const [areas, setAreas] = useState<Area[]>([]);
   const [loading, setLoading] = useState(true);
+  const [areaSearch, setAreaSearch] = useState('');
   const [isDesktop, setIsDesktop] = useState(false);
   const areaDropdownRef = useRef<HTMLDivElement>(null);
   const bedroomsDropdownRef = useRef<HTMLDivElement>(null);
@@ -50,16 +52,33 @@ export default function Hero() {
     return () => window.removeEventListener('resize', checkDesktop);
   }, []);
 
-  // Load areas from API - фільтруємо тільки райони Дубаю та беремо топ 20
+  // Load areas from API
   useEffect(() => {
     const loadAreas = async () => {
       try {
-        const apiAreas = await getAreasSimple();
+        const apiAreas = await getAreas();
         if (apiAreas && Array.isArray(apiAreas)) {
-          // Сортуємо за назвою та беремо топ 20
+          // Define popular areas list
+          const popularAreas = [
+            'Abu Dhabi', 'Al Barari', 'Al Faqa, Abu Dhabi', 'Al Furjan', 'Al Marina, Abu Dhabi',
+            'Al Marjan Island, Ras Al Khaimah', 'Al Maryah Island, Abu Dhabi', 'Al Raha Beach, Abu Dhabi',
+            'Al Reem Island, Abu Dhabi', 'Al Seef, Abu Dhabi', 'Al Shamkha, Abu Dhabi', 'Arjan',
+            'Bluewaters Island', 'Business Bay', 'City of Arabia', 'Damac Hills', 'Damac Hills 2',
+            'Downtown Dubai', 'Dubai Creek Harbour', 'Dubai Harbour', 'Dubai Hills', 'Dubai Industrial City',
+            'Dubai Investment Park', 'Dubai Islands', 'Dubai Marina', 'Dubai Maritime City', 'Dubai Science Park',
+            'Dubai Silicon Oasis', 'Dubai Sports City', 'International City', 'International City Phase 2',
+            'Jumeirah', 'Jumeirah Golf Estates', 'Jumeirah Islands', 'Jumeirah Park',
+            'Jumeirah Village Circle (JVC)', 'Jumeirah Village Triangle (JVT)', 'Khalifa City, Abu Dhabi',
+            'Madinat Zayed, Abu Dhabi', 'Masdar City, Abu Dhabi', 'Meydan City', 'Mina Rashid',
+            'Mohammed Bin Rashid City (MBR)', 'Mudon', 'Palm Jumeirah', 'Rabdan, Abu Dhabi',
+            'Saadiyat Island, Abu Dhabi', 'The World Islands', 'Tilal Al Ghaf', 'Town Square',
+            'Yas Island, Abu Dhabi'
+          ];
+
+          // Filter apiAreas to only include those in the popularAreas list and sort A-Z
           const sortedAreas = [...apiAreas]
-            .sort((a, b) => (locale === 'ru' ? a.nameRu : a.nameEn).localeCompare(locale === 'ru' ? b.nameRu : b.nameEn))
-            .slice(0, 20);
+            .filter(area => popularAreas.includes(area.nameEn))
+            .sort((a, b) => (locale === 'ru' ? a.nameRu : a.nameEn).localeCompare(locale === 'ru' ? b.nameRu : b.nameEn));
 
           setAreas(sortedAreas as any);
         }
@@ -85,7 +104,7 @@ export default function Hero() {
     // Якщо є вибрані фільтри, додаємо їх до URL
     const params = new URLSearchParams();
     if (selectedArea) {
-      params.set('location', selectedArea.id);
+      params.set('location', selectedArea.slug || selectedArea.id);
     }
     if (selectedBedrooms !== 'all') {
       params.set('bedrooms', selectedBedrooms);
@@ -96,6 +115,7 @@ export default function Hero() {
 
   const handleAreaSelect = (area: Area) => {
     setSelectedArea(area);
+    setAreaSearch(locale === 'ru' ? area.nameRu : area.nameEn);
     setIsAreaDropdownOpen(false);
   };
 
@@ -108,6 +128,12 @@ export default function Hero() {
     if (!area) return t('search.placeholder');
     return locale === 'ru' ? area.nameRu : area.nameEn;
   };
+
+  const filteredAreas = areas.filter(area => {
+    if (!areaSearch || (selectedArea && getAreaName(selectedArea) === areaSearch)) return true;
+    const search = areaSearch.toLowerCase();
+    return (area.nameEn?.toLowerCase().includes(search) || area.nameRu?.toLowerCase().includes(search));
+  });
 
   const getBedroomLabel = (value: string) => {
     if (value === 'all') return t('search.bedroomsAll');
@@ -132,8 +158,8 @@ export default function Hero() {
     <section className={styles.hero}>
       <div className={styles.videoContainer}>
         <Image
-          src="https://res.cloudinary.com/dgv0rxd60/video/upload/f_auto,q_auto:eco,w_800,so_0/v1762957287/3ea514df-18e3-4c44-8177-fdc048fca302_fldvse.jpg"
-          alt="Dubai Skyline"
+          src="/Address-Residences-Zabeel-3.webp"
+          alt="Luxury Dubai Skyline and Real Estate Properties"
           fill
           priority
           className={styles.video}
@@ -146,7 +172,7 @@ export default function Hero() {
             loop
             playsInline
             className={styles.video}
-            poster="https://res.cloudinary.com/dgv0rxd60/video/upload/f_auto,q_auto:eco,w_800,so_0/v1762957287/3ea514df-18e3-4c44-8177-fdc048fca302_fldvse.jpg"
+            poster="/Address-Residences-Zabeel-3.webp"
           >
             <source src="https://res.cloudinary.com/dgv0rxd60/video/upload/f_auto,q_auto:eco,w_1920/v1762957287/3ea514df-18e3-4c44-8177-fdc048fca302_fldvse.mp4" type="video/mp4" />
           </video>
@@ -185,40 +211,47 @@ export default function Hero() {
                 strokeLinejoin="round"
               />
             </svg>
-            <button
-              type="button"
-              onClick={() => setIsAreaDropdownOpen(!isAreaDropdownOpen)}
+            <input
+              type="text"
+              placeholder={t('search.placeholder')}
+              value={areaSearch}
+              onChange={(e) => {
+                setAreaSearch(e.target.value);
+                if (selectedArea && getAreaName(selectedArea) !== e.target.value) {
+                  setSelectedArea(null);
+                }
+                setIsAreaDropdownOpen(true);
+              }}
+              onFocus={() => setIsAreaDropdownOpen(true)}
               className={styles.areaSelect}
+            />
+            <svg
+              className={`${styles.dropdownArrow} ${isAreaDropdownOpen ? styles.dropdownArrowOpen : ''}`}
+              width="12"
+              height="8"
+              viewBox="0 0 12 8"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              onClick={() => setIsAreaDropdownOpen(!isAreaDropdownOpen)}
+              style={{ position: 'absolute', right: '20px', cursor: 'pointer', pointerEvents: 'auto' }}
             >
-              <span className={selectedArea ? '' : styles.placeholder}>
-                {getAreaName(selectedArea)}
-              </span>
-              <svg
-                className={`${styles.dropdownArrow} ${isAreaDropdownOpen ? styles.dropdownArrowOpen : ''}`}
-                width="12"
-                height="8"
-                viewBox="0 0 12 8"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  d="M1 1.5L6 6.5L11 1.5"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </button>
+              <path
+                d="M1 1.5L6 6.5L11 1.5"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
 
             {isAreaDropdownOpen && (
               <div className={styles.dropdownMenu}>
                 {loading ? (
                   <div className={styles.dropdownItem}>Loading...</div>
-                ) : areas.length === 0 ? (
-                  <div className={styles.dropdownItem}>No areas available</div>
+                ) : filteredAreas.length === 0 ? (
+                  <div className={styles.dropdownItem}>No areas found</div>
                 ) : (
-                  areas.map((area) => (
+                  filteredAreas.map((area) => (
                     <button
                       key={area.id}
                       type="button"

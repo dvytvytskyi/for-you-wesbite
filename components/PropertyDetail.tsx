@@ -7,12 +7,13 @@ import Link from 'next/link';
 import Image from 'next/image';
 import type { Map, Marker } from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
-import { getProperty, Property, getProperties } from '@/lib/api';
+import { getProperty, Property, getProperties, getPropertyUnits } from '@/lib/api';
 import { formatNumber } from '@/lib/utils';
 import InvestmentForm from '@/components/investment/InvestmentForm';
 import PropertyDetailSkeleton from '@/components/PropertyDetailSkeleton';
 import PropertyCard from '@/components/PropertyCard';
 import styles from './PropertyDetail.module.css';
+import Lightbox from '@/components/Lightbox';
 
 interface PropertyDetailProps {
   propertyId: string;
@@ -30,28 +31,39 @@ export default function PropertyDetail({ propertyId, initialProperty = null }: P
   const [loading, setLoading] = useState(!initialProperty);
   const [error, setError] = useState<string | null>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const [prevImageIndex, setPrevImageIndex] = useState(0);
-  const [direction, setDirection] = useState<'left' | 'right' | null>(null);
-  const [isTransitioning, setIsTransitioning] = useState(false);
   const [isFavorite, setIsFavorite] = useState(false);
   const [unitImagesLoading, setUnitImagesLoading] = useState<Set<string>>(new Set());
   const [heroImageLoading, setHeroImageLoading] = useState(true);
+  const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
   const [otherProperties, setOtherProperties] = useState<Property[]>([]);
   const [loadingOtherProperties, setLoadingOtherProperties] = useState(false);
   const unitsScrollRef = useRef<HTMLDivElement>(null);
   const otherPropertiesScrollRef = useRef<HTMLDivElement>(null);
   const otherPropertiesCardsRef = useRef<HTMLDivElement>(null);
+  const imageScrollRef = useRef<HTMLDivElement>(null);
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<Map | null>(null);
   const markerRef = useRef<Marker | null>(null);
-  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
-  const touchEndRef = useRef<{ x: number; y: number } | null>(null);
+  const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+
+  // Client-side benchmark log
+  useEffect(() => {
+    if (typeof window !== 'undefined' && property) {
+      const navStart = (window.performance.timing as any).navigationStart;
+      const now = Date.now();
+      console.log(`%c[CLIENT] Project "${property.name}" displayed in ${now - navStart}ms`, 'color: #00ff00; font-weight: bold;');
+    }
+  }, [propertyId, property]);
 
   const displayImages = property ? (
     (property.images && property.images.length > 0)
       ? property.images.map(img => img.full)
       : (Array.isArray(property.photos) ? property.photos : [])
   ) : [];
+
+  useEffect(() => {
+    setFailedImages(new Set());
+  }, [propertyId]);
 
   useEffect(() => {
     // If we have initialProperty, skip fetching
@@ -104,41 +116,31 @@ export default function PropertyDetail({ propertyId, initialProperty = null }: P
     fetchProperty();
   }, [propertyId, t, initialProperty]);
 
-  // Reset hero image loading when image index changes
-  // Note: If image was prefetched, it should load quickly from cache
-  useEffect(() => {
-    if (property && displayImages.length > 0) {
-      // Show skeleton briefly, but prefetched images will load very quickly
-      setHeroImageLoading(true);
-    }
-  }, [currentImageIndex, property]);
-
   // Preload first image and prefetch next images
   useEffect(() => {
-    if (!property || displayImages.length === 0) return;
-
-    // Create and add preload link for first image in head
-    const link = document.createElement('link');
-    link.rel = 'preload';
-    link.as = 'image';
-    link.href = displayImages[0];
-    link.setAttribute('fetchpriority', 'high');
-    document.head.appendChild(link);
-
-    // Also preload using Image object for immediate cache
-    const firstImage = new window.Image();
-    firstImage.src = displayImages[0];
-
-    // Check if first image is already cached
-    firstImage.onload = () => {
-      // Image is cached or loaded quickly, hide skeleton immediately
+    if (!property || !displayImages || displayImages.length === 0) {
       setHeroImageLoading(false);
-    };
+      return;
+    }
 
-    // If image fails to load quickly, let the Image component handle it
-    firstImage.onerror = () => {
-      // If preload fails, still let the Image component try
-    };
+    const firstImageUrl = displayImages[0];
+    let link: HTMLLinkElement | null = null;
+
+    try {
+      link = document.createElement('link');
+      link.rel = 'preload';
+      link.as = 'image';
+      link.href = firstImageUrl;
+      link.setAttribute('fetchpriority', 'high');
+      document.head.appendChild(link);
+    } catch (e) {
+      console.error('Failed to create preload link', e);
+    }
+
+    const firstImage = new window.Image();
+    firstImage.onload = () => setHeroImageLoading(false);
+    firstImage.onerror = () => setHeroImageLoading(false);
+    firstImage.src = firstImageUrl;
 
     // Prefetch next 2-3 images in background using Image objects
     const imagesToPrefetch = Math.min(3, displayImages.length - 1);
@@ -150,10 +152,13 @@ export default function PropertyDetail({ propertyId, initialProperty = null }: P
     // Cleanup: remove preload link when component unmounts
     return () => {
       if (link && link.parentNode) {
-        link.parentNode.removeChild(link);
+        try {
+          link.parentNode.removeChild(link);
+        } catch (e) { }
       }
     };
-  }, [property]);
+  }, [property, displayImages]);
+
 
   // Prefetch adjacent images when current image changes
   useEffect(() => {
@@ -271,10 +276,18 @@ export default function PropertyDetail({ propertyId, initialProperty = null }: P
 
         const isMobile = checkIsMobile();
 
+        const lat = Number(property.latitude);
+        const lng = Number(property.longitude);
+
+        if (isNaN(lat) || isNaN(lng)) {
+          console.error('Invalid coordinates:', property.latitude, property.longitude);
+          return;
+        }
+
         map.current = new mapboxgl.Map({
           container: mapContainer.current,
           style: 'mapbox://styles/abiespana/cmkdvczeg002301sdfd53hv5f',
-          center: [property.longitude, property.latitude],
+          center: [lng, lat],
           zoom: 14,
           accessToken: token,
           // Disable drag pan on mobile (one finger drag)
@@ -364,7 +377,7 @@ export default function PropertyDetail({ propertyId, initialProperty = null }: P
           element: el,
           anchor: 'center'
         })
-          .setLngLat([property.longitude, property.latitude])
+          .setLngLat([lng, lat])
           .addTo(map.current);
 
         // Cleanup function
@@ -385,20 +398,10 @@ export default function PropertyDetail({ propertyId, initialProperty = null }: P
       }
     };
 
-    // Lazy load map when visible
-    const observer = new IntersectionObserver((entries) => {
-      if (entries[0].isIntersecting) {
-        initMap();
-        observer.disconnect();
-      }
-    });
-
-    if (mapContainer.current) {
-      observer.observe(mapContainer.current);
-    }
+    // Initialize map immediately
+    initMap();
 
     return () => {
-      observer.disconnect();
       if (map.current) {
         map.current.remove();
         map.current = null;
@@ -409,6 +412,44 @@ export default function PropertyDetail({ propertyId, initialProperty = null }: P
       }
     };
   }, [property]);
+
+  // Lazy load units to speed up initial page load
+  useEffect(() => {
+    if (!property?.id) return;
+
+    // If units are already loaded or explicitly null (checked before), skip
+    // But since backend returns undefined for units now, we check if it is missing
+    if (property.units && property.units.length > 0) return;
+
+    const loadUnits = async () => {
+      try {
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`[CLIENT] Lazy loading units for ${property.id}`);
+        }
+        const units = await getPropertyUnits(property.id);
+        if (units && units.length > 0) {
+          setProperty(curr => {
+            if (!curr || curr.id !== property.id) return curr;
+            return { ...curr, units };
+          });
+
+          // Also initialize images loading for new units
+          const unitsWithImages = units
+            .filter((unit: any) => unit.planImage)
+            .map((unit: any) => unit.id);
+          setUnitImagesLoading(prev => {
+            const newSet = new Set(prev);
+            unitsWithImages.forEach((id: string) => newSet.add(id));
+            return newSet;
+          });
+        }
+      } catch (err) {
+        console.error('Failed to lazy load units', err);
+      }
+    };
+
+    loadUnits();
+  }, [property?.id]);
 
   if (loading) {
     return <PropertyDetailSkeleton />;
@@ -471,60 +512,32 @@ export default function PropertyDetail({ propertyId, initialProperty = null }: P
   const formatSize = (size: number) => formatNumber(Math.round(size * 100) / 100);
 
   const handleImageChange = (dir: 'prev' | 'next') => {
-    if (displayImages.length <= 1 || isTransitioning) return;
+    if (!imageScrollRef.current || displayImages.length <= 1) return;
 
-    setIsTransitioning(true);
-    setPrevImageIndex(currentImageIndex);
-    setDirection(dir === 'next' ? 'right' : 'left');
+    const container = imageScrollRef.current;
+    const width = container.offsetWidth;
+    const scrollLeft = container.scrollLeft;
 
+    // Calculate current index from current scroll position for more reliable multiple clicks
+    const currentIndex = Math.round(scrollLeft / width);
     const newIndex = dir === 'next'
-      ? (currentImageIndex + 1) % displayImages.length
-      : currentImageIndex === 0 ? displayImages.length - 1 : currentImageIndex - 1;
+      ? (currentIndex + 1) % displayImages.length
+      : (currentIndex - 1 + displayImages.length) % displayImages.length;
 
-    setCurrentImageIndex(newIndex);
-
-    setTimeout(() => {
-      setIsTransitioning(false);
-      setDirection(null);
-    }, 500);
+    container.scrollTo({
+      left: newIndex * width,
+      behavior: 'smooth'
+    });
   };
 
-  // Swipe handlers for mobile
-  const minSwipeDistance = 50;
-
-  const onTouchStart = (e: React.TouchEvent) => {
-    const touch = e.targetTouches[0];
-    touchStartRef.current = { x: touch.clientX, y: touch.clientY };
-    touchEndRef.current = null;
-  };
-
-  const onTouchMove = (e: React.TouchEvent) => {
-    const touch = e.targetTouches[0];
-    touchEndRef.current = { x: touch.clientX, y: touch.clientY };
-  };
-
-  const onTouchEnd = () => {
-    if (!touchStartRef.current || !touchEndRef.current) return;
-
-    const deltaX = touchStartRef.current.x - touchEndRef.current.x;
-    const deltaY = touchStartRef.current.y - touchEndRef.current.y;
-    const absDeltaX = Math.abs(deltaX);
-    const absDeltaY = Math.abs(deltaY);
-
-    // Only handle swipe if horizontal movement is greater than vertical (horizontal swipe)
-    // and the distance is greater than minimum swipe distance
-    if (absDeltaX > minSwipeDistance && absDeltaX > absDeltaY) {
-      if (deltaX > 0) {
-        // Swipe left - next image
-        handleImageChange('next');
-      } else {
-        // Swipe right - previous image
-        handleImageChange('prev');
-      }
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const container = e.currentTarget;
+    const scrollLeft = container.scrollLeft;
+    const width = container.offsetWidth;
+    const index = Math.round(scrollLeft / width);
+    if (index !== currentImageIndex && index >= 0 && index < displayImages.length) {
+      setCurrentImageIndex(index);
     }
-
-    touchStartRef.current = null;
-    touchEndRef.current = null;
   };
 
   const getPriceDisplay = () => {
@@ -617,20 +630,46 @@ export default function PropertyDetail({ propertyId, initialProperty = null }: P
   };
 
   const getBedroomsDisplay = () => {
+    let text = '';
+    let countForSuffix = 0;
+
     if (property.propertyType === 'off-plan') {
-      if (property.bedroomsFrom && property.bedroomsTo) {
-        return property.bedroomsFrom === property.bedroomsTo
-          ? `${property.bedroomsFrom} ${t('beds')}`
-          : `${property.bedroomsFrom} - ${property.bedroomsTo} ${t('beds')}`;
-      } else if (property.bedroomsFrom) {
-        return `${property.bedroomsFrom} ${t('beds')}`;
+      if (property.bedroomsFrom !== null && property.bedroomsFrom !== undefined) {
+        if (property.bedroomsTo !== null && property.bedroomsTo !== undefined && property.bedroomsTo !== property.bedroomsFrom) {
+          text = `${property.bedroomsFrom} - ${property.bedroomsTo}`;
+          countForSuffix = property.bedroomsTo;
+        } else {
+          text = `${property.bedroomsFrom}`;
+          countForSuffix = property.bedroomsFrom;
+        }
       }
     } else {
       if (property.bedrooms) {
-        return `${property.bedrooms} ${t('beds')}`;
+        text = `${property.bedrooms}`;
+        countForSuffix = property.bedrooms;
       }
     }
-    return '';
+
+    if (!text) return '';
+
+    if (locale !== 'ru') {
+      return `${text} ${t('beds')}`; // 'beds' usually 'beds' in EN
+    }
+
+    // Russian pluralization
+    let suffix = 'спален';
+    const n = Math.abs(countForSuffix) % 100;
+    const n1 = n % 10;
+
+    if (n > 10 && n < 20) {
+      suffix = 'спален';
+    } else if (n1 > 1 && n1 < 5) {
+      suffix = 'спальни';
+    } else if (n1 === 1) {
+      suffix = 'спальня';
+    }
+
+    return `${text} ${suffix}`;
   };
 
   const getBathroomsDisplay = () => {
@@ -666,95 +705,100 @@ export default function PropertyDetail({ propertyId, initialProperty = null }: P
         </div>
       )}
 
-      {/* Hero Image Section */}
-      <div className={styles.heroSection}>
+      {/* Hero Image Section - New Grid Layout */}
+      <div className={styles.heroGrid}>
+        {/* Main Image - Left Section (Desktop) / Top (Mobile) */}
         <div
-          className={styles.imageContainer}
-          onTouchStart={onTouchStart}
-          onTouchMove={onTouchMove}
-          onTouchEnd={onTouchEnd}
+          className={styles.mainImageWrapper}
+          onClick={() => setIsLightboxOpen(true)}
         >
           {displayImages.length > 0 && (
             <>
-              <div className={styles.imageWrapper}>
-                {/* Skeleton while loading */}
-                {heroImageLoading && (
-                  <div className={styles.heroImageSkeleton}></div>
-                )}
-                {/* Previous image - sliding out */}
-                {isTransitioning && prevImageIndex !== currentImageIndex && (
-                  <Image
-                    key={`prev-${prevImageIndex}`}
-                    src={displayImages[prevImageIndex]}
-                    alt={getName()}
-                    fill
-                    style={{ objectFit: 'cover' }}
-                    sizes="100vw"
-                    className={`${styles.heroImage} ${styles.prevImage} ${direction === 'right' ? styles.slideOutLeft : styles.slideOutRight}`}
-                    loading="lazy"
-                  />
-                )}
-                {/* Current image - sliding in */}
-                <Image
-                  key={`current-${currentImageIndex}`}
-                  src={displayImages[currentImageIndex]}
-                  alt={getName()}
-                  fill
-                  priority={currentImageIndex === 0}
-                  style={{
-                    objectFit: 'cover',
-                    opacity: heroImageLoading ? 0 : 1,
-                    transition: 'opacity 0.3s ease'
-                  }}
-                  sizes="100vw"
-                  className={`${styles.heroImage} ${styles.currentImage} ${direction === 'right' ? styles.slideInRight : direction === 'left' ? styles.slideInLeft : ''}`}
-                  onLoad={() => {
-                    setHeroImageLoading(false);
-                  }}
-                  onError={() => {
-                    setHeroImageLoading(false);
-                  }}
-                  onLoadingComplete={() => {
-                    setHeroImageLoading(false);
-                  }}
-                />
+              <Image
+                src={failedImages.has(displayImages[currentImageIndex]) ? displayImages[currentImageIndex].replace('_full.', '_small.') : displayImages[currentImageIndex]}
+                alt={getName()}
+                fill
+                priority
+                className={styles.mainImage}
+                style={{ objectFit: 'cover' }}
+                quality={100}
+                unoptimized={!displayImages[currentImageIndex].includes('res.cloudinary.com')}
+                onError={() => {
+                  setFailedImages(prev => {
+                    const next = new Set(prev);
+                    next.add(displayImages[currentImageIndex]);
+                    return next;
+                  });
+                }}
+              />
 
+              <div className={styles.mobileImageIndicator}>
+                {currentImageIndex + 1} / {displayImages.length}
               </div>
 
-              {/* Navigation arrows */}
-              {displayImages.length > 1 && (
-                <>
-                  <button
-                    className={`${styles.imageNav} ${styles.prev}`}
-                    onClick={() => handleImageChange('prev')}
-                    aria-label="Previous image"
-                  >
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M15 18L9 12L15 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  </button>
-                  <button
-                    className={`${styles.imageNav} ${styles.next}`}
-                    onClick={() => handleImageChange('next')}
-                    aria-label="Next image"
-                  >
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M9 18L15 12L9 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  </button>
-                </>
-              )}
-
-              {/* Image indicator */}
-              {displayImages.length > 1 && (
-                <div className={styles.imageIndicator}>
-                  {currentImageIndex + 1} / {displayImages.length}
+              {/* Badges on Main Image */}
+              <div className={styles.badgesContainer}>
+                <div className={styles.badgesGroup}>
+                  {property.isForYouChoice && (
+                    <div className={styles.exclusiveBadge}>
+                      {tCard('exclusiveForYou')}
+                    </div>
+                  )}
+                  <div className={styles.typeBadge}>
+                    {property.propertyType === 'off-plan' ? tFilters('offPlan') : tFilters('secondary')}
+                  </div>
                 </div>
-              )}
+              </div>
             </>
           )}
         </div>
+
+        {/* Thumbnails List - Right Section */}
+        <div className={styles.thumbnailList}>
+          {displayImages.map((src, idx) => (
+            <div
+              key={`thumb-${idx}`}
+              className={`${styles.thumbnailItem} ${idx === currentImageIndex ? styles.active : ''}`}
+              onClick={() => setCurrentImageIndex(idx)}
+            >
+              <Image
+                src={failedImages.has(src) ? src.replace('_full.', '_small.') : src}
+                alt={`${getName()} thumbnail ${idx + 1}`}
+                fill
+                style={{ objectFit: 'cover' }}
+                sizes="(max-width: 768px) 100vw, 300px"
+                quality={80}
+                unoptimized={!src.includes('res.cloudinary.com')}
+                onError={() => {
+                  setFailedImages(prev => {
+                    const next = new Set(prev);
+                    next.add(src);
+                    return next;
+                  });
+                }}
+              />
+            </div>
+          ))}
+
+          {/* View All Button at the bottom */}
+          <div className={styles.viewAllButtonWrapper}>
+            <button
+              className={styles.heroViewAllButton}
+              onClick={() => setIsLightboxOpen(true)}
+            >
+              {tCard('viewAllPhotos') || 'View All Photos'} ({displayImages.length})
+            </button>
+          </div>
+        </div>
       </div>
+
+      {isLightboxOpen && (
+        <Lightbox
+          images={displayImages.map(img => failedImages.has(img) ? img.replace('_full.', '_small.') : img)}
+          initialIndex={currentImageIndex}
+          onClose={() => setIsLightboxOpen(false)}
+        />
+      )}
 
       {/* Content Section */}
       <div className={styles.content}>
@@ -764,15 +808,14 @@ export default function PropertyDetail({ propertyId, initialProperty = null }: P
             {/* Main Info */}
             <div className={styles.mainInfo}>
               <div className={styles.header}>
-                {property.isForYouChoice && (
-                  <div className={styles.exclusiveBadge}>
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" fill="currentColor" />
-                    </svg>
-                    {tCard('exclusiveForYou') || 'Exclusive ForYou'}
-                  </div>
-                )}
-                <h1 className={styles.title}>{getName()}</h1>
+                <div className={styles.titleRow}>
+                  <h1 className={styles.title}>{getName()}</h1>
+                  {property.isForYouChoice && (
+                    <div className={styles.exclusiveBadge}>
+                      {tCard('exclusiveForYou') || 'Exclusive ForYou'}
+                    </div>
+                  )}
+                </div>
                 <div className={styles.location}>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
@@ -861,24 +904,13 @@ export default function PropertyDetail({ propertyId, initialProperty = null }: P
               </div>
             )}
 
-            {property.area && typeof property.area === 'object' && property.area.infrastructure && (
-              <div className={styles.descriptionSection}>
-                <h2 className={styles.sectionTitle}>
-                  {property.area.infrastructure.title || (locale === 'ru' ? 'Инфраструктура' : 'Infrastructure')}
-                </h2>
-                {property.area.infrastructure.description && (
-                  <p className={styles.description}>{property.area.infrastructure.description}</p>
-                )}
-              </div>
-            )}
-
             {property.area && typeof property.area === 'object' && property.area.images && property.area.images.length > 0 && (
               <div className={styles.areaImagesSection}>
                 <div className={styles.areaImagesHeader}>
                   <h2 className={styles.sectionTitle}>{locale === 'ru' ? 'Фото района' : 'Area Photos'}</h2>
-                  {property.area.id && (
+                  {property.area.slug && (
                     <Link
-                      href={getLocalizedPath(`/areas/${property.area.id}`)}
+                      href={getLocalizedPath(`/areas/${property.area.slug}`)}
                       className={styles.viewAllButton}
                       target="_blank"
                       rel="noopener noreferrer"
@@ -1202,7 +1234,7 @@ export default function PropertyDetail({ propertyId, initialProperty = null }: P
                   {loadingOtherProperties ? (
                     <div className={styles.loadingOtherProperties}>Loading...</div>
                   ) : (
-                    otherProperties.map((prop) => (
+                    otherProperties.slice(0, 4).map((prop) => (
                       <div key={prop.id} className={styles.otherPropertyCardWrapper}>
                         <PropertyCard property={prop} />
                       </div>

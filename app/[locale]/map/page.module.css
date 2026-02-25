@@ -20,3 +20,21 @@
   padding-top: 0;
 }
 
+.loaderSpinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(0, 48, 119, 0.1);
+  border-top: 2px solid #003077;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
+}

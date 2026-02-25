@@ -353,5 +353,9 @@
   .form {
     gap: 20px;
   }
-}
 
+  .input,
+  .select {
+    font-size: 16px !important;
+  }
+}

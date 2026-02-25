@@ -1,16 +1,19 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef, startTransition } from 'react';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { useDebounce } from '@/lib/utils';
-import { getProperties, Property, PropertyFilters as ApiPropertyFilters } from '@/lib/api';
 import { restoreScrollState } from '@/lib/scrollRestoration';
 import styles from './PropertiesList.module.css';
 import PropertyCard from './PropertyCard';
 import PropertyCardSkeleton from './PropertyCardSkeleton';
 import FilterModal from './FilterModal';
 import PropertyFilters from './PropertyFilters';
+import MapboxMap from './MapboxMap';
+import CallbackModal from './CallbackModal';
+import { convertPropertyToMapFormat } from '@/lib/transformers';
+import { getProperties, Property, PropertyFilters as ApiPropertyFilters, getDevelopersSimple, getMapMarkers, MapMarker, getAreasSimple } from '@/lib/api';
 
 interface Filters {
   type: 'new' | 'secondary';
@@ -26,11 +29,22 @@ interface Filters {
   cityId?: string;
 }
 
-// Map frontend sort to backend sort
-const mapSortToBackend = (frontendSort: string | undefined, propertyType: 'off-plan' | 'secondary'): { sortBy: ApiPropertyFilters['sortBy'], sortOrder: ApiPropertyFilters['sortOrder'] } => {
-  // Default to 'newest' if sort is empty or undefined
-  const sortValue = frontendSort || 'newest';
+const ITEMS_PER_PAGE = 36;
 
+const formatNumberWithCommas = (num: number) => {
+  return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+};
+
+const sortOptions = [
+  { value: 'price-desc', label: 'Price Higher', labelRu: 'Цена выше' },
+  { value: 'price-asc', label: 'Price Lower', labelRu: 'Цена ниже' },
+  { value: 'size-desc', label: 'Size Higher', labelRu: 'Площадь больше' },
+  { value: 'size-asc', label: 'Size Lower', labelRu: 'Площадь меньше' },
+  { value: 'newest', label: 'Newest First', labelRu: 'Сначала новые' },
+];
+
+const mapSortToBackend = (frontendSort: string | undefined, propertyType: 'off-plan' | 'secondary'): { sortBy: ApiPropertyFilters['sortBy'], sortOrder: ApiPropertyFilters['sortOrder'] } => {
+  const sortValue = frontendSort || 'newest';
   const mapping: Record<string, { sortBy: ApiPropertyFilters['sortBy'], sortOrder: ApiPropertyFilters['sortOrder'] }> = {
     'price-desc': { sortBy: propertyType === 'off-plan' ? 'priceFrom' : 'price', sortOrder: 'DESC' },
     'price-asc': { sortBy: propertyType === 'off-plan' ? 'priceFrom' : 'price', sortOrder: 'ASC' },
@@ -41,7 +55,6 @@ const mapSortToBackend = (frontendSort: string | undefined, propertyType: 'off-p
   return mapping[sortValue] || mapping['newest'];
 };
 
-// Convert frontend filters to API filters
 const convertFiltersToApi = (filters: Filters, page: number): ApiPropertyFilters => {
   const propertyType = filters.type === 'new' ? 'off-plan' : 'secondary';
   const sort = mapSortToBackend(filters.sort, propertyType);
@@ -50,48 +63,27 @@ const convertFiltersToApi = (filters: Filters, page: number): ApiPropertyFilters
     propertyType,
     sortBy: sort.sortBy,
     sortOrder: sort.sortOrder,
-    // Server-side pagination: request only the current page
     page: page,
-    limit: ITEMS_PER_PAGE, // 36 items per page
+    limit: ITEMS_PER_PAGE,
     summary: true,
   };
 
-  // Developer filter
-  if (filters.developerId) {
-    apiFilters.developerId = filters.developerId;
-  }
-
-  // City filter
-  if (filters.cityId) {
-    apiFilters.cityId = filters.cityId;
-  }
-
-  // Area filter (multiselect - convert to comma-separated string for first area, or use first one)
+  if (filters.developerId) apiFilters.developerId = filters.developerId;
+  if (filters.cityId) apiFilters.cityId = filters.cityId;
   if (filters.location.length > 0) {
-    // API supports only one areaId, so we'll use the first selected
-    apiFilters.areaId = filters.location[0];
-    // But for client-side filtering, we need all selected areas
-    apiFilters.areaIds = filters.location;
-  }
+    const loc = filters.location[0];
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(loc);
 
-  // Bedrooms filter (multiselect - convert to comma-separated string)
-  if (filters.bedrooms.length > 0) {
-    apiFilters.bedrooms = filters.bedrooms.join(',');
+    if (isUuid) {
+      apiFilters.areaId = loc;
+      apiFilters.areaIds = filters.location;
+    } else {
+      apiFilters.areaSlug = loc;
+    }
   }
-
-  // Size filter (convert from sqft to m² if needed, or keep as is if already in m²)
-  // Frontend shows sqft, but API expects m²
-  // For now, assuming frontend inputs are in m²
-  if (filters.sizeFrom) {
-    apiFilters.sizeFrom = parseFloat(filters.sizeFrom) || undefined;
-  }
-  if (filters.sizeTo) {
-    apiFilters.sizeTo = parseFloat(filters.sizeTo) || undefined;
-  }
-
-  // Price filter (convert from AED to USD)
-  // Frontend shows AED, but API expects USD
-  // USD = AED / 3.67
+  if (filters.bedrooms.length > 0) apiFilters.bedrooms = filters.bedrooms.join(',');
+  if (filters.sizeFrom) apiFilters.sizeFrom = parseFloat(filters.sizeFrom) || undefined;
+  if (filters.sizeTo) apiFilters.sizeTo = parseFloat(filters.sizeTo) || undefined;
   if (filters.priceFrom) {
     const aedPrice = parseFloat(filters.priceFrom.replace(/,/g, '')) || 0;
     apiFilters.priceFrom = Math.round(aedPrice / 3.67);
@@ -100,21 +92,13 @@ const convertFiltersToApi = (filters: Filters, page: number): ApiPropertyFilters
     const aedPrice = parseFloat(filters.priceTo.replace(/,/g, '')) || 0;
     apiFilters.priceTo = Math.round(aedPrice / 3.67);
   }
-
-  // Search
-  if (filters.search) {
-    apiFilters.search = filters.search;
-  }
+  if (filters.search) apiFilters.search = filters.search;
 
   return apiFilters;
 };
 
-const ITEMS_PER_PAGE = 36;
-
-// Helper functions to sync filters with URL
 const filtersToUrlParams = (filters: Filters, page?: number): URLSearchParams => {
   const params = new URLSearchParams();
-
   if (filters.type !== 'new') params.set('type', filters.type);
   if (filters.search) params.set('search', filters.search);
   if (filters.location.length > 0) params.set('location', filters.location.join(','));
@@ -126,23 +110,13 @@ const filtersToUrlParams = (filters: Filters, page?: number): URLSearchParams =>
   if (filters.sort !== 'newest') params.set('sort', filters.sort);
   if (filters.developerId) params.set('developerId', filters.developerId);
   if (filters.cityId) params.set('cityId', filters.cityId);
-  // Always include page parameter if provided (even for page 1)
-  if (page !== undefined && page !== null) {
-    if (page > 1) {
-      params.set('page', page.toString());
-    } else {
-      // For page 1, remove page parameter if it exists (cleaner URL)
-      params.delete('page');
-    }
-  }
-
+  if (page && page > 1) params.set('page', page.toString());
   return params;
 };
 
 const urlParamsToFilters = (searchParams: URLSearchParams): Filters => {
   const typeParam = searchParams.get('type');
   const type: 'new' | 'secondary' = typeParam === 'secondary' ? 'secondary' : 'new';
-
   return {
     type,
     search: searchParams.get('search') || '',
@@ -160,120 +134,144 @@ const urlParamsToFilters = (searchParams: URLSearchParams): Filters => {
 
 export default function PropertiesList() {
   const t = useTranslations('properties');
+  const locale = useLocale();
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
-
-  // Create a new searchParams object for URL updates
-  const createSearchParams = useCallback((newFilters: Filters, page?: number): URLSearchParams => {
-    return filtersToUrlParams(newFilters, page);
-  }, []);
 
   const [properties, setProperties] = useState<Property[]>([]);
   const [totalProperties, setTotalProperties] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [areas, setAreas] = useState<any[]>([]);
+  const [mounted, setMounted] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
 
-  // Initialize filters from URL or defaults
-  const [filters, setFilters] = useState<Filters>(() => {
-    return urlParamsToFilters(searchParams);
+  // Sync filters with URL
+  const [filters, setFilters] = useState<Filters>(() => urlParamsToFilters(new URLSearchParams(searchParams.toString())));
+
+  // Sync page with URL
+  const [currentPage, setCurrentPage] = useState(() => {
+    const p = searchParams.get('page');
+    return p ? parseInt(p, 10) : 1;
   });
 
-  // Sync filters with URL when URL changes (e.g., browser back/forward)
-  useEffect(() => {
-    const urlFilters = urlParamsToFilters(searchParams);
-    setFilters(prevFilters => {
-      // Only update if filters actually changed
-      if (JSON.stringify(prevFilters) !== JSON.stringify(urlFilters)) {
-        return urlFilters;
-      }
-      return prevFilters;
-    });
-  }, [searchParams]);
-
-  // Initialize page from URL
-  const initialPage = searchParams.get('page') ? parseInt(searchParams.get('page') || '1', 10) : 1;
-  const [currentPage, setCurrentPage] = useState(initialPage);
-  const [scrollRestored, setScrollRestored] = useState(false);
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+  const [scrollRestored, setScrollRestored] = useState(false);
+  const [initialSavedState, setInitialSavedState] = useState<{ page: number; scrollPosition: number } | null>(null);
 
-  // Sync page with URL when URL changes (e.g., browser back/forward)
-  // Use a ref to track if we're updating URL ourselves to avoid loops
-  const isUpdatingUrlRef = useRef(false);
+  const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
+  const [isSortOpen, setIsSortOpen] = useState(false);
+  const sortRef = useRef<HTMLDivElement>(null);
+  const [mapMarkers, setMapMarkers] = useState<any[]>([]);
+  const [loadingMap, setLoadingMap] = useState(false);
+  const [selectedPropertyId, setSelectedPropertyId] = useState<string | null>(null);
 
+  // Load areas for title mapping and check for mobile
   useEffect(() => {
-    // Skip if we're the ones updating the URL
-    if (isUpdatingUrlRef.current) {
-      // Reset flag after a delay
-      setTimeout(() => {
-        isUpdatingUrlRef.current = false;
-      }, 100);
-      return;
-    }
+    setMounted(true);
+    getAreasSimple().then(setAreas).catch(console.error);
 
-    const urlPage = searchParams.get('page') ? parseInt(searchParams.get('page') || '1', 10) : 1;
-    setCurrentPage((prevPage) => {
-      // Only update if URL page is different from current page
-      if (urlPage !== prevPage && urlPage >= 1) {
-        return urlPage;
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth <= 900);
+    };
+
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  // Force 'new' (off-plan) type when in map mode
+  useEffect(() => {
+    if (viewMode === 'map' && filters.type !== 'new') {
+      handleFilterChange({ ...filters, type: 'new' });
+    }
+  }, [viewMode, filters.type]);
+  const [isCallbackModalOpen, setIsCallbackModalOpen] = useState(false);
+  const [callbackProjectName, setCallbackProjectName] = useState<string | undefined>(undefined);
+
+  const openCallbackModal = (projectName?: string) => {
+    setCallbackProjectName(projectName);
+    setIsCallbackModalOpen(true);
+  };
+
+  // Restore scroll state on mount
+  useEffect(() => {
+    const saved = restoreScrollState();
+    if (saved) {
+      setInitialSavedState(saved);
+      if (saved.page && saved.page !== currentPage) {
+        setCurrentPage(saved.page);
       }
-      return prevPage;
+    }
+  }, []);
+
+  // External open-filter-modal event
+  useEffect(() => {
+    const handleOpenFilters = () => setIsFilterModalOpen(true);
+    window.addEventListener('open-filter-modal', handleOpenFilters);
+    return () => window.removeEventListener('open-filter-modal', handleOpenFilters);
+  }, []);
+
+  // Handle click outside for sort dropdown
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (sortRef.current && !sortRef.current.contains(event.target as Node)) {
+        setIsSortOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+
+  // Watch searchParams for changes (navigation)
+  useEffect(() => {
+    const urlFilters = urlParamsToFilters(new URLSearchParams(searchParams.toString()));
+    const urlPage = searchParams.get('page') ? parseInt(searchParams.get('page')!, 10) : 1;
+
+    setFilters(prev => {
+      if (JSON.stringify(prev) !== JSON.stringify(urlFilters)) return urlFilters;
+      return prev;
+    });
+    setCurrentPage(prev => {
+      if (prev !== urlPage) return urlPage;
+      return prev;
     });
   }, [searchParams]);
 
-  // Debounce search
+  // Handle scroll to deselect property in map view
+  useEffect(() => {
+    if (viewMode !== 'map' || !selectedPropertyId) return;
+
+    const handleScroll = () => {
+      setSelectedPropertyId(null);
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [viewMode, selectedPropertyId]);
+
   const debouncedSearch = useDebounce(filters.search, 500);
 
-  // Load properties from API with server-side pagination
   const loadProperties = useCallback(async () => {
     setLoading(true);
     setError(null);
-
     try {
-      // Convert filters and pass current page for server-side pagination
       const apiFilters = convertFiltersToApi(filters, currentPage);
+      if (debouncedSearch) apiFilters.search = debouncedSearch;
 
-      // Override search with debounced value
-      if (debouncedSearch) {
-        apiFilters.search = debouncedSearch;
-      } else {
-        delete apiFilters.search;
-      }
-
-      if (process.env.NODE_ENV === 'development') {
-      }
-
-      // Request only the current page from API (36 items)
-      // Use cache by default, but allow bypassing it via URL parameter ?refresh=true
-      const refreshCache = searchParams.get('refresh') === 'true';
-
-      // Always clear cache if refresh parameter is present
-      if (refreshCache) {
-        const { clearPropertiesCache, clearPublicDataCache } = await import('@/lib/api');
-        clearPropertiesCache();
-        clearPublicDataCache();
-      }
-
-      const result = await getProperties(apiFilters, !refreshCache);
+      const result = await getProperties(apiFilters, true);
       const loadedProperties = Array.isArray(result.properties) ? result.properties : [];
-
-      // Use total from API - this is the total count of ALL properties matching filters
       let total = result.total || 0;
 
-      // Unified total count logic: if API fails to provide total, but returns a full page, assume more pages exist
+      // Handle potential API limits returning fewer items than total
       if (total <= loadedProperties.length && loadedProperties.length >= ITEMS_PER_PAGE) {
-        // If we got exactly ITEMS_PER_PAGE (or more), and total is missing or too small,
-        // assume more pages exist (will be corrected on next fetch or use baseline estimates)
-        if (total < ITEMS_PER_PAGE * 2) {
-          total = apiFilters.propertyType === 'secondary' ? 26000 : 1000;
-        }
+        if (total < ITEMS_PER_PAGE * 1.5) total = apiFilters.propertyType === 'secondary' ? 26000 : 1314;
       }
 
       setTotalProperties(total);
-
-      // Set properties directly (no slicing needed - API returns only this page)
       setProperties(loadedProperties);
-
     } catch (err: any) {
       setError(err.message || t('errorLoading') || 'Error loading properties');
     } finally {
@@ -281,280 +279,330 @@ export default function PropertiesList() {
     }
   }, [filters, currentPage, debouncedSearch, t]);
 
-  // Update URL when filters or page change
-  const updateUrl = useCallback((newFilters: Filters, page?: number) => {
-    isUpdatingUrlRef.current = true; // Mark that we're updating URL ourselves
-    const params = createSearchParams(newFilters, page);
-    const queryString = params.toString();
-    const newUrl = queryString ? `${pathname}?${queryString}` : pathname;// Use router.replace with the full URL including query string
-    // Next.js App Router should handle this correctly
-    const urlWithQuery = queryString ? `${pathname}?${queryString}` : pathname;
-
-    // Use startTransition for non-urgent URL updates
-    startTransition(() => {
-      router.replace(urlWithQuery, { scroll: false });
-    });
-
-    // Force URL update in browser address bar immediately
-    if (typeof window !== 'undefined' && window.history) {
-      window.history.replaceState(null, '', urlWithQuery);
-
-      // Reset flag after a delay
-      setTimeout(() => {
-        isUpdatingUrlRef.current = false;
-      }, 100);
-    } else {
-      setTimeout(() => {
-        isUpdatingUrlRef.current = false;
-      }, 100);
-    }
-  }, [pathname, router, createSearchParams]);
-
   useEffect(() => {
-    // Reset loading state when filters or page change
-    setLoading(true);
-    setError(null);
     loadProperties();
   }, [loadProperties]);
 
-  // Restore scroll position and page when returning from property detail page
+  // Restore scroll position after properties are loaded
   useEffect(() => {
-    if (scrollRestored || loading) return;
-
-    const restoredState = restoreScrollState();
-    if (restoredState) {
-      // Update page if it was restored and different from current
-      if (restoredState.page !== currentPage) {
-        setCurrentPage(restoredState.page);
-        updateUrl(filters, restoredState.page);
-      }
-      // Scroll position is restored automatically by restoreScrollState function
-      setScrollRestored(true);
+    if (!loading && properties.length > 0 && initialSavedState && !scrollRestored) {
+      const timer = setTimeout(() => {
+        window.scrollTo({
+          top: initialSavedState.scrollPosition,
+          behavior: 'instant' as ScrollBehavior,
+        });
+        setScrollRestored(true);
+      }, 150);
+      return () => clearTimeout(timer);
     }
-  }, [loading, scrollRestored, currentPage, filters, updateUrl]);
+  }, [loading, properties, initialSavedState, scrollRestored]);
 
-  // Handle filter changes (for desktop inline filters)
+  // Load map markers when viewMode is map or filters change
+  useEffect(() => {
+    if (viewMode !== 'map') return;
+
+    const loadMarkers = async () => {
+      try {
+        setLoadingMap(true);
+        const apiFilters = convertFiltersToApi(filters, 1);
+        apiFilters.limit = 5000; // Get all markers for the map
+        const markers = await getMapMarkers(apiFilters);
+
+        // Convert to partial map format
+        const mapProperties = markers.map(m => ({
+          id: m.id,
+          slug: '',
+          name: '',
+          nameRu: '',
+          location: { area: '', areaRu: '', city: '', cityRu: '' },
+          price: {
+            usd: 0,
+            aed: typeof m.priceAED === 'string' ? parseFloat(m.priceAED) : Number(m.priceAED),
+            eur: 0
+          },
+          developer: { name: '', nameRu: '' },
+          bedrooms: 0,
+          bathrooms: 0,
+          size: { sqm: 0, sqft: 0 },
+          images: [],
+          type: m.propertyType === 'off-plan' ? 'new' as const : 'secondary' as const,
+          coordinates: [
+            typeof m.lng === 'string' ? parseFloat(m.lng) : Number(m.lng),
+            typeof m.lat === 'string' ? parseFloat(m.lat) : Number(m.lat)
+          ] as [number, number],
+          isPartial: true
+        }));
+
+        setMapMarkers(mapProperties);
+      } catch (e) {
+        console.error('Failed to load map markers', e);
+      } finally {
+        setLoadingMap(false);
+      }
+    };
+
+    loadMarkers();
+  }, [filters, viewMode, locale]);
+
+  const handleSelectProperty = useCallback((id: string | null) => {
+    setSelectedPropertyId(id);
+    // If selecting a property, we want to make sure map can see it
+    // More logic will be in MapboxMap component responding to selectedPropertyId
+  }, []);
+
+  const updateUrl = useCallback((newFilters: Filters, page: number) => {
+    const params = filtersToUrlParams(newFilters, page);
+    const queryString = params.toString();
+    const urlWithQuery = queryString ? `${pathname}?${queryString}` : pathname;
+
+    router.push(urlWithQuery, { scroll: false });
+  }, [pathname, router]);
+
   const handleFilterChange = useCallback((newFilters: Filters) => {
     setFilters(newFilters);
-    setCurrentPage(1); // Reset to first page when filters change
-    setScrollRestored(false); // Reset scroll restoration flag when filters change
-    updateUrl(newFilters, 1); // Update URL (reset page to 1)
+    setCurrentPage(1);
+    updateUrl(newFilters, 1);
   }, [updateUrl]);
 
-  // Apply filters (called from modal when user clicks "Apply" - mobile only)
   const handleApplyFilters = useCallback((newFilters: Filters) => {
     setFilters(newFilters);
-    setCurrentPage(1); // Reset to first page when filters change
-    setScrollRestored(false); // Reset scroll restoration flag when filters change
-    updateUrl(newFilters, 1); // Update URL (reset page to 1)
+    setCurrentPage(1);
+    updateUrl(newFilters, 1);
   }, [updateUrl]);
 
-  // Reset filters (called from modal when user clicks "Reset")
   const handleResetFilters = () => {
     const defaultFilters: Filters = {
-      type: 'new',
-      search: '',
-      location: [],
-      bedrooms: [],
-      sizeFrom: '',
-      sizeTo: '',
-      priceFrom: '',
-      priceTo: '',
-      sort: 'newest',
-      developerId: undefined,
-      cityId: undefined,
+      type: 'new', search: '', location: [], bedrooms: [], sizeFrom: '', sizeTo: '', priceFrom: '', priceTo: '', sort: 'newest', developerId: undefined, cityId: undefined,
     };
     handleApplyFilters(defaultFilters);
   };
 
-  // Count active filters for button badge
-  const getActiveFiltersCount = (): number => {
-    let count = 0;
-    if (filters.search) count++;
-    if (filters.location.length > 0) count++;
-    if (filters.bedrooms.length > 0) count++;
-    if (filters.sizeFrom || filters.sizeTo) count++;
-    if (filters.priceFrom || filters.priceTo) count++;
-    if (filters.developerId) count++;
-    if (filters.sort && filters.sort !== 'newest') count++;
-    return count;
-  };
-
-  // Calculate pagination based on total from API
-  // Server-side pagination: API returns total count of all matching properties
-  const totalPages = totalProperties > 0
-    ? Math.ceil(totalProperties / ITEMS_PER_PAGE)
-    : Math.ceil(properties.length / ITEMS_PER_PAGE) || 1;
-
-  // Ensure properties is always an array
-  const propertiesArray = Array.isArray(properties) ? properties : [];
-
-  // Ensure currentPage is within valid range
-  const validPage = totalPages > 0 ? Math.min(Math.max(1, currentPage), totalPages) : 1;
-
-  // Sync currentPage if it's out of bounds OR if URL doesn't match state
-  useEffect(() => {
-    const urlPage = searchParams.get('page') ? parseInt(searchParams.get('page') || '1', 10) : 1;
-    if (currentPage !== urlPage && urlPage >= 1) {
-      setCurrentPage(urlPage);
-    }
-  }, [searchParams, currentPage]);
-
   const handlePageChange = (page: number) => {
-    if (page < 1 || page > totalPages) return;
-
-    // Update local state first for immediate UI response
     setCurrentPage(page);
-    setScrollRestored(false);
     updateUrl(filters, page);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  if (error) {
-    return (
-      <div className={styles.propertiesList}>
-        <div className={styles.container}>
-          {/* Desktop Filters - Always visible */}
-          <div className={styles.desktopFilters}>
-            <PropertyFilters
-              filters={filters}
-              onFilterChange={handleFilterChange}
-              isModal={false}
-            />
-          </div>
-
-          {/* Filter Modal - Only for mobile */}
-          <FilterModal
-            isOpen={isFilterModalOpen}
-            onClose={() => setIsFilterModalOpen(false)}
-            filters={filters}
-            onApply={handleApplyFilters}
-            onReset={handleResetFilters}
-          />
-          <div className={styles.error}>
-            <p>{error}</p>
-            <button onClick={() => loadProperties()}>{t('retry') || 'Retry'}</button>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const totalPages = Math.max(1, Math.ceil(totalProperties / ITEMS_PER_PAGE));
+  const validPage = Math.min(Math.max(1, currentPage), totalPages);
 
   return (
-    <div className={styles.propertiesList}>
+    <div className={`${styles.propertiesList} ${viewMode === 'map' ? styles.viewModeMap : ''}`}>
       <div className={styles.container}>
-        {/* Desktop Filters - Always visible */}
-        <div className={styles.desktopFilters}>
-          <PropertyFilters
-            filters={filters}
-            onFilterChange={handleFilterChange}
-            isModal={false}
-          />
-        </div>
+        <FilterModal isOpen={isFilterModalOpen} onClose={() => setIsFilterModalOpen(false)} filters={filters} onApply={handleApplyFilters} onReset={handleResetFilters} />
+        <CallbackModal isOpen={isCallbackModalOpen} onClose={() => setIsCallbackModalOpen(false)} projectName={callbackProjectName} />
 
-        {/* Filter Modal - Only for mobile */}
-        <FilterModal
-          isOpen={isFilterModalOpen}
-          onClose={() => setIsFilterModalOpen(false)}
-          filters={filters}
-          onApply={handleApplyFilters}
-          onReset={handleResetFilters}
-        />
+        <div className={styles.results}>
+          <div className={styles.contentWrapper}>
+            <div className={`${styles.listSection} ${viewMode === 'map' ? styles.listSectionWithMap : ''}`}>
+              <div className={styles.desktopFilters}>
+                <PropertyFilters filters={filters} onFilterChange={handleFilterChange} viewMode={viewMode} isModal={false} />
+              </div>
 
-        {loading ? (
-          <>
-            <div className={styles.resultsHeader}>
-              <div className={styles.resultsCount}>
-                <div className={styles.skeletonText}></div>
-              </div>
-            </div>
-            <div className={styles.grid}>
-              {Array.from({ length: 12 }).map((_, index) => (
-                <PropertyCardSkeleton key={`skeleton-${index}`} />
-              ))}
-            </div>
-          </>
-        ) : propertiesArray.length === 0 ? (
-          <div className={styles.empty}>
-            <p>{t('noProperties') || 'No properties found'}</p>
-          </div>
-        ) : (
-          <>
-            <div className={styles.resultsHeader}>
-              <div className={styles.resultsCount}>
-                {t('showing', { count: totalProperties }) || `${totalProperties} ${totalProperties === 1 ? 'property' : 'properties'}`}
-              </div>
-              {/* Mobile Filter Button - Only visible on mobile, next to results count */}
-              <div className={styles.mobileFilterButton}>
-                <button
-                  className={styles.filterButton}
-                  onClick={() => setIsFilterModalOpen(true)}
-                >
-                  Filters
-                  {getActiveFiltersCount() > 0 && (
-                    <span className={styles.filterBadge}>{getActiveFiltersCount()}</span>
-                  )}
-                </button>
-              </div>
-            </div>
-            <div className={styles.grid}>
-              {propertiesArray.map((property, index) => (
-                <PropertyCard
-                  key={property.id}
-                  property={property}
-                  currentPage={validPage}
-                  index={index}
-                />
-              ))}
-            </div>
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <div className={styles.pagination}>
-                <button
-                  className={styles.paginationButton}
-                  onClick={() => handlePageChange(validPage - 1)}
-                  disabled={validPage === 1}
-                  aria-label="Previous page"
-                >
-                  ← {t('previous') || 'Previous'}
-                </button>
-                <div className={styles.paginationNumbers}>
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
-                    // Show first page, last page, current page, and pages around current
-                    if (
-                      page === 1 ||
-                      page === totalPages ||
-                      (page >= validPage - 2 && page <= validPage + 2)
-                    ) {
-                      return (
+              <div className={styles.listHeader}>
+                <div className={styles.titleRow}>
+                  <div className={styles.titleGroup}>
+                    <h1 className={styles.listTitle}>
+                      <span>{(() => {
+                        const typeText = filters.type === 'new'
+                          ? (locale === 'en' ? 'New buildings in ' : 'Новостройки в ')
+                          : (locale === 'en' ? 'Properties for sale in ' : 'Недвижимость в ');
+
+                        if (mounted && filters.location.length > 0) {
+                          const selectedAreaNames = filters.location
+                            .map(locId => {
+                              const area = areas.find(a => a.id === locId || a.slug === locId);
+                              return area ? (locale === 'ru' ? area.nameRu : area.nameEn) : null;
+                            })
+                            .filter(Boolean);
+
+                          if (selectedAreaNames.length > 0) {
+                            return `${typeText}${selectedAreaNames.join(', ')}`;
+                          }
+                        }
+
+                        return `${typeText}${locale === 'en' ? 'UAE' : 'ОАЭ'}`;
+                      })()}</span>
+                    </h1>
+                    <div className={styles.propertyCount}>
+                      {loading ? (
+                        <div className={styles.countSkeleton}></div>
+                      ) : (
+                        `${formatNumberWithCommas(totalProperties)} ${locale === 'en' ? 'properties' : 'объектов'}`
+                      )}
+                    </div>
+                  </div>
+
+                  <div className={styles.actionsGroup}>
+                    {filters.type === 'new' && (
+                      <div className={styles.viewToggle}>
                         <button
-                          key={page}
-                          className={`${styles.paginationNumber} ${validPage === page ? styles.active : ''}`}
-                          onClick={() => handlePageChange(page)}
+                          className={`${styles.toggleButton} ${viewMode === 'map' ? styles.active : ''}`}
+                          onClick={() => {
+                            if (isMobile) {
+                              const params = filtersToUrlParams(filters);
+                              router.push(`${locale === 'en' ? '' : '/' + locale}/map?${params.toString()}`);
+                            } else {
+                              setViewMode(viewMode === 'map' ? 'list' : 'map');
+                            }
+                          }}
                         >
-                          {page}
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+                          <span>{locale === 'en' ? 'Map' : 'Карта'}</span>
                         </button>
-                      );
-                    } else if (page === validPage - 3 || page === validPage + 3) {
-                      return <span key={page} className={styles.paginationEllipsis}>...</span>;
-                    }
-                    return null;
-                  })}
+                      </div>
+                    )}
+
+                    {!isMobile && (
+                      <>
+                        <div className={styles.separator}></div>
+                        <div className={styles.sortContainer}>
+                          <span className={styles.sortLabel}>{locale === 'en' ? 'Sort:' : 'Сортировка:'}</span>
+                          <div className={styles.sortDropdownWrapper} ref={sortRef}>
+                            <button
+                              className={styles.sortButton}
+                              onClick={() => setIsSortOpen(!isSortOpen)}
+                            >
+                              <span>
+                                {sortOptions.find(o => o.value === filters.sort)?.[locale === 'en' ? 'label' : 'labelRu'] || (locale === 'en' ? 'Newest First' : 'Сначала новые')}
+                              </span>
+                              <svg
+                                width="12"
+                                height="8"
+                                viewBox="0 0 12 8"
+                                fill="none"
+                                className={isSortOpen ? styles.rotated : ''}
+                              >
+                                <path d="M1 1.5L6 6.5L11 1.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                              </svg>
+                            </button>
+                            {isSortOpen && (
+                              <div className={styles.sortMenu}>
+                                {sortOptions.map((option) => (
+                                  <button
+                                    key={option.value}
+                                    className={`${styles.sortMenuItem} ${filters.sort === option.value ? styles.active : ''}`}
+                                    onClick={() => {
+                                      handleFilterChange({ ...filters, sort: option.value });
+                                      setIsSortOpen(false);
+                                    }}
+                                  >
+                                    {locale === 'en' ? option.label : option.labelRu}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
                 </div>
-                <button
-                  className={styles.paginationButton}
-                  onClick={() => handlePageChange(validPage + 1)}
-                  disabled={validPage >= totalPages}
-                  aria-label="Next page"
-                >
-                  {t('next') || 'Next'} →
-                </button>
               </div>
-            )}
-          </>
-        )}
+
+              {loading ? (
+                <div className={styles.grid}>{Array.from({ length: 8 }).map((_, index) => (<PropertyCardSkeleton key={`skeleton-${index}`} />))}</div>
+              ) : properties.length === 0 ? (
+                <div className={styles.empty}><p>{t('noProperties') || 'No properties found'}</p></div>
+              ) : (
+                <>
+                  <div className={styles.grid}>
+                    {properties.map((property, index) => (
+                      <PropertyCard
+                        key={property.id}
+                        property={property}
+                        currentPage={validPage}
+                        index={index}
+                        isSelected={selectedPropertyId === property.id}
+                        onSelect={() => handleSelectProperty(property.id)}
+                        onRequestCallback={openCallbackModal}
+                      />
+                    ))}
+                  </div>
+
+                  {totalPages > 1 && (
+                    <div className={styles.pagination}>
+                      <button
+                        className={styles.paginationButton}
+                        onClick={() => handlePageChange(validPage - 1)}
+                        disabled={validPage === 1}
+                      >
+                        ← {t('previous') || 'Previous'}
+                      </button>
+
+                      <div className={styles.paginationNumbers}>
+                        {(() => {
+                          const pages = [];
+                          const maxVisiblePages = 5;
+
+                          if (totalPages <= maxVisiblePages) {
+                            for (let i = 1; i <= totalPages; i++) pages.push(i);
+                          } else {
+                            pages.push(1);
+                            if (validPage > 3) pages.push('...');
+
+                            const start = Math.max(2, validPage - 1);
+                            const end = Math.min(totalPages - 1, validPage + 1);
+
+                            for (let i = start; i <= end; i++) {
+                              if (!pages.includes(i)) pages.push(i);
+                            }
+
+                            if (validPage < totalPages - 2) pages.push('...');
+                            if (!pages.includes(totalPages)) pages.push(totalPages);
+                          }
+
+                          return pages.map((page, idx) => (
+                            typeof page === 'number' ? (
+                              <button
+                                key={idx}
+                                className={`${styles.paginationNumber} ${validPage === page ? styles.active : ''}`}
+                                onClick={() => handlePageChange(page)}
+                              >
+                                {page}
+                              </button>
+                            ) : (
+                              <span key={idx} className={styles.paginationEllipsis}>{page}</span>
+                            )
+                          ));
+                        })()}
+                      </div>
+
+                      <button
+                        className={styles.paginationButton}
+                        onClick={() => handlePageChange(validPage + 1)}
+                        disabled={validPage === totalPages}
+                      >
+                        {t('next') || 'Next'} →
+                      </button>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+
+            <div className={`${styles.mapSection} ${viewMode === 'map' ? styles.mapSectionActive : ''}`}>
+              <button className={styles.mapCloseButton} onClick={() => setViewMode('list')}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+              </button>
+              <div className={styles.mapContainer}>
+                {loadingMap && (
+                  <div className={styles.mapLoadingOverlay}>
+                    <div className={styles.loaderSpinner}></div>
+                    <span>{locale === 'en' ? 'Updating map...' : 'Обновление карты...'}</span>
+                  </div>
+                )}
+                <MapboxMap
+                  properties={mapMarkers}
+                  selectedId={selectedPropertyId}
+                  onMarkerClick={(id) => handleSelectProperty(id)}
+                  onRequestCallback={openCallbackModal}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
 }
-

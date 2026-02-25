@@ -5,10 +5,11 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useRef, useEffect, useState } from 'react';
 import styles from './Areas.module.css';
-import { getAreas, Area as ApiArea } from '@/lib/api';
+import { getAreas, getFeaturedAreas, FeaturedArea } from '@/lib/api';
 
 interface Area {
   id: string;
+  slug: string;
   name: string;
   nameRu: string;
   projectsCount: number;
@@ -28,6 +29,7 @@ export default function Areas() {
   const [areas, setAreas] = useState<Area[]>([]);
   const [loading, setLoading] = useState(true);
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set()); // Track failed image loads
+  const [imagesLoaded, setImagesLoaded] = useState<Set<string>>(new Set()); // Track successful loads
 
   const getLocalizedPath = (path: string) => {
     return locale === 'en' ? path : `/${locale}${path}`;
@@ -42,70 +44,35 @@ export default function Areas() {
     const loadAreas = async () => {
       setLoading(true);
       try {
-        const apiAreas = await getAreas(undefined, true); // Використовуємо кеш
+        // Use the new optimized endpoint
+        const apiAreas = await getFeaturedAreas();
 
-        // Filter Dubai areas, sort by projectsCount, and take top 10
-        const convertedAreas: Area[] = apiAreas
-          .filter((apiArea: ApiArea) => {
-            // Filter for Dubai areas only
-            const isDubai = apiArea.city?.nameEn?.toLowerCase() === 'dubai' ||
-              apiArea.city?.nameRu?.toLowerCase() === 'дубай';
-            if (!isDubai) {
-              return false;
-            }
+        const convertedAreas: Area[] = apiAreas.map((apiArea: FeaturedArea) => {
+          // Use image directly from API as it should be correct from featured endpoint
+          let imageUrl = apiArea.mainImage || '';
 
-            // Filter out areas with 0 projects
-            const projectsCount = apiArea.projectsCount?.total || 0;
-            if (projectsCount === 0) {
-              return false;
-            }
+          const skylineImage = 'https://res.cloudinary.com/dgv0rxd60/video/upload/f_auto,q_auto:eco,w_800,so_0/v1762957287/3ea514df-18e3-4c44-8177-fdc048fca302_fldvse.jpg';
 
-            return true;
-          })
-          .map((apiArea: ApiArea) => {
-            // Use actual image if available and valid, otherwise use fallback
-            let imageUrl = 'https://res.cloudinary.com/dgv0rxd60/image/upload/f_auto,q_auto:eco,w_800/v1768389724/golf.jpg'; // Default fallback image
-            const hasImages = apiArea.images && Array.isArray(apiArea.images) && apiArea.images.length > 0;
-            const firstImage = hasImages ? apiArea.images[0] : null;
+          // If no image from API, try to find one or use fallback
+          if (!imageUrl) {
+            imageUrl = skylineImage;
+          }
 
-            if (firstImage && typeof firstImage === 'string' && firstImage.trim() !== '') {
-              const isPlaceholder = firstImage.includes('unsplash.com') ||
-                firstImage.includes('placeholder') ||
-                firstImage.includes('via.placeholder.com') ||
-                firstImage.includes('dummyimage.com') ||
-                firstImage.includes('placehold.it') ||
-                firstImage.includes('fakeimg.pl');
+          return {
+            id: apiArea.id,
+            slug: apiArea.slug || apiArea.id,
+            name: apiArea.nameEn || '',
+            nameRu: apiArea.nameRu || apiArea.nameEn || '',
+            projectsCount: apiArea.propertiesCount || 0,
+            image: imageUrl,
+          };
+        });
 
-              const isValidUrl = firstImage.startsWith('http://') || firstImage.startsWith('https://');
-
-              if (!isPlaceholder && isValidUrl) {
-                imageUrl = firstImage;
-              }
-            }
-
-            // Generate slug from nameEn
-            const slug = (apiArea.nameEn || '')
-              .toLowerCase()
-              .replace(/\s+/g, '-')
-              .replace(/[^a-z0-9-]/g, '');
-
-            return {
-              id: slug || apiArea.id,
-              name: apiArea.nameEn || '',
-              nameRu: apiArea.nameRu || apiArea.nameEn || '',
-              projectsCount: apiArea.projectsCount?.total || 0,
-              image: imageUrl, // Can be fallback or real image
-            };
-          })
-          .sort((a, b) => {
-            // Sort by projectsCount descending
-            return b.projectsCount - a.projectsCount;
-          })
-          .slice(0, TOP_AREAS_COUNT); // Take top 10
-
-        setAreas(convertedAreas);
+        // Take only top areas
+        setAreas(convertedAreas.slice(0, TOP_AREAS_COUNT));
 
       } catch (error) {
+        console.error('Error loading featured areas:', error);
         setAreas([]);
       } finally {
         setLoading(false);
@@ -140,14 +107,22 @@ export default function Areas() {
 
   const scroll = (direction: 'left' | 'right') => {
     if (scrollRef.current && cardsWrapperRef.current) {
+      const container = scrollRef.current;
       const firstCard = cardsWrapperRef.current.firstElementChild as HTMLElement;
+
       if (firstCard) {
         const cardWidth = firstCard.offsetWidth;
         const gap = 24; // gap between cards
         const scrollAmount = cardWidth + gap;
 
-        scrollRef.current.scrollBy({
-          left: direction === 'left' ? -scrollAmount : scrollAmount,
+        // Calculate current "index" to avoid accumulation errors
+        const currentScroll = container.scrollLeft;
+        const targetIndex = direction === 'left'
+          ? Math.ceil(currentScroll / scrollAmount) - 1
+          : Math.floor(currentScroll / scrollAmount) + 1;
+
+        container.scrollTo({
+          left: targetIndex * scrollAmount,
           behavior: 'smooth',
         });
       }
@@ -196,7 +171,7 @@ export default function Areas() {
                   return (
                     <Link
                       key={area.id}
-                      href={getLocalizedPath(`/areas/${area.id}`)}
+                      href={getLocalizedPath(`/areas/${area.slug}`)}
                       className={styles.card}
                     >
                       <div className={styles.cardImage}>
@@ -204,17 +179,22 @@ export default function Areas() {
                           src={area.image}
                           alt={getAreaName(area)}
                           fill
-                          style={{ objectFit: 'cover' }}
+                          style={{ objectFit: 'cover', opacity: imagesLoaded.has(area.id) ? 1 : 0, transition: 'opacity 0.4s ease' }}
                           sizes="(max-width: 1200px) 33vw, (max-width: 900px) 50vw, 25vw"
                           loading="lazy"
+                          onLoad={() => {
+                            setImagesLoaded(prev => new Set(prev).add(area.id));
+                          }}
                           onError={() => {
-                            // If image fails to load (even fallback), log it but don't hide the card
-                            if (process.env.NODE_ENV === 'development') {
-                            }
-                            // No need to add to failedImages, as we now use a fallback
+                            // If image fails to load, mark it as loaded so skeleton disappears
+                            setImagesLoaded(prev => new Set(prev).add(area.id));
                           }}
                         />
-                        <div className={styles.cardOverlay}></div>
+                        {!imagesLoaded.has(area.id) && (
+                          <div className={styles.imageSkeleton}></div>
+                        )}
+                        <div className={styles.cardOverlayTop}></div>
+                        <div className={styles.cardOverlayBottom}></div>
                         <div className={styles.cardContent}>
                           <h3 className={styles.cardTitle}>{getAreaName(area)}</h3>
                           <div className={styles.cardInfo}>

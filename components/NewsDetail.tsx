@@ -39,7 +39,7 @@ export default function NewsDetail({ slug }: NewsDetailProps) {
       setError(null);
       try {
         const apiNews = await getNewsBySlug(slug);
-        
+
         if (!apiNews) {
           setError('News article not found');
           setLoading(false);
@@ -60,7 +60,8 @@ export default function NewsDetail({ slug }: NewsDetailProps) {
         };
 
         setNews(newsData);
-      } catch (err) {setError('Failed to load news article. Please try again later.');
+      } catch (err) {
+        setError('Failed to load news article. Please try again later.');
       } finally {
         setLoading(false);
       }
@@ -152,9 +153,10 @@ export default function NewsDetail({ slug }: NewsDetailProps) {
 
         {/* Description */}
         {getDescription() && (
-          <div className={styles.description}>
-            <p>{getDescription()}</p>
-          </div>
+          <div
+            className={styles.description}
+            dangerouslySetInnerHTML={{ __html: getDescription() || '' }}
+          />
         )}
 
         {/* Content Blocks */}
@@ -165,7 +167,10 @@ export default function NewsDetail({ slug }: NewsDetailProps) {
                 <div className={styles.textBlock}>
                   <h2 className={styles.contentTitle}>{content.title}</h2>
                   {content.description && (
-                    <p className={styles.contentDescription}>{content.description}</p>
+                    <div
+                      className={styles.contentDescription}
+                      dangerouslySetInnerHTML={{ __html: content.description }}
+                    />
                   )}
                 </div>
               )}

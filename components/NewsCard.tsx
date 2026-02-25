@@ -18,9 +18,10 @@ interface NewsItem {
 
 interface NewsCardProps {
   news: NewsItem;
+  isFeatured?: boolean;
 }
 
-export default function NewsCard({ news }: NewsCardProps) {
+export default function NewsCard({ news, isFeatured = false }: NewsCardProps) {
   const locale = useLocale();
 
   const getLocalizedPath = (path: string) => {
@@ -44,6 +45,35 @@ export default function NewsCard({ news }: NewsCardProps) {
     }).format(date);
   };
 
+  if (isFeatured) {
+    return (
+      <Link href={getLocalizedPath(`/news/${news.slug}`)} className={styles.featuredCard}>
+        <div className={styles.imageContainer}>
+          <Image
+            src={news.image}
+            alt={getTitle()}
+            fill
+            style={{ objectFit: 'cover' }}
+            sizes="(max-width: 1200px) 100vw, 66vw"
+          />
+          <div className={styles.featuredOverlay}></div>
+          <div className={styles.featuredContent}>
+            <h3 className={styles.featuredTitle}>{getTitle()}</h3>
+            {getDescription() && (
+              <div
+                className={styles.featuredDescription}
+                dangerouslySetInnerHTML={{ __html: getDescription() || '' }}
+              />
+            )}
+            <div className={styles.meta}>
+              <span className={styles.date}>{formatDate(news.publishedAt)}</span>
+            </div>
+          </div>
+        </div>
+      </Link>
+    );
+  }
+
   return (
     <Link href={getLocalizedPath(`/news/${news.slug}`)} className={styles.card}>
       <div className={styles.imageContainer}>
@@ -55,17 +85,15 @@ export default function NewsCard({ news }: NewsCardProps) {
           sizes="(max-width: 1200px) 50vw, (max-width: 900px) 100vw, 33vw"
         />
         <div className={styles.overlay}></div>
-        <div className={styles.playButton}>
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <circle cx="12" cy="12" r="10" fill="rgba(255, 255, 255, 0.9)" />
-            <path d="M10 8L16 12L10 16V8Z" fill="#003077" />
-          </svg>
-        </div>
+
       </div>
       <div className={styles.content}>
         <h3 className={styles.title}>{getTitle()}</h3>
         {getDescription() && (
-          <p className={styles.description}>{getDescription()}</p>
+          <div
+            className={styles.description}
+            dangerouslySetInnerHTML={{ __html: getDescription() || '' }}
+          />
         )}
         <div className={styles.meta}>
           <span className={styles.date}>{formatDate(news.publishedAt)}</span>

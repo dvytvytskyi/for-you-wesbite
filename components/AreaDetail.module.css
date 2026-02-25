@@ -1,20 +1,34 @@
 @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300..700;1,300..700&display=swap');
 
 .areaDetail {
-  padding: 120px 0 100px 0;
+  padding: 40px 0 100px 0;
   background: #ffffff;
   min-height: calc(100vh - 200px);
 }
 
+@media (max-width: 900px) {
+  .areaDetail {
+    padding-top: 60px;
+    /* Reduced to align closer to header on mobile */
+  }
+}
+
 .container {
-  max-width: 1600px;
+  max-width: 1200px;
+  width: 100%;
   margin: 0 auto;
-  padding: 30px 40px 40px 40px;
+  padding: 0 0 40px 0;
 }
 
 .header {
   text-align: center;
   margin-bottom: 60px;
+}
+
+@media (max-width: 900px) {
+  .header {
+    display: none;
+  }
 }
 
 .title {
@@ -42,145 +56,63 @@
   margin: 0;
 }
 
-/* Галерея зображень - слайд-шоу */
-.imagesSection {
-  margin-bottom: 80px;
-  max-width: 1200px;
-  margin-left: auto;
-  margin-right: auto;
+.heroSection {
+  margin-bottom: 60px;
 }
 
-.sliderContainer {
+.heroImageContainer {
+  width: 70%;
+  margin: 0 auto;
+}
+
+.imageWrapper {
   position: relative;
   width: 100%;
-  border-radius: 12px;
+  height: 300px;
   overflow: hidden;
   background: #000;
+  border-radius: 12px;
 }
 
-.sliderWrapper {
-  position: relative;
-  width: 100%;
-  aspect-ratio: 21 / 9;
-  overflow: hidden;
+.heroImage {
+  object-fit: cover;
 }
 
-.sliderTrack {
-  position: relative;
-  display: flex;
-  width: 100%;
-  height: 100%;
-  min-height: 100%;
-  transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.slide {
-  position: relative;
-  flex: 0 0 100%;
-  width: 100%;
-  height: 100%;
-  min-height: 100%;
-  cursor: pointer;
-  transition: opacity 0.3s ease;
-}
-
-.slide:hover {
-  opacity: 0.9;
-}
-
-.sliderButton {
+.heroOverlay {
   position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 48px;
-  height: 48px;
-  background: rgba(255, 255, 255, 0.9);
-  border: none;
-  border-radius: 50%;
-  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.4);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 10;
-  transition: all 0.3s ease;
-  color: #003077;
+  text-align: center;
+  padding: 20px;
 }
 
-.sliderButton:hover {
-  background: #ffffff;
-  transform: translateY(-50%) scale(1.1);
-}
-
-.sliderButton:active {
-  transform: translateY(-50%) scale(0.95);
-}
-
-.prevButton {
-  left: 20px;
-}
-
-.nextButton {
-  right: 20px;
-}
-
-.sliderIndicators {
-  position: absolute;
-  bottom: 20px;
-  left: 50%;
-  transform: translateX(-50%);
+.heroContent {
   display: flex;
+  flex-direction: column;
+  align-items: center;
   gap: 8px;
-  z-index: 10;
 }
 
-.indicator {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  border: 2px solid #ffffff;
-  background: transparent;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  padding: 0;
-}
-
-.indicator:hover {
-  background: rgba(255, 255, 255, 0.5);
-}
-
-.indicator.active {
-  background: #ffffff;
-  width: 30px;
-  border-radius: 5px;
-}
-
-.sliderCounter {
-  position: absolute;
-  top: 20px;
-  right: 20px;
-  background: rgba(0, 0, 0, 0.6);
-  color: #ffffff;
-  padding: 8px 16px;
-  border-radius: 20px;
-  font-family: 'Inter', sans-serif;
-  font-size: 14px;
+.heroTitle {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 56px;
   font-weight: 500;
-  z-index: 10;
-  backdrop-filter: blur(10px);
+  color: #ffffff;
+  margin: 0;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
 }
 
-/* Секції опису та інфраструктури */
 .descriptionSection,
-.infrastructureSection {
-  margin-bottom: 60px;
-  max-width: 1200px;
-  margin-left: auto;
-  margin-right: auto;
-}
-
-/* Список проектів */
+.infrastructureSection,
 .propertiesSection {
   margin-bottom: 60px;
+  width: 70%;
   max-width: 1200px;
   margin-left: auto;
   margin-right: auto;
@@ -266,47 +198,239 @@
   }
 }
 
-/* Кнопка для secondary properties */
-.secondaryButtonSection {
+/* Нові локальні фільтри */
+.localFilters {
+  width: 70%;
+  margin: 40px auto;
+  background: #ffffff;
+  padding: 20px;
+  border-radius: 12px;
+  border: 1px solid rgba(0, 48, 119, 0.08);
+  box-shadow: 0 4px 15px rgba(0, 48, 119, 0.05);
+}
+
+.filterColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.filterRow {
+  display: flex;
+  gap: 12px;
+  flex-wrap: nowrap;
+  align-items: center;
+}
+
+.typeToggle {
+  display: flex;
+  background: #f8faff;
+  padding: 4px;
+  border-radius: 10px;
+  border: 1px solid rgba(0, 48, 119, 0.05);
+  flex-shrink: 0;
+}
+
+.typeButton {
+  padding: 8px 16px;
+  border: none;
+  background: transparent;
+  color: #5a7192;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.typeButton.active {
+  background: #ffffff;
+  color: #003077;
+  box-shadow: 0 2px 8px rgba(0, 48, 119, 0.1);
+}
+
+.searchBox,
+.developerBox {
+  flex: 2;
+  min-width: 120px;
+}
+
+.priceSizeBox {
+  flex: 3;
+  min-width: 180px;
+}
+
+.filterInput {
+  width: 100%;
+  height: 40px;
+  padding: 0 12px;
+  background: #f8faff;
+  border: 1px solid rgba(0, 48, 119, 0.08);
+  border-radius: 8px;
+  color: #003077;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  outline: none;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+.filterInput:focus {
+  background: #ffffff;
+  border-color: #003077;
+  box-shadow: 0 0 0 3px rgba(0, 48, 119, 0.05);
+}
+
+.developerBox {
+  position: relative;
+}
+
+.filterDropdownButton {
+  width: 100%;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
+  background: #f8faff;
+  border: 1px solid rgba(0, 48, 119, 0.08);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  color: #003077;
+}
+
+.filterDropdownButton span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.filterDropdownMenu {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  background: #ffffff;
+  border: 1px solid rgba(0, 48, 119, 0.1);
+  border-radius: 12px;
+  box-shadow: 0 8px 30px rgba(0, 48, 119, 0.12);
+  z-index: 100;
+  max-height: 300px;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.dropdownSearch {
+  position: sticky;
+  top: 0;
+  background: #ffffff;
+  padding: 4px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid rgba(0, 48, 119, 0.05);
+}
+
+.dropdownSearch input {
+  width: 100%;
+  height: 36px;
+  border: 1px solid rgba(0, 48, 119, 0.1);
+  border-radius: 8px;
+  padding: 0 12px;
+  font-size: 13px;
+  outline: none;
+}
+
+.dropdownItem {
+  padding: 10px 12px;
+  font-size: 13px;
+  color: #3c5476;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.dropdownItem:hover {
+  background: #f8faff;
+  color: #003077;
+}
+
+.dropdownItem.active {
+  background: rgba(0, 48, 119, 0.05);
+  color: #003077;
+  font-weight: 500;
+}
+
+.rangeGroup {
+  display: flex;
+  gap: 8px;
+}
+
+.inputWrapper {
+  position: relative;
+  flex: 1;
   display: flex;
   align-items: center;
 }
 
-.secondaryButton {
-  display: inline-block;
+.inputLabel {
+  position: absolute;
+  left: 12px;
   font-family: 'Inter', sans-serif;
-  font-size: 16px;
-  font-weight: 400;
+  font-size: 11px;
+  font-weight: 600;
   color: #003077;
-  background: transparent;
-  border: 2px solid #003077;
-  border-radius: 8px;
-  padding: 14px 32px;
-  text-decoration: none;
-  transition: all 0.3s ease;
-  cursor: pointer;
+  opacity: 0.5;
+  pointer-events: none;
+  text-transform: uppercase;
 }
 
-.secondaryButton:hover {
-  background: #003077;
-  color: #ffffff;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 48, 119, 0.2);
+.filterInputWithLabel {
+  width: 100%;
+  height: 40px;
+  padding: 0 12px 0 42px;
+  /* Extra left padding for label */
+  background: #f8faff;
+  border: 1px solid rgba(0, 48, 119, 0.08);
+  border-radius: 8px;
+  color: #003077;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  outline: none;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+.filterInputWithLabel:focus {
+  background: #ffffff;
+  border-color: #003077;
+  box-shadow: 0 0 0 3px rgba(0, 48, 119, 0.05);
+}
+
+.propertiesLoading,
+.noProperties {
+  text-align: center;
+  padding: 60px 20px;
+  color: #5a7192;
+  font-family: 'Inter', sans-serif;
+  font-size: 16px;
 }
 
 .sectionTitle {
   font-family: 'Cormorant Garamond', serif;
-  font-size: 40px;
-  font-weight: 400;
+  font-size: 28px;
+  font-weight: 500;
   color: #003077;
   margin: 0 0 24px 0;
 }
 
 .descriptionText {
   font-family: 'Inter', sans-serif;
-  font-size: 18px;
-  font-weight: 300;
-  color: #003077;
+  font-size: 16px;
+  font-weight: 400;
+  color: #3c5476;
   line-height: 1.8;
   margin: 0;
 }
@@ -384,11 +508,29 @@
 
 @media (max-width: 900px) {
   .areaDetail {
-    padding: 80px 0 60px 0;
+    padding: 60px 0 60px 0;
   }
 
   .container {
-    padding: 30px 20px 20px 20px;
+    width: 100%;
+    max-width: 100%;
+    padding: 0 20px 20px 20px;
+  }
+
+  .heroImageContainer {
+    width: 100%;
+  }
+
+  .imageWrapper {
+    height: 250px;
+  }
+
+  .heroTitle {
+    font-size: 32px;
+  }
+
+  .header {
+    display: none;
   }
 
   .propertiesHeader {
@@ -420,7 +562,7 @@
   }
 
   .imagesSection {
-    margin-bottom: 60px;
+    margin-bottom: 30px;
   }
 
   .sliderButton {
@@ -462,8 +604,14 @@
   }
 
   .descriptionSection,
-  .infrastructureSection {
+  .infrastructureSection,
+  .propertiesSection {
+    width: 100%;
     margin-bottom: 40px;
+  }
+
+  .localFilters {
+    display: none;
   }
 
   .sectionTitle {
@@ -477,81 +625,26 @@
 
 @media (max-width: 600px) {
   .areaDetail {
-    padding: 60px 0 40px 0;
+    padding: 50px 0 40px 0;
   }
 
   .container {
-    padding: 30px 20px 20px 20px;
+    width: 100%;
+    max-width: 100%;
+    padding: 0 16px 20px 16px;
   }
 
-  .title {
-    font-size: 36px;
+  .imageWrapper {
+    height: 200px;
   }
 
-  .propertiesHeader {
-    flex-direction: column;
-    align-items: flex-start;
-    margin-bottom: 24px;
+  .heroTitle {
+    font-size: 28px;
   }
 
   .propertiesGrid {
     grid-template-columns: 1fr;
     gap: 20px;
-  }
-
-  .propertiesTitle {
-    font-size: 28px;
-    margin-bottom: 16px;
-  }
-
-  .secondaryButtonSection {
-    width: 100%;
-  }
-
-  .secondaryButton {
-    width: 100%;
-    text-align: center;
-    font-size: 14px;
-    padding: 12px 24px;
-  }
-
-  .sliderButton {
-    width: 32px;
-    height: 32px;
-  }
-
-  .sliderButton svg {
-    width: 16px;
-    height: 16px;
-  }
-
-  .prevButton {
-    left: 5px;
-  }
-
-  .nextButton {
-    right: 5px;
-  }
-
-  .sliderIndicators {
-    bottom: 10px;
-    gap: 6px;
-  }
-
-  .indicator {
-    width: 6px;
-    height: 6px;
-  }
-
-  .indicator.active {
-    width: 20px;
-  }
-
-  .sliderCounter {
-    top: 10px;
-    right: 10px;
-    font-size: 11px;
-    padding: 4px 10px;
   }
 
   .sectionTitle {
@@ -574,4 +667,3 @@
     height: 40px;
   }
 }
-

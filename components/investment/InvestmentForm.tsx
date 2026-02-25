@@ -31,7 +31,7 @@ const investmentSchema = z.object({
   // For non-authenticated users, require user fields
   const authenticated = typeof window !== 'undefined' && localStorage.getItem('token');
   if (!authenticated) {
-    return data.userEmail && data.userPhone && data.userFirstName && data.userLastName;
+    return data.userPhone && data.userFirstName;
   }
   return true;
 }, {
@@ -40,11 +40,11 @@ const investmentSchema = z.object({
 
 type InvestmentFormData = z.infer<typeof investmentSchema>;
 
-export default function InvestmentForm({ 
-  propertyId, 
-  propertyPriceFrom, 
+export default function InvestmentForm({
+  propertyId,
+  propertyPriceFrom,
   propertyPrice,
-  propertyType 
+  propertyType
 }: InvestmentFormProps) {
   const t = useTranslations('investment');
   const locale = useLocale();
@@ -111,7 +111,7 @@ export default function InvestmentForm({
       }, 3000);
     } catch (err: any) {// Extract error message
       let errorMessage = t('submitError') || 'Failed to submit investment';
-      
+
       if (err.message) {
         errorMessage = err.message;
       } else if (err.response?.data?.message) {
@@ -127,7 +127,7 @@ export default function InvestmentForm({
       } else if (err.response?.status >= 500) {
         errorMessage = 'Server error. Please try again later.';
       }
-      
+
       setError(errorMessage);
     } finally {
       setLoading(false);
@@ -210,7 +210,7 @@ export default function InvestmentForm({
                 )}
               </div>
 
-              <div className={styles.formField}>
+              <div className={`${styles.formField} ${styles.mobileHidden}`}>
                 <label htmlFor="userLastName" className={styles.label}>
                   {t('lastName') || 'Last Name'}
                 </label>
@@ -227,7 +227,7 @@ export default function InvestmentForm({
               </div>
             </div>
 
-            <div className={styles.formField}>
+            <div className={`${styles.formField} ${styles.mobileHidden}`}>
               <label htmlFor="userEmail" className={styles.label}>
                 {t('email') || 'Email'}
               </label>
@@ -261,7 +261,7 @@ export default function InvestmentForm({
           </>
         )}
 
-        <div className={styles.formField}>
+        <div className={`${styles.formField} ${styles.mobileHidden}`}>
           <label htmlFor="amount" className={styles.label}>
             {t('amount') || 'Investment Amount'} (AED)
           </label>
@@ -273,14 +273,14 @@ export default function InvestmentForm({
               // Remove all non-digit characters
               const rawValue = e.target.value.replace(/[^0-9]/g, '');
               const numValue = rawValue ? parseInt(rawValue, 10) : 0;
-              
+
               // Format with commas
               if (rawValue) {
                 setFormattedAmount(formatNumber(numValue));
               } else {
                 setFormattedAmount('');
               }
-              
+
               // Set the numeric value for form validation
               setValue('amount', numValue, { shouldValidate: true });
             }}
@@ -292,7 +292,7 @@ export default function InvestmentForm({
           )}
         </div>
 
-        <div className={styles.formField}>
+        <div className={`${styles.formField} ${styles.mobileHidden}`}>
           <label htmlFor="notes" className={styles.label}>
             {t('notes') || 'Notes'} ({t('optional') || 'Optional'})
           </label>
@@ -312,8 +312,8 @@ export default function InvestmentForm({
           {t('termsMessage') || 'When sending, I agree to terms and conditions.'}
         </div>
 
-        <button 
-          type="submit" 
+        <button
+          type="submit"
           className={styles.submitButton}
           disabled={loading}
         >

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { Property } from './api';
+import { Property, normalizeProperty } from './api';
 
 interface FavoritesContextType {
     favorites: Property[];
@@ -23,7 +23,11 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
             const storedFavorites = localStorage.getItem('favorites');
             if (storedFavorites) {
                 try {
-                    setFavorites(JSON.parse(storedFavorites));
+                    const parsed = JSON.parse(storedFavorites);
+                    if (Array.isArray(parsed)) {
+                        const normalized = parsed.map(p => normalizeProperty(p));
+                        setFavorites(normalized);
+                    }
                 } catch (error) {
                     console.error('Failed to parse favorites from local storage:', error);
                 }

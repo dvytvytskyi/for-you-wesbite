@@ -14,14 +14,26 @@ if (typeof window !== 'undefined') {
 // Create axios instance
 const apiClient: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 30000,
+  timeout: 15000, // Reduced from 30s to 15s to fail faster and show fallbacks
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Aggressive logging for ALL requests on server
+apiClient.interceptors.request.use((config) => {
+  (config as any)._startTime = Date.now();
+  if (typeof window === 'undefined') {
+    console.log(`%c[API-REQ] ${config.method?.toUpperCase()} ${config.url}`, 'color: #3498db');
+  }
+  return config;
 });
 
 // Add authentication headers to requests
 apiClient.interceptors.request.use(
   (config) => {
     // Always add API key and secret
-    config.headers['Content-Type'] = 'application/json';
+    // config.headers['Content-Type'] = 'application/json'; // Already set in axios.create
 
     // Ensure API key and secret are set
     if (!API_KEY || !API_SECRET) {
@@ -50,17 +62,23 @@ apiClient.interceptors.request.use(
 
 // Handle errors
 apiClient.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    const duration = Date.now() - (response.config as any)._startTime;
+    if (typeof window === 'undefined') {
+      console.log(`%c[API-SUCCESS] ${response.config.method?.toUpperCase()} ${response.config.url} took ${duration}ms`, 'color: #27ae60');
+    }
+    return response;
+  },
   (error: AxiosError) => {
-    if (error.response) {
-      // Error logging removed for performance
+    const duration = error.config ? Date.now() - (error.config as any)._startTime : 'unknown';
+    if (typeof window === 'undefined') {
+      console.error(`%c[API-FAILURE] ${error.config?.method?.toUpperCase()} ${error.config?.url} FAILED after ${duration}ms: ${error.message}`, 'color: #e74c3c');
+    }
 
+    if (error.response) {
       if (error.response.status === 401) {
-        // Unauthorized - clear token and redirect to login
         if (typeof window !== 'undefined') {
           localStorage.removeItem('token');
-          // Optionally redirect to login
-          // window.location.href = '/login';
         }
       }
     }
@@ -87,6 +105,7 @@ export interface PropertyFilters {
   developerId?: string;
   cityId?: string;
   areaId?: string;
+  areaSlug?: string;
   areaIds?: string[]; // For client-side filtering with multiple areas
   bedrooms?: string; // Comma-separated: "1,2,3"
   sizeFrom?: number;
@@ -104,6 +123,7 @@ export interface PropertyFilters {
 
 export interface Property {
   id: string;
+  slug?: string;
   propertyType: 'off-plan' | 'secondary';
   name: string;
   description: string;
@@ -132,6 +152,7 @@ export interface Property {
   // For secondary properties: area is an object with full area details
   area: string | {
     id: string;
+    slug: string;
     nameEn: string;
     nameRu: string;
     nameAr: string;
@@ -293,23 +314,35 @@ export interface MapMarker {
   propertyType: 'off-plan' | 'secondary';
 }
 
-// Cache for map markers
-let markersCache: MapMarker[] | null = null;
-let markersCacheTimestamp = 0;
+// Cache for map markers (partitioned by type)
+const markersCache = new Map<string, { data: MapMarker[], timestamp: number }>();
 const MARKERS_CACHE_DURATION = 60 * 1000; // 1 minute
 
-export async function getMapMarkers(): Promise<MapMarker[]> {
+export async function getMapMarkers(filters?: PropertyFilters): Promise<MapMarker[]> {
   try {
+    const cacheKey = filters ? JSON.stringify(filters) : 'all';
+
     // Check cache
-    if (markersCache && (Date.now() - markersCacheTimestamp) < MARKERS_CACHE_DURATION) {
-      return markersCache;
+    const cached = markersCache.get(cacheKey);
+    if (cached && (Date.now() - cached.timestamp) < MARKERS_CACHE_DURATION) {
+      return cached.data;
     }
 
-    const response = await apiClient.get<ApiResponse<MapMarker[]>>('/public/map');
-    if (response.data.success && Array.isArray(response.data.data)) {
-      markersCache = response.data.data;
-      markersCacheTimestamp = Date.now();
-      return response.data.data;
+    const response = await apiClient.get<any>('/public/map', { params: filters });
+
+    let data: MapMarker[] = [];
+    if (Array.isArray(response.data)) {
+      data = response.data;
+    } else if (response.data && response.data.success && Array.isArray(response.data.data)) {
+      data = response.data.data;
+    }
+
+    if (data.length > 0 || Array.isArray(data)) {
+      markersCache.set(cacheKey, {
+        data: data,
+        timestamp: Date.now()
+      });
+      return data;
     }
     return [];
   } catch (error) {
@@ -319,757 +352,159 @@ export async function getMapMarkers(): Promise<MapMarker[]> {
 }
 
 export async function getProperties(filters?: PropertyFilters, useCache: boolean = true): Promise<GetPropertiesResult> {
+  const startTime = Date.now();
   try {
-    // Create cache key from filters (including page and limit for server-side pagination)
     const cacheKey = JSON.stringify({
-      propertyType: filters?.propertyType,
-      developerId: filters?.developerId,
-      cityId: filters?.cityId,
-      areaId: filters?.areaId,
-      bedrooms: filters?.bedrooms,
-      sizeFrom: filters?.sizeFrom,
-      sizeTo: filters?.sizeTo,
-      priceFrom: filters?.priceFrom,
-      priceTo: filters?.priceTo,
-      search: filters?.search,
-      sortBy: filters?.sortBy,
-      sortOrder: filters?.sortOrder,
-      page: filters?.page,
-      limit: filters?.limit,
+      ...filters,
+      v: '2.5' // Cache invalidation
     });
 
-    // Check cache
     if (useCache) {
       const cached = propertiesCache.get(cacheKey);
       if (cached && (Date.now() - cached.timestamp) < PROPERTIES_CACHE_DURATION) {
         if (process.env.NODE_ENV === 'development') {
-
-
-
-
-
-          // Check if cached data has old photo sources
-          if (cached.result.properties.length > 0) {
-            const firstProp = cached.result.properties[0];
-            if (firstProp.photos && firstProp.photos.length > 0) {
-              const hasAlnair = firstProp.photos.some((p: string) => p.includes('alnair'));
-              const hasReelly = firstProp.photos.some((p: string) => p.includes('reelly'));
-              if (hasAlnair && !hasReelly) {
-
-
-                propertiesCache.delete(cacheKey);
-                // Don't return cached result, fetch fresh data instead
-              } else {
-                return cached.result;
-              }
-            } else {
-              return cached.result;
-            }
-          } else {
-            return cached.result;
-          }
-        } else {
-          return cached.result;
+          console.log(`[API] getProperties CACHE HIT (${Date.now() - startTime}ms)`);
         }
+        return cached.result;
       }
     }
 
-    // First, try to get properties from /api/properties (if user is authenticated)
     const params = new URLSearchParams();
-
     if (filters?.propertyType) params.append('propertyType', filters.propertyType);
     if (filters?.developerId) params.append('developerId', filters.developerId);
     if (filters?.cityId) params.append('cityId', filters.cityId);
     if (filters?.areaId) params.append('areaId', filters.areaId);
+    if (filters?.areaSlug) params.append('areaSlug', filters.areaSlug);
     if (filters?.bedrooms) params.append('bedrooms', filters.bedrooms);
     if (filters?.sizeFrom) params.append('sizeFrom', filters.sizeFrom.toString());
     if (filters?.sizeTo) params.append('sizeTo', filters.sizeTo.toString());
     if (filters?.priceFrom) params.append('priceFrom', filters.priceFrom.toString());
     if (filters?.priceTo) params.append('priceTo', filters.priceTo.toString());
     if (filters?.search) params.append('search', filters.search);
-    // Always include sort parameters (default to createdAt DESC if not specified)
+
     const sortBy = filters?.sortBy || 'createdAt';
     const sortOrder = filters?.sortOrder || 'DESC';
     params.append('sortBy', sortBy);
     params.append('sortOrder', sortOrder);
 
-    // Use page and limit from filters if provided, otherwise default to 100 items for client-side pagination
-    const frontendPage = filters?.page || 1;
-    const frontendLimit = filters?.limit || 100;
-    params.append('page', frontendPage.toString());
-    params.append('limit', frontendLimit.toString());
+    params.append('page', (filters?.page || 1).toString());
+    params.append('limit', (filters?.limit || 100).toString());
 
-    if (filters?.isForYouChoice !== undefined) {
-      params.append('isForYouChoice', filters.isForYouChoice.toString());
-    }
+    if (filters?.isForYouChoice !== undefined) params.append('isForYouChoice', filters.isForYouChoice.toString());
     if (filters?.summary) params.append('summary', 'true');
 
     const url = `/properties?${params.toString()}`;
-    const fullUrl = `${API_BASE_URL}${url}`;
 
-    // Debug: log the sort parameters and headers
-    if (process.env.NODE_ENV === 'development') {
-
-
-
-
-
-
-
-
-
-
-
-
-
-      // Validate URL is properly encoded
-      try {
-        new URL(fullUrl);
-
-      } catch (e) {
-
-      }
-    }
-
-    // Try regular endpoint first (should work with API Key/Secret now)
     try {
       const response = await apiClient.get<ApiResponse<Property[]>>(url);
-
-      if (process.env.NODE_ENV === 'development') {
-
-
-
-
-
-
-
-
-        // Log FULL response structure to understand what backend returns
-
-
-        if (response.data.data && typeof response.data.data === 'object') {
-
-          if ('data' in response.data.data && Array.isArray(response.data.data.data)) {
-
-
-            // Check photo sources in ALL properties
-            const propertiesWithAlnairPhotos = response.data.data.data.filter((p: any) =>
-              p.photos && Array.isArray(p.photos) && p.photos.some((photo: string) => photo && photo.includes('alnair'))
-            );
-            const propertiesWithReellyPhotos = response.data.data.data.filter((p: any) =>
-              p.photos && Array.isArray(p.photos) && p.photos.some((photo: string) => photo && photo.includes('reelly'))
-            );
-
-
-
-
-            // Check bathroomsFrom/To for off-plan properties
-            const offPlanProperties = response.data.data.data.filter((p: any) => p.propertyType === 'off-plan');
-            const offPlanWithBathrooms = offPlanProperties.filter((p: any) =>
-              p.bathroomsFrom !== null || p.bathroomsTo !== null
-            );
-
-
-
-            // Check priceFromAED for off-plan properties
-            const offPlanWithNullPriceFromAED = offPlanProperties.filter((p: any) =>
-              p.priceFrom !== null && p.priceFrom !== undefined && p.priceFrom > 0 &&
-              (p.priceFromAED === null || p.priceFromAED === undefined || p.priceFromAED === 0)
-            );
-
-
-            // Summary removed for performance
-
-            // Log first property in detail
-            if (response.data.data.data.length > 0) {
-              const firstProperty = response.data.data.data[0];
-
-
-
-
-
-
-              if (Array.isArray(firstProperty.photos) && firstProperty.photos.length > 0) {
-
-
-              }
-
-
-
-
-
-
-
-
-
-
-
-
-
-            }
-          }
-        }
-      }
-
-      // Ultra-robust extraction of data and total count from any backend structure
-      let data: any[] = [];
-      let totalCount = 0;
       const apiResponse = response.data as any;
 
-      // 1. Find the main data array (search in 'data', 'data.data', or 'properties')
+      const requestTime = Date.now() - startTime;
+      if (process.env.NODE_ENV === 'development' || requestTime > 1000) {
+        console.log(`[API] getProperties request took ${requestTime}ms for URL: ${url}`);
+      }
+
+      let data: any[] = [];
       if (apiResponse.data) {
-        if (Array.isArray(apiResponse.data)) {
-          data = apiResponse.data;
-        } else if (typeof apiResponse.data === 'object' && Array.isArray(apiResponse.data.data)) {
-          data = apiResponse.data.data;
-        } else if (typeof apiResponse.data === 'object' && Array.isArray(apiResponse.data.properties)) {
-          data = apiResponse.data.properties;
-        }
+        data = Array.isArray(apiResponse.data) ? apiResponse.data : (apiResponse.data.data || apiResponse.data.properties || []);
       } else if (Array.isArray(apiResponse.properties)) {
         data = apiResponse.properties;
       }
 
-      // 2. Find total count in ANY possible location
-      totalCount = apiResponse.total ||
+      let totalCount = apiResponse.total ||
         apiResponse.totalCount ||
         (apiResponse.pagination && apiResponse.pagination.total) ||
-        (apiResponse.data && apiResponse.data.total) ||
-        (apiResponse.data && apiResponse.data.totalCount) ||
-        (apiResponse.data && apiResponse.data.pagination && apiResponse.data.pagination.total);
+        (apiResponse.data && (apiResponse.data.total || apiResponse.data.totalCount));
 
-      // 3. Final fallback: use the length of returned data
-      if (!totalCount && data.length > 0) {
-        totalCount = data.length;
-      }
+      if (!totalCount && data.length > 0) totalCount = data.length;
 
-      if (process.env.NODE_ENV === 'development') {
-        console.log(`[API] Extracted ${data.length} items, Total: ${totalCount}`);
-      }
+      const normalizedData = (Array.isArray(data) ? data : []).map(p => normalizeProperty(p));
 
-      // Ensure data is always an array
-      if (!Array.isArray(data)) data = [];
-
-      // Log RAW data from API BEFORE normalization (to see what API actually returns)
-      if (process.env.NODE_ENV === 'development' && data.length > 0) {
-        // Log first property with photos and first property without photos
-        const propertyWithPhotos = data.find((p: any) => p.photos && Array.isArray(p.photos) && p.photos.length > 0);
-        const propertyWithoutPhotos = data.find((p: any) => !p.photos || !Array.isArray(p.photos) || p.photos.length === 0);
-
-      }
-
-      // Normalize photos array for each property
-      // API returns photos as string[] (array of URLs) or [] (empty array if no photos)
-      // Ensure photos is always an array of strings
-      data = data.map((property: any) => {
-        // Ensure images is always an array
-        if (!property.images || !Array.isArray(property.images)) {
-          property.images = [];
-
-          // Fallback: populate from photos if images is missing (optional safety)
-          if (Array.isArray(property.photos) && property.photos.length > 0) {
-            property.images = property.photos.map((url: string) => ({ small: url, full: url }));
-          }
-        }
-
-        // If photos is already a valid array, use it directly
-        if (Array.isArray(property.photos)) {
-          // Filter out empty strings, null, or undefined from photos array
-          property.photos = property.photos.filter((photo: any) => {
-            return photo && typeof photo === 'string' && photo.trim().length > 0;
-          });
-          // Return early - photos is already properly formatted
-          return property;
-        }
-
-        // If photos is missing or not an array, try to normalize it
-        if (!property.photos) {
-          // Check for alternative photo fields
-          if (property.image && typeof property.image === 'string' && property.image.trim().length > 0) {
-            property.photos = [property.image];
-          } else if (property.imageUrl && typeof property.imageUrl === 'string' && property.imageUrl.trim().length > 0) {
-            property.photos = [property.imageUrl];
-          } else if (property.gallery && Array.isArray(property.gallery) && property.gallery.length > 0) {
-            property.photos = property.gallery.filter((photo: any) => photo && typeof photo === 'string' && photo.trim().length > 0);
-          } else if (property.images && Array.isArray(property.images) && property.images.length > 0) {
-            property.photos = property.images.filter((photo: any) => photo && typeof photo === 'string' && photo.trim().length > 0);
-          } else {
-            property.photos = [];
-          }
-        } else if (typeof property.photos === 'string') {
-          // If it's a string, try to parse it as JSON or use it as single photo
-          try {
-            const parsed = JSON.parse(property.photos);
-            property.photos = Array.isArray(parsed) ? parsed : [property.photos];
-          } catch {
-            property.photos = [property.photos];
-          }
-          // Filter out empty strings
-          property.photos = property.photos.filter((photo: any) => {
-            return photo && typeof photo === 'string' && photo.trim().length > 0;
-          });
-        } else {
-          // Unknown format, set to empty array
-          property.photos = [];
-        }
-
-        // Normalize numeric fields - ensure they are numbers, not strings
-        // This is important because API might return strings
-        if (property.bedroomsFrom !== null && property.bedroomsFrom !== undefined) {
-          property.bedroomsFrom = typeof property.bedroomsFrom === 'string' ? parseInt(property.bedroomsFrom, 10) : property.bedroomsFrom;
-        }
-        if (property.bedroomsTo !== null && property.bedroomsTo !== undefined) {
-          property.bedroomsTo = typeof property.bedroomsTo === 'string' ? parseInt(property.bedroomsTo, 10) : property.bedroomsTo;
-        }
-        if (property.sizeFrom !== null && property.sizeFrom !== undefined) {
-          property.sizeFrom = typeof property.sizeFrom === 'string' ? parseFloat(property.sizeFrom) : property.sizeFrom;
-        }
-        if (property.sizeTo !== null && property.sizeTo !== undefined) {
-          property.sizeTo = typeof property.sizeTo === 'string' ? parseFloat(property.sizeTo) : property.sizeTo;
-        }
-        if (property.sizeFromSqft !== null && property.sizeFromSqft !== undefined) {
-          property.sizeFromSqft = typeof property.sizeFromSqft === 'string' ? parseFloat(property.sizeFromSqft) : property.sizeFromSqft;
-        }
-        if (property.sizeToSqft !== null && property.sizeToSqft !== undefined) {
-          property.sizeToSqft = typeof property.sizeToSqft === 'string' ? parseFloat(property.sizeToSqft) : property.sizeToSqft;
-        }
-        if (property.priceFrom !== null && property.priceFrom !== undefined) {
-          property.priceFrom = typeof property.priceFrom === 'string' ? parseFloat(property.priceFrom) : property.priceFrom;
-        }
-        if (property.priceFromAED !== null && property.priceFromAED !== undefined) {
-          property.priceFromAED = typeof property.priceFromAED === 'string' ? parseFloat(property.priceFromAED) : property.priceFromAED;
-        }
-
-        // Calculate priceFromAED if missing but priceFrom exists (USD to AED conversion: 1 USD = 3.673 AED)
-        if (property.propertyType === 'off-plan') {
-          if ((property.priceFromAED === null || property.priceFromAED === undefined || property.priceFromAED === 0) &&
-            property.priceFrom !== null && property.priceFrom !== undefined && property.priceFrom > 0) {
-            property.priceFromAED = Math.round(property.priceFrom * 3.673);
-          }
-
-          // For off-plan properties, bathroomsFrom/To should always be null according to new schema
-          // If API returns values, set them to null
-          if (property.bathroomsFrom !== null || property.bathroomsTo !== null) {
-            property.bathroomsFrom = null;
-            property.bathroomsTo = null;
-          }
-
-          // Calculate sizeFromSqft/sizeToSqft if missing but sizeFrom/sizeTo exists (m² to sqft: 1 m² = 10.764 sqft)
-          if (property.sizeFrom !== null && property.sizeFrom !== undefined && property.sizeFrom > 0) {
-            if (property.sizeFromSqft === null || property.sizeFromSqft === undefined || property.sizeFromSqft === 0) {
-              property.sizeFromSqft = Math.round(property.sizeFrom * 10.764 * 100) / 100; // Round to 2 decimals
-            }
-          }
-          if (property.sizeTo !== null && property.sizeTo !== undefined && property.sizeTo > 0) {
-            if (property.sizeToSqft === null || property.sizeToSqft === undefined || property.sizeToSqft === 0) {
-              property.sizeToSqft = Math.round(property.sizeTo * 10.764 * 100) / 100; // Round to 2 decimals
-            }
-          }
-
-          // Fix area if it's incomplete (e.g., "Du" instead of "areaName, cityName")
-          if (typeof property.area === 'string' && property.area.length <= 3 && property.city) {
-            // If area is too short (like "Du"), try to reconstruct it from city
-            const cityName = property.city.nameEn || property.city.nameRu;
-            if (cityName) {
-              property.area = `${property.area}, ${cityName}`;
-            }
-          }
-        }
-
-        return property;
-      });
-
-      if (process.env.NODE_ENV === 'development') {
-
-
-
-        // Log sample property to check photos (after normalization)
-        if (data.length > 0) {
-          const sampleProperty = data[0];
-
-
-          // Check if photos are valid URLs
-          if (Array.isArray(sampleProperty.photos) && sampleProperty.photos.length > 0) {
-            sampleProperty.photos.forEach((photo: string, index: number) => {
-              if (photo && !photo.startsWith('http://') && !photo.startsWith('https://') && !photo.startsWith('/')) {
-
-              }
-            });
-          } else {
-
-          }
-
-          // Count properties with and without photos
-          const propertiesWithPhotos = data.filter((p: any) => Array.isArray(p.photos) && p.photos.length > 0).length;
-          const propertiesWithoutPhotos = data.length - propertiesWithPhotos;
-
-
-          // Log full property data for first 3 properties to diagnose issues
-          if (data.length > 0) {
-
-            data.slice(0, 3).forEach((prop: any, index: number) => {
-
-
-
-
-
-
-
-
-
-              // Check for alternative field names
-              const altFields = [
-                'bedroomFrom', 'bedroomTo', 'bedroom',
-                'sizeFromM2', 'sizeToM2', 'sizeM2',
-                'priceFromUSD', 'priceUSD',
-              ];
-              altFields.forEach(field => {
-              });
-            });
-          }
-        }
-      }
-
-      // Apply client-side sorting as backup (in case server doesn't sort correctly)
-      // Always sort, even if server should have sorted (to ensure consistency)
-      const sortBy = filters?.sortBy || 'createdAt';
-      const sortOrder = filters?.sortOrder || 'DESC';
-
-      if (data.length > 0) {
-        // Create a stable copy for sorting
-        const sortedData = [...data];
-
-        sortedData.sort((a, b) => {
-          let aValue: number | string, bValue: number | string;
-
+      // ONLY sort if data is small (sanity check)
+      let finalData = normalizedData;
+      if (normalizedData.length < 500) {
+        finalData = [...normalizedData].sort((a, b) => {
+          let aVal: any, bVal: any;
           switch (sortBy) {
-            case 'name':
-              aValue = (a.name || '').toLowerCase();
-              bValue = (b.name || '').toLowerCase();
-              // String comparison
-              if (sortOrder === 'ASC') {
-                return aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
-              } else {
-                return aValue > bValue ? -1 : aValue < bValue ? 1 : 0;
-              }
-
             case 'price':
             case 'priceFrom':
-              // Use USD prices for comparison
-              // IMPORTANT: priceFrom/price may come as strings from API, need to convert to number
-              if (a.propertyType === 'off-plan') {
-                const priceFrom = a.priceFrom;
-                if (typeof priceFrom === 'number' && !isNaN(priceFrom)) {
-                  aValue = priceFrom;
-                } else if (typeof priceFrom === 'string') {
-                  aValue = parseFloat(priceFrom) || 0;
-                } else {
-                  aValue = 0;
-                }
-              } else {
-                const price = a.price;
-                if (typeof price === 'number' && !isNaN(price)) {
-                  aValue = price;
-                } else if (typeof price === 'string') {
-                  aValue = parseFloat(price) || 0;
-                } else {
-                  aValue = 0;
-                }
-              }
-
-              if (b.propertyType === 'off-plan') {
-                const priceFrom = b.priceFrom;
-                if (typeof priceFrom === 'number' && !isNaN(priceFrom)) {
-                  bValue = priceFrom;
-                } else if (typeof priceFrom === 'string') {
-                  bValue = parseFloat(priceFrom) || 0;
-                } else {
-                  bValue = 0;
-                }
-              } else {
-                const price = b.price;
-                if (typeof price === 'number' && !isNaN(price)) {
-                  bValue = price;
-                } else if (typeof price === 'string') {
-                  bValue = parseFloat(price) || 0;
-                } else {
-                  bValue = 0;
-                }
-              }
-
-              // Debug log for price sorting
-              if (process.env.NODE_ENV === 'development') {
-                const indexA = sortedData.indexOf(a);
-                const indexB = sortedData.indexOf(b);
-              }
+              aVal = a.propertyType === 'off-plan' ? (a.priceFrom || 0) : (a.price || 0);
+              bVal = b.propertyType === 'off-plan' ? (b.priceFrom || 0) : (b.price || 0);
               break;
-
             case 'size':
             case 'sizeFrom':
-              // Use m² for comparison
-              // IMPORTANT: sizeFrom/size may come as strings from API, need to convert to number
-              if (a.propertyType === 'off-plan') {
-                const sizeFrom = a.sizeFrom;
-                if (typeof sizeFrom === 'number' && !isNaN(sizeFrom)) {
-                  aValue = sizeFrom;
-                } else if (typeof sizeFrom === 'string') {
-                  aValue = parseFloat(sizeFrom) || 0;
-                } else {
-                  aValue = 0;
-                }
-              } else {
-                const size = a.size;
-                if (typeof size === 'number' && !isNaN(size)) {
-                  aValue = size;
-                } else if (typeof size === 'string') {
-                  aValue = parseFloat(size) || 0;
-                } else {
-                  aValue = 0;
-                }
-              }
-
-              if (b.propertyType === 'off-plan') {
-                const sizeFrom = b.sizeFrom;
-                if (typeof sizeFrom === 'number' && !isNaN(sizeFrom)) {
-                  bValue = sizeFrom;
-                } else if (typeof sizeFrom === 'string') {
-                  bValue = parseFloat(sizeFrom) || 0;
-                } else {
-                  bValue = 0;
-                }
-              } else {
-                const size = b.size;
-                if (typeof size === 'number' && !isNaN(size)) {
-                  bValue = size;
-                } else if (typeof size === 'string') {
-                  bValue = parseFloat(size) || 0;
-                } else {
-                  bValue = 0;
-                }
-              }
+              aVal = a.propertyType === 'off-plan' ? (a.sizeFrom || 0) : (a.size || 0);
+              bVal = b.propertyType === 'off-plan' ? (b.sizeFrom || 0) : (b.size || 0);
               break;
-
+            case 'name':
+              aVal = (a.name || '').toLowerCase();
+              bVal = (b.name || '').toLowerCase();
+              return sortOrder === 'ASC' ? (aVal < bVal ? -1 : 1) : (aVal > bVal ? -1 : 1);
             case 'createdAt':
-              aValue = new Date(a.createdAt || 0).getTime();
-              bValue = new Date(b.createdAt || 0).getTime();
-              break;
-
             default:
-              // Default to createdAt if sortBy is unknown
-              aValue = new Date(a.createdAt || 0).getTime();
-              bValue = new Date(b.createdAt || 0).getTime();
-              break;
-          }
-
-          // Handle null/undefined/NaN values for numeric comparisons
-          if (typeof aValue === 'number') {
-            if (isNaN(aValue) || aValue == null) aValue = 0;
-          }
-          if (typeof bValue === 'number') {
-            if (isNaN(bValue) || bValue == null) bValue = 0;
-          }
-
-          // Numeric comparison
-          if (sortOrder === 'ASC') {
-            return (aValue as number) - (bValue as number);
-          } else {
-            return (bValue as number) - (aValue as number);
-          }
-        });
-
-        // Replace the array
-        data = sortedData;
-      }
-
-      // Debug: log first few properties to verify sorting
-      // Return with total count
-      const result: GetPropertiesResult = {
-        properties: data,
-        total: totalCount || data.length,
-      };
-
-      // Cache the result
-      if (useCache) {
-        propertiesCache.set(cacheKey, {
-          result,
-          timestamp: Date.now(),
-        });
-        // Limit cache size (keep only last 10 entries)
-        if (propertiesCache.size > 10) {
-          const firstKey = propertiesCache.keys().next().value;
-          if (firstKey) {
-            propertiesCache.delete(firstKey);
-          }
-        }
-      }
-
-      return result;
-    } catch (error: any) {
-      // ✅ FALLBACK RE-ENABLED: If /api/properties fails, use /api/public/data
-      // This helps when the primary endpoint has auth issues but public data works
-      console.warn(`Failed to load from /api/properties (${error.response?.status}), falling back to /api/public/data...`);
-
-      try {
-        const publicData = await getPublicData();
-        let properties = publicData.properties || [];
-
-        // Apply client-side filtering if filters are provided
-        if (filters) {
-          properties = properties.filter(p => {
-            // Property Type
-            if (filters.propertyType && p.propertyType !== filters.propertyType) return false;
-
-            // Search
-            if (filters.search) {
-              const search = filters.search.toLowerCase();
-              const nameMatch = p.name && p.name.toLowerCase().includes(search);
-              const descMatch = p.description && p.description.toLowerCase().includes(search);
-              if (!nameMatch && !descMatch) return false;
-            }
-
-            // City
-            if (filters.cityId && p.city?.id !== filters.cityId) return false;
-
-            // Area
-            const currentAreaId = (p.area && typeof p.area === 'object') ? p.area.id : null;
-            if (filters.areaId && currentAreaId !== filters.areaId) return false;
-            if (filters.areaIds && filters.areaIds.length > 0 && (!currentAreaId || !filters.areaIds.includes(currentAreaId))) return false;
-
-            // Developer
-            if (filters.developerId && p.developer?.id !== filters.developerId) return false;
-
-            // Bedrooms
-            if (filters.bedrooms) {
-              const beds = filters.bedrooms.split(',').map(b => parseInt(b.trim(), 10));
-              if (p.propertyType === 'off-plan') {
-                const pFrom = p.bedroomsFrom || 0;
-                const pTo = p.bedroomsTo || 0;
-                if (!beds.some(b => b >= pFrom && b <= pTo)) return false;
-              } else {
-                if (!beds.includes(p.bedrooms || 0)) return false;
-              }
-            }
-
-            // Price (USD)
-            if (filters.priceFrom) {
-              const val = typeof filters.priceFrom === 'string' ? parseFloat(filters.priceFrom) : filters.priceFrom;
-              const pPrice = p.propertyType === 'off-plan' ? (p.priceFrom || 0) : (p.price || 0);
-              if (pPrice < val) return false;
-            }
-            if (filters.priceTo) {
-              const val = typeof filters.priceTo === 'string' ? parseFloat(filters.priceTo) : filters.priceTo;
-              const pPrice = p.propertyType === 'off-plan' ? (p.priceFrom || 0) : (p.price || 0);
-              if (pPrice > val) return false;
-            }
-
-            // Size
-            if (filters.sizeFrom) {
-              const pSize = p.propertyType === 'off-plan' ? (p.sizeFrom || 0) : (p.size || 0);
-              if (pSize < filters.sizeFrom) return false;
-            }
-            if (filters.sizeTo) {
-              const pSize = p.propertyType === 'off-plan' ? (p.sizeFrom || 0) : (p.size || 0);
-              if (pSize > filters.sizeTo) return false;
-            }
-
-            // isForYouChoice
-            if (filters.isForYouChoice && !p.isForYouChoice) return false;
-
-            return true;
-          });
-        }
-
-        // Sorting (logic is similar to the one above)
-        const sortBy = filters?.sortBy || 'createdAt';
-        const sortOrder = filters?.sortOrder || 'DESC';
-
-        properties.sort((a, b) => {
-          let aVal: any, bVal: any;
-          if (sortBy === 'name') {
-            aVal = (a.name || '').toLowerCase();
-            bVal = (b.name || '').toLowerCase();
-            return sortOrder === 'ASC' ? (aVal < bVal ? -1 : 1) : (aVal > bVal ? -1 : 1);
-          } else if (sortBy === 'price' || sortBy === 'priceFrom') {
-            aVal = a.propertyType === 'off-plan' ? (a.priceFrom || 0) : (a.price || 0);
-            bVal = b.propertyType === 'off-plan' ? (b.priceFrom || 0) : (b.price || 0);
-          } else if (sortBy === 'size' || sortBy === 'sizeFrom') {
-            aVal = a.propertyType === 'off-plan' ? (a.sizeFrom || 0) : (a.size || 0);
-            bVal = b.propertyType === 'off-plan' ? (b.sizeFrom || 0) : (b.size || 0);
-          } else {
-            aVal = new Date(a.createdAt || 0).getTime();
-            bVal = new Date(b.createdAt || 0).getTime();
+              aVal = new Date(a.createdAt || 0).getTime();
+              bVal = new Date(b.createdAt || 0).getTime();
           }
           return sortOrder === 'ASC' ? aVal - bVal : bVal - aVal;
         });
-
-        const total = properties.length;
-        const page = filters?.page || 1;
-        const limit = filters?.limit || 36;
-        const paginatedProps = properties.slice((page - 1) * limit, page * limit);
-
-        return {
-          properties: paginatedProps.map(p => normalizeProperty(p)),
-          total
-        };
-      } catch (fallbackError) {
-        console.error('Fallback to public data also failed:', fallbackError);
-        throw new Error(`Failed to load properties: ${error.message || 'Unknown error'}`);
+      } else {
+        console.warn(`[API] getProperties returned too many results (${normalizedData.length}), skipping client-side sort`);
+        // Limit to 100 for safety if somehow we got 24k
+        finalData = normalizedData.slice(0, 100);
       }
+
+      const result = { properties: finalData, total: totalCount || normalizedData.length };
+      if (useCache) propertiesCache.set(cacheKey, { result, timestamp: Date.now() });
+      return result;
+    } catch (error: any) {
+      console.error('[API] getProperties error:', error.message);
+      // Return empty result instead of trying to load and filter 24k properties in browser memory
+      return { properties: [], total: 0 };
     }
   } catch (error: any) {
-
-    if (error.response) {
-
-
-
-
-      // Check if the error message gives us a hint
-    }
+    console.error('[API] getProperties failed completely:', error);
     throw error;
   }
 }
 
-/**
- * Get single property by ID
- */
 export async function getProperty(id: string): Promise<Property> {
+  const startTime = Date.now();
   try {
-    const response = await apiClient.get<ApiResponse<Property>>(`/properties/${id}`);
-    let property = response.data.data;
+    // Try the new dedicated public detail endpoint
+    const response = await apiClient.get<ApiResponse<Property>>(`/public/properties/${id}`);
 
-    // Normalize property data (same as in getProperties)
-    property = normalizeProperty(property);
-
-    return property;
-  } catch (error: any) {
-    // If 403 or 401, try to get from public data endpoint
-    if (error.response?.status === 403 || error.response?.status === 401) {
-
-
-      try {
-        // Get all data from public endpoint
-        const publicData = await getPublicData();
-
-        if (publicData.properties && Array.isArray(publicData.properties)) {
-          let property = publicData.properties.find(p => p.id === id);
-
-          if (property) {
-            // Normalize property data
-            property = normalizeProperty(property);
-
-            return property;
-          } else {
-            throw new Error('Property not found in public data');
-          }
-        } else {
-          throw new Error('Properties not found in public data structure');
-        }
-      } catch (publicDataError: any) {
-
-        throw new Error(`Property not found: ${publicDataError.message || 'Unknown error'}`);
-      }
+    if (response.data && response.data.success && response.data.data) {
+      const took = Date.now() - startTime;
+      if (took > 500) console.log(`[API] getProperty(${id}) public detail took ${took}ms`);
+      return normalizeProperty(response.data.data);
     }
 
-    // For other errors, log and rethrow
+    // If response returned but marked as failure, throw to trigger fallback
+    throw new Error(response.data?.message || 'Property fetch failed');
+  } catch (error: any) {
+    console.error(`[API] Failed to fetch full property ${id} (${Date.now() - startTime}ms):`, error.message);
+
+    // Fallback 1: Try the summary endpoint (more robust against column errors)
+    try {
+      const summaryStart = Date.now();
+      const summaryResponse = await apiClient.get<ApiResponse<Property>>(`/public/properties/${id}/summary`);
+      if (summaryResponse.data && summaryResponse.data.data) {
+        console.log(`[API] Fallback to summary for property ${id} took ${Date.now() - summaryStart}ms`);
+        return normalizeProperty(summaryResponse.data.data);
+      }
+    } catch (summaryError) {
+      // Continue to next fallback
+    }
+
+    // Fallback 2: Legacy endpoint
+    try {
+      const legacyStart = Date.now();
+      const legacyResponse = await apiClient.get<ApiResponse<Property>>(`/properties/${id}`);
+      if (legacyResponse.data && legacyResponse.data.data) {
+        console.log(`[API] Fallback to legacy for property ${id} took ${Date.now() - legacyStart}ms`);
+        return normalizeProperty(legacyResponse.data.data);
+      }
+    } catch (legacyError) { }
 
     throw error;
   }
@@ -1107,8 +542,52 @@ export async function getPropertySummary(id: string): Promise<Property> {
 }
 
 
+const MEDIA_BASE_URL = 'https://admin.foryou-realestate.com';
+const ensureAbsoluteUrl = (url: any) => {
+  if (typeof url !== 'string' || !url) return '';
+  if (url.startsWith('http')) return url;
+  if (url.startsWith('/')) return `${MEDIA_BASE_URL}${url}`;
+  if (url.startsWith('storage/')) return `${MEDIA_BASE_URL}/${url}`;
+  return url;
+};
+
 // Helper function to normalize property data
-function normalizeProperty(property: any): Property {
+export function normalizeProperty(property: any): Property {
+  if (!property) return {} as Property;
+
+  // Ensure basic fields exist
+  if (!property.name) {
+    property.name = property.nameEn || property.nameRu || 'Property';
+  }
+
+  if (!property.propertyType) {
+    property.propertyType = 'off-plan'; // Default fallback
+  }
+
+  // Ensure slug exists - Backend should provide it, but fallback just in case
+  if (!property.slug || property.slug.endsWith('-foryou-realestate')) {
+    // New slug format: /new-{name}-{id} or /used-{name}-{id}
+    const typePrefix = property.propertyType === 'secondary' ? 'used' : 'new';
+
+    // Clean name logic similar to backend
+    const cleanName = (property.name || 'property')
+      .toLowerCase()
+      .trim()
+      .replace(/[^\w\s-]/g, '')
+      .replace(/[\s_-]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+
+    // Use first 4 chars of ID if available
+    const shortId = property.id ? property.id.substring(0, 4) : '0000';
+
+    property.slug = `${typePrefix}-${cleanName}-${shortId}`;
+  }
+
+  // Ensure facilities is always an array
+  if (!property.facilities) {
+    property.facilities = [];
+  }
+
   // Normalize numeric fields - ensure they are numbers, not strings
   if (property.bedroomsFrom !== null && property.bedroomsFrom !== undefined) {
     property.bedroomsFrom = typeof property.bedroomsFrom === 'string' ? parseInt(property.bedroomsFrom, 10) : property.bedroomsFrom;
@@ -1186,33 +665,147 @@ function normalizeProperty(property: any): Property {
     }
   }
 
-  // Normalize photos array
-  // If photos is missing, try images (summary endpoint uses 'images' field)
+  // Ensure area has a slug if it's an object
+  if (property.area && typeof property.area === 'object' && !property.area.slug) {
+    property.area.slug = (property.area.nameEn || '')
+      .toLowerCase()
+      .trim()
+      .replace(/[^\w\s-]/g, '')
+      .replace(/[\s_-]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+  }
+
+  // Initial fallback if photos is missing/empty
   if (!property.photos || (Array.isArray(property.photos) && property.photos.length === 0)) {
-    if (property.images && Array.isArray(property.images) && property.images.length > 0) {
-      if (typeof property.images[0] === 'string') {
-        property.photos = property.images;
-      } else if (typeof property.images[0] === 'object' && property.images[0].small) {
-        property.photos = property.images.map((img: any) => img.small);
+    const altPhotos = property.images || property.image || property.imageUrl || property.gallery;
+    if (Array.isArray(altPhotos) && altPhotos.length > 0) {
+      if (typeof altPhotos[0] === 'string') {
+        property.photos = altPhotos;
+      } else if (typeof altPhotos[0] === 'object') {
+        property.photos = altPhotos.map((p: any) => p.small || p.url || p.full);
+      }
+    } else if (typeof altPhotos === 'string' && altPhotos.length > 0) {
+      property.photos = [altPhotos];
+    }
+  }
+
+  // Handle new area string format "Area, City"
+  if (typeof property.area === 'string' && property.area.includes(',')) {
+    // Keep it as string, transformer will split it
+  } else if (property.area && typeof property.area === 'object') {
+    // Ensure object has required name fields
+    property.area.nameEn = property.area.nameEn || property.area.name || 'Unknown Area';
+    property.area.nameRu = property.area.nameRu || property.area.nameEn || 'Неизвестный район';
+  } else if (!property.area) {
+    property.area = { id: '', nameEn: '', nameRu: '' };
+  }
+
+  // Ensure city is an object
+  if (property.city && typeof property.city === 'object') {
+    property.city.nameEn = property.city.nameEn || property.city.name || 'Dubai';
+    property.city.nameRu = property.city.nameRu || property.city.nameEn || 'Дубай';
+  } else if (typeof property.city === 'string') {
+    property.city = { id: property.city, nameEn: 'Dubai', nameRu: 'Дубай' };
+  } else if (!property.city) {
+    property.city = { id: '', nameEn: '', nameRu: '' };
+  }
+
+  // Ensure developer has logo
+  if (property.developer && typeof property.developer === 'object') {
+    if (!property.developer.logo && property.developer.logoEn) {
+      property.developer.logo = property.developer.logoEn;
+    }
+  }
+
+  // 1. Normalize photos field first
+  let rawPhotos: any[] = [];
+  if (Array.isArray(property.photos) && property.photos.length > 0) {
+    rawPhotos = property.photos;
+  } else if (typeof property.photos === 'string' && property.photos.length > 0) {
+    try {
+      const parsed = JSON.parse(property.photos);
+      rawPhotos = Array.isArray(parsed) ? parsed : [property.photos];
+    } catch {
+      rawPhotos = [property.photos];
+    }
+  } else {
+    // Try alternative fields one last time
+    const altPhotosFiltered = [
+      property.images,
+      property.image,
+      property.imageUrl,
+      property.gallery,
+      property.mainImage,
+      property.thumbnail
+    ].filter(Boolean);
+
+    if (altPhotosFiltered.length > 0) {
+      const firstAlt = altPhotosFiltered[0];
+      if (Array.isArray(firstAlt) && firstAlt.length > 0) {
+        rawPhotos = firstAlt;
+      } else if (typeof firstAlt === 'string' && firstAlt.length > 0) {
+        rawPhotos = [firstAlt];
       }
     }
   }
 
-  if (!property.photos) {
-    property.photos = [];
-  } else if (typeof property.photos === 'string') {
-    try {
-      const parsed = JSON.parse(property.photos);
-      property.photos = Array.isArray(parsed) ? parsed : [property.photos];
-    } catch {
-      property.photos = [property.photos];
-    }
-    property.photos = property.photos.filter((photo: any) => {
-      return photo && typeof photo === 'string' && photo.trim().length > 0;
+  // Map to absolute URLs and cleanup
+  property.photos = rawPhotos
+    .map(p => {
+      if (typeof p === 'string') return p;
+      if (p && typeof p === 'object') return (p.full || p.small || p.url || p.link || p.original);
+      return null;
+    })
+    .map(ensureAbsoluteUrl)
+    .filter(Boolean);
+
+  // 2. Ensure images is always an array and populated
+  if (!property.images || !Array.isArray(property.images) || property.images.length === 0) {
+    property.images = property.photos.map((url: string) => ({
+      small: url,
+      full: url
+    }));
+  } else {
+    // Also ensure URLs in existing images are absolute
+    property.images = property.images.map((img: any) => {
+      if (typeof img === 'string') {
+        return {
+          small: ensureAbsoluteUrl(img),
+          full: ensureAbsoluteUrl(img)
+        };
+      }
+      return {
+        small: ensureAbsoluteUrl(img?.small || img?.url || img?.link || ''),
+        full: ensureAbsoluteUrl(img?.full || img?.url || img?.link || '')
+      };
     });
-  } else if (!Array.isArray(property.photos)) {
-    property.photos = [];
   }
+
+  // FORCE WEBP: Backend converted images to webp but database might still have old extensions
+  // Only applies to off-plan properties as per recent changes (135.181.201.185)
+  if (property.propertyType === 'off-plan') {
+    const replaceExtension = (url: string) => {
+      if (typeof url !== 'string') return url;
+      return url.replace(/\.(jpg|jpeg|png)(?=\?|$)/i, '.webp');
+    };
+
+    if (Array.isArray(property.photos)) {
+      property.photos = property.photos.map(replaceExtension);
+    }
+
+    if (Array.isArray(property.images)) {
+      property.images = property.images.map((img: any) => {
+        if (!img) return img;
+        return {
+          ...img,
+          small: replaceExtension(img.small),
+          full: replaceExtension(img.full)
+        };
+      });
+    }
+  }
+
+
 
   // Normalize units if they exist
   if (property.units && Array.isArray(property.units)) {
@@ -1282,9 +875,9 @@ export async function getPublicData(forceRefresh = false): Promise<PublicData> {
   }
 
   try {
-    // Use longer timeout for /public/data as it can be very large (26K+ properties)
+    // Timeout reduced as properties are no longer bundled
     const response = await apiClient.get<ApiResponse<PublicData>>('/public/data', {
-      timeout: 120000, // 2 minutes timeout for large data
+      timeout: 30000, // 30 seconds
     });
     const data = response.data.data;
 
@@ -1348,10 +941,20 @@ export function clearAllCaches(): void {
 /**
  * Get simple list of areas (ID and name only)
  */
-export async function getAreasSimple(): Promise<Array<{ id: string; nameEn: string; nameRu: string; nameAr: string; cityId: string }>> {
+export async function getAreasSimple(): Promise<Array<{ id: string; nameEn: string; nameRu: string; nameAr: string; cityId: string; slug: string }>> {
   try {
     const response = await apiClient.get<ApiResponse<any[]>>('/public/areas-simple');
-    return response.data.data;
+    const data = response.data.data || [];
+
+    return data.map((area: any) => ({
+      ...area,
+      slug: area.slug || (area.nameEn || '')
+        .toLowerCase()
+        .trim()
+        .replace(/[^\w\s-]/g, '')
+        .replace(/[\s_-]+/g, '-')
+        .replace(/^-+|-+$/g, '')
+    }));
   } catch (error) {
     console.error('Failed to fetch simple areas', error);
     return [];
@@ -1411,6 +1014,7 @@ export async function submitInvestment(data: InvestmentRequest): Promise<Investm
  */
 export interface Area {
   id: string;
+  slug: string;
   nameEn: string;
   nameRu: string;
   nameAr: string;
@@ -1446,6 +1050,20 @@ export interface Area {
 }
 
 /**
+ * Featured Area interface from the new optimized endpoint
+ */
+export interface FeaturedArea {
+  id: string;
+  slug: string | null;
+  nameEn: string;
+  nameRu: string;
+  mainImage: string | null;
+  propertiesCount: number;
+  isFeatured: boolean;
+  priority: number;
+}
+
+/**
  * Get all areas
  * Falls back to /public/data if /public/areas is not available
  */
@@ -1463,6 +1081,19 @@ export function clearAreasCache(): void {
   areasCache.clear();
 }
 
+/**
+ * Get featured areas for home page using optimized endpoint
+ */
+export async function getFeaturedAreas(): Promise<FeaturedArea[]> {
+  try {
+    const response = await apiClient.get<ApiResponse<FeaturedArea[]>>('/public/featured-areas');
+    return response.data.data;
+  } catch (error) {
+    console.error('Failed to fetch featured areas', error);
+    return [];
+  }
+}
+
 export async function getAreas(cityId?: string, useCache: boolean = true): Promise<Area[]> {
   try {
     const cacheKey = cityId || 'all';
@@ -1475,150 +1106,67 @@ export async function getAreas(cityId?: string, useCache: boolean = true): Promi
       }
     }
 
-    const params = cityId ? { cityId } : {};
+    const params = {
+      limit: 100,
+      ...(cityId ? { cityId } : {})
+    };
     const url = '/public/areas';
 
-    const response = await apiClient.get<ApiResponse<Area[]>>(url, { params });
-    let areas = response.data.data;
+    const response = await apiClient.get<ApiResponse<any>>(url, { params });
 
-    // Log only image-related info
-    if (process.env.NODE_ENV === 'development') {
-      const areasWithImages = areas.filter(a => a.images && Array.isArray(a.images) && a.images.length > 0).length;
+    let rawAreas: any[] = [];
 
-    }
-
-    // If most areas don't have images, try to get them from properties
-    const areasWithoutImages = areas.filter(a => !a.images || !Array.isArray(a.images) || a.images.length === 0);
-    if (areasWithoutImages.length > areas.length * 0.8) { // If more than 80% don't have images
-      try {
-        // Load properties to get area images - use reasonable limit for performance
-        const result = await getProperties({ limit: 1000 }, true); // Reduced to 1000 for better performance
-        const properties = result.properties || [];
-
-        // Build area name to ID map with multiple variations
-        const areaNameToIdMap = new Map<string, string>();
-        areas.forEach(area => {
-          const nameLower = area.nameEn.toLowerCase().trim();
-          areaNameToIdMap.set(nameLower, area.id);
-
-          // Also add variations without "Dubai, " prefix
-          const nameWithoutDubai = nameLower.replace(/^dubai,\s*/, '').trim();
-          if (nameWithoutDubai !== nameLower) {
-            areaNameToIdMap.set(nameWithoutDubai, area.id);
-          }
-
-          // Add variation with "Dubai, " prefix
-          if (!nameLower.startsWith('dubai,')) {
-            areaNameToIdMap.set(`dubai, ${nameLower}`, area.id);
-          }
-        });
-
-        // Group properties by area and get first image
-        const areaImagesMap = new Map<string, string>();
-        const areaPropertiesCount = new Map<string, number>();
-
-        properties.forEach(property => {
-          if (property.photos && property.photos.length > 0) {
-            let areaId: string | null = null;
-            let matchedAreaName = '';
-
-            if (typeof property.area === 'string') {
-              // Off-plan: area is "areaName, cityName"
-              const areaName = property.area.split(',')[0].trim();
-              const areaNameLower = areaName.toLowerCase();
-
-              // Try direct lookup
-              areaId = areaNameToIdMap.get(areaNameLower) || null;
-
-              if (!areaId) {
-                // Try to find by matching
-                const area = areas.find(a => {
-                  const aNameLower = a.nameEn.toLowerCase().trim();
-                  const aNameNoDubai = aNameLower.replace(/^dubai,\s*/, '').trim();
-                  return aNameLower === areaNameLower ||
-                    aNameNoDubai === areaNameLower ||
-                    aNameLower.includes(areaNameLower) ||
-                    areaNameLower.includes(aNameNoDubai);
-                });
-                areaId = area?.id || null;
-                matchedAreaName = area?.nameEn || '';
-              } else {
-                const area = areas.find(a => a.id === areaId);
-                matchedAreaName = area?.nameEn || '';
-              }
-            } else if (property.area && typeof property.area === 'object') {
-              // Secondary: area is an object
-              areaId = property.area.id;
-              matchedAreaName = property.area.nameEn || '';
-
-              // Also try to match by name (for cases where area.nameEn has "Dubai, " prefix)
-              if (!areaId && property.area.nameEn) {
-                const propertyAreaName = property.area.nameEn;
-                const areaNameWithoutPrefix = propertyAreaName.replace(/^Dubai,\s*/i, '').trim();
-
-                // Try exact match first
-                let matchedArea = areas.find(a =>
-                  a.nameEn.toLowerCase() === propertyAreaName.toLowerCase() ||
-                  a.nameEn.toLowerCase() === areaNameWithoutPrefix.toLowerCase()
-                );
-
-                // If no exact match, try partial match
-                if (!matchedArea) {
-                  matchedArea = areas.find(a => {
-                    const aNameLower = a.nameEn.toLowerCase();
-                    const propNameLower = propertyAreaName.toLowerCase();
-                    const propNameNoPrefix = areaNameWithoutPrefix.toLowerCase();
-
-                    return aNameLower.includes(propNameNoPrefix) ||
-                      propNameNoPrefix.includes(aNameLower) ||
-                      aNameLower.includes(propNameLower) ||
-                      propNameLower.includes(aNameLower);
-                  });
-                }
-
-                if (matchedArea) {
-                  areaId = matchedArea.id;
-                  matchedAreaName = matchedArea.nameEn;
-                }
-              }
-            }
-
-            if (areaId) {
-              // Count properties per area
-              areaPropertiesCount.set(areaId, (areaPropertiesCount.get(areaId) || 0) + 1);
-
-              // Only set image if we don't have one yet (first property wins)
-              if (!areaImagesMap.has(areaId)) {
-                areaImagesMap.set(areaId, property.photos[0]);
-              }
-            }
-          }
-        });
-
-        if (process.env.NODE_ENV === 'development') {
-          const areasWithoutImages = areas.filter(a => !a.images || !Array.isArray(a.images) || a.images.length === 0);
-          const areasGettingImagesFromProperties = areasWithoutImages.filter(a => areaImagesMap.has(a.id)).length;
-        }
-
-        // Add images to areas that don't have them
-        let imagesAdded = 0;
-        areas = areas.map(area => {
-          if ((!area.images || !Array.isArray(area.images) || area.images.length === 0) && areaImagesMap.has(area.id)) {
-            imagesAdded++;
-            return {
-              ...area,
-              images: [areaImagesMap.get(area.id)!]
-            };
-          }
-          return area;
-        });
-
-      } catch (propError: any) {
+    // Handle the new response structure: { success: true, data: { data: [...], meta: {...} } }
+    if (response.data && response.data.success) {
+      if (response.data.data && Array.isArray(response.data.data.data)) {
+        rawAreas = response.data.data.data;
+      } else if (Array.isArray(response.data.data)) {
+        rawAreas = response.data.data;
+      } else if (Array.isArray(response.data)) {
+        rawAreas = response.data;
       }
     }
 
+    let areas: Area[] = rawAreas.map(item => {
+      // Prioritize mainImage from admin, then fallback to images array
+      let areaImages: string[] = [];
+      if (item.mainImage) {
+        areaImages.push(item.mainImage);
+      }
+      if (Array.isArray(item.images)) {
+        item.images.forEach((img: string) => {
+          if (img && img !== item.mainImage) areaImages.push(img);
+        });
+      }
+
+      return {
+        id: item.id,
+        nameEn: item.nameEn,
+        nameRu: item.nameRu,
+        nameAr: item.nameAr || item.nameEn,
+        cityId: item.cityId || (item.city?.id) || '',
+        city: item.city || {
+          id: '', nameEn: '', nameRu: '', nameAr: '', countryId: '', country: null
+        },
+        projectsCount: item.projectsCount || { total: 0, offPlan: 0, secondary: 0 },
+        description: item.description || (item.descriptionEn ? { title: item.nameEn, description: item.descriptionEn } : null),
+        infrastructure: item.infrastructure || null,
+        images: areaImages.length > 0 ? areaImages.map(ensureAbsoluteUrl) : null,
+        slug: item.slug
+      };
+    });
+
+    // FORCE WEBP: Backend converted images to webp but database might still have old extensions
+    areas = areas.map(area => {
+      if (!area) return area;
+      if (area.images && Array.isArray(area.images)) {
+        area.images = area.images.map((img: any) => typeof img === 'string' ? img.replace(/\.(jpg|jpeg|png)$/i, '.webp') : img);
+      }
+      return area;
+    });
+
     // Cache the result
-    if (useCache) {
+    if (useCache && areas.length > 0) {
       areasCache.set(cacheKey, {
         areas,
         timestamp: Date.now(),
@@ -1632,273 +1180,40 @@ export async function getAreas(cityId?: string, useCache: boolean = true): Promi
           areasCache.delete(firstKey);
         }
       }
-
     }
 
     return areas;
   } catch (error: any) {
-    // If 404, fallback to /public/data
+    console.error('[API] getAreas error:', error.message);
     if (error.response?.status === 404) {
       try {
-        // Get areas from public data
         const publicData = await getPublicData(true);
-        const areasFromData = publicData.areas || [];
-
-        if (process.env.NODE_ENV === 'development') {
-          // Check how many areas already have images from /public/data
-          // Note: Areas from /public/data don't have images field in the type, but might have it in actual data
-          const areasWithImagesFromData = areasFromData.filter(a => (a as any).images && Array.isArray((a as any).images) && (a as any).images.length > 0);
-
-
-
-        }
-
-        // Try to get properties ONLY if we need images (not for counts - counts should come from backend)
-        let properties: Property[] = [];
-        const areasWithoutImages = areasFromData.filter(a => !(a as any).images || !Array.isArray((a as any).images) || (a as any).images.length === 0);
-
-        if (areasWithoutImages.length > 0) {
-          try {
-            // Load only a limited number of properties for images (not all 26K!)
-            // Use limit to avoid loading all secondary properties
-            const result = await getProperties({ limit: 1000 });
-            properties = result.properties || [];
-
-          } catch (propError: any) {
-            // If properties fail, continue without images
-          }
-        } else {
-        }
-
-        // Get best property image for each area
-        // Use the first property with photos for each area
-        const areaImagesMap = new Map<string, string>();
-        const areaPropertiesMap = new Map<string, Property[]>();
-        const areaNameToIdMap = new Map<string, string>(); // For faster lookup by name
-
-        // Build name to ID map
-        areasFromData.forEach(area => {
-          areaNameToIdMap.set(area.nameEn.toLowerCase(), area.id);
-        });
-
-        let matchedCount = 0;
-        let unmatchedCount = 0;
-        const unmatchedAreaNames = new Set<string>();
-
-        // Group properties by area using improved matching
-        properties.forEach(property => {
-          if (property.photos && property.photos.length > 0) {
-            let areaId: string | null = null;
-            if (typeof property.area === 'string') {
-              // Off-plan: area is "areaName, cityName"
-              const areaName = property.area.split(',')[0].trim();
-
-              // Try multiple matching strategies (same as main logic)
-              // 1. Exact lowercase match
-              areaId = areaNameToIdMap.get(areaName.toLowerCase()) || null;
-
-              // 2. Try exact match (case-sensitive)
-              if (!areaId) {
-                const area = areasFromData.find(a => a.nameEn === areaName);
-                areaId = area?.id || null;
-              }
-
-              // 3. Try case-insensitive match
-              if (!areaId) {
-                const area = areasFromData.find(a => a.nameEn.toLowerCase() === areaName.toLowerCase());
-                areaId = area?.id || null;
-              }
-
-              // 4. Try partial match
-              if (!areaId) {
-                const area = areasFromData.find(a =>
-                  a.nameEn.toLowerCase().includes(areaName.toLowerCase()) ||
-                  areaName.toLowerCase().includes(a.nameEn.toLowerCase())
-                );
-                areaId = area?.id || null;
-              }
-
-              // 5. Try removing "Area" prefix
-              if (!areaId) {
-                const normalizedName = areaName.replace(/^Area\s+/i, '').trim();
-                areaId = areaNameToIdMap.get(normalizedName.toLowerCase()) || null;
-                if (!areaId) {
-                  const area = areasFromData.find(a =>
-                    a.nameEn.toLowerCase() === normalizedName.toLowerCase() ||
-                    a.nameEn.toLowerCase().replace(/^area\s+/, '') === normalizedName.toLowerCase()
-                  );
-                  areaId = area?.id || null;
-                }
-              }
-
-              if (!areaId) {
-                unmatchedAreaNames.add(areaName);
-                if (process.env.NODE_ENV === 'development' && unmatchedCount < 5) {
-
-                  unmatchedCount++;
-                }
-              }
-            } else if (typeof property.area === 'object' && property.area !== null) {
-              // Secondary: area is an object
-              areaId = property.area.id || null;
-
-              // Also try to match by name if ID doesn't match
-              if (!areaId && property.area && typeof property.area === 'object' && property.area.nameEn) {
-                const areaName = property.area.nameEn;
-                const areaByName = areasFromData.find(a =>
-                  a.nameEn === areaName ||
-                  a.nameEn.toLowerCase() === areaName.toLowerCase()
-                );
-                areaId = areaByName?.id || null;
-              }
-            }
-
-            if (areaId) {
-              if (!areaPropertiesMap.has(areaId)) {
-                areaPropertiesMap.set(areaId, []);
-              }
-              areaPropertiesMap.get(areaId)!.push(property);
-
-              // Use first property's first photo for the area
-              if (!areaImagesMap.has(areaId)) {
-                areaImagesMap.set(areaId, property.photos[0]);
-                matchedCount++;
-                if (process.env.NODE_ENV === 'development' && matchedCount <= 10) {
-                  const area = areasFromData.find(a => a.id === areaId);
-
-                }
-              }
-            }
-          }
-        });
-
-        if (process.env.NODE_ENV === 'development') {
-
-        }
-
-        // Calculate projectsCount for each area
-        // NOTE: This is a fallback - ideally backend should provide counts
-        // We only use loaded properties (limited to 1000) for counts, which may be inaccurate
-        const areasWithCounts: Area[] = areasFromData.map(area => {
-          // Use cached properties if available, otherwise filter
-          let areaProperties: Property[] = [];
-          if (areaPropertiesMap.has(area.id)) {
-            areaProperties = areaPropertiesMap.get(area.id)!;
-          } else {
-            // Only filter if we have properties loaded (limited set)
-            if (properties.length > 0) {
-              areaProperties = properties.filter(p => {
-                if (typeof p.area === 'string') {
-                  // Off-plan: area is "areaName, cityName"
-                  const areaName = p.area.split(',')[0].trim();
-                  return areaName === area.nameEn;
-                } else {
-                  // Secondary: area is an object
-                  return p.area?.id === area.id;
-                }
-              });
-            }
-          }
-
-          // Counts are approximate since we only loaded 1000 properties
-          const offPlanCount = areaProperties.filter(p => p.propertyType === 'off-plan').length;
-          const secondaryCount = areaProperties.filter(p => p.propertyType === 'secondary').length;
-
-          // If we have limited properties, counts may be inaccurate
-          // Set to 0 if we don't have enough data to be confident
-          const totalCount = properties.length < 100 ? 0 : areaProperties.length;
-
-          // Get image - FIRST check if area already has images from /public/data
-          let areaImages: string[] | null = null;
-
-          // Priority 1: Use images from /public/data if available
-          const areaImagesFromData = (area as any).images;
-          if (areaImagesFromData && Array.isArray(areaImagesFromData) && areaImagesFromData.length > 0) {
-            areaImages = areaImagesFromData;
-          }
-          // Priority 2: Use images from properties (areaImagesMap)
-          else if (areaImagesMap.has(area.id)) {
-            areaImages = [areaImagesMap.get(area.id)!];
-          }
-          // Priority 3: Try to find from areaProperties
-          else if (areaProperties.length > 0) {
-            const propertyWithPhoto = areaProperties.find(p => p.photos && p.photos.length > 0);
-            if (propertyWithPhoto && propertyWithPhoto.photos) {
-              areaImages = [propertyWithPhoto.photos[0]];
-            }
-          }
-
-          return {
-            id: area.id,
-            nameEn: area.nameEn,
-            nameRu: area.nameRu,
-            nameAr: area.nameAr,
-            cityId: area.cityId,
-            city: (() => {
-              const city = publicData.cities.find(c => c.id === area.cityId);
-              const country = city ? publicData.countries.find(c => c.id === city.countryId) : null;
-              return {
-                id: city?.id || '',
-                nameEn: city?.nameEn || '',
-                nameRu: city?.nameRu || '',
-                nameAr: city?.nameAr || '',
-                countryId: city?.countryId || '',
-                country: country ? {
-                  id: country.id,
-                  nameEn: country.nameEn,
-                  nameRu: country.nameRu,
-                  nameAr: country.nameAr,
-                  code: country.code,
-                } : null,
-              };
-            })(),
-            projectsCount: {
-              total: totalCount,
-              offPlan: offPlanCount,
-              secondary: secondaryCount,
-            },
-            description: (area as any).description || null,
-            infrastructure: (area as any).infrastructure || null,
-            images: areaImages,
-          };
-        });
-
-        // Filter by cityId if provided
-        const filteredAreas = cityId
-          ? areasWithCounts.filter(a => a.cityId === cityId)
-          : areasWithCounts;
-
-        return filteredAreas;
-      } catch (fallbackError: any) {
-
-        throw fallbackError;
+        return (publicData.areas || []) as any;
+      } catch (dataError) {
+        return [];
       }
     }
-
-    // For other errors, throw as usual
-
-    throw error;
+    return [];
   }
 }
 
-/**
- * Get area by ID
- */
 export async function getAreaById(areaIdOrSlug: string): Promise<Area | null> {
   try {
     const areas = await getAreas();
-    // Try to find by ID first
-    let area = areas.find(a => a.id === areaIdOrSlug);
+    // Try to find by slug first
+    let area = areas.find(a => a.slug === areaIdOrSlug);
 
-    // If not found by ID, try to find by slug (nameEn converted to slug)
+    // If not found by slug, try to find by ID
     if (!area) {
-      const slug = areaIdOrSlug.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+      area = areas.find(a => a.id === areaIdOrSlug);
+    }
+
+    // If still not found, try to find by comparing normalized nameEn as a last resort fallback
+    if (!area) {
+      const targetSlug = areaIdOrSlug.toLowerCase().trim();
       area = areas.find(a => {
-        const areaSlug = (a.nameEn || '')
-          .toLowerCase()
-          .replace(/\s+/g, '-')
-          .replace(/[^a-z0-9-]/g, '');
-        return areaSlug === slug || a.id === areaIdOrSlug;
+        const areaSlug = (a.slug || (a.nameEn || '').toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''));
+        return areaSlug === targetSlug;
       });
     }
 
@@ -2146,6 +1461,79 @@ export function removeAuthToken(): void {
 }
 
 // ============================================
+// Property Slugs
+// ============================================
+
+/**
+ * Generate a URL-friendly slug from property name
+ * Format: {projectname}-foryou-realestate
+ */
+export function generatePropertySlug(name: string, id?: string): string {
+  if (!name) return '';
+  const cleanName = name
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, '')
+    .replace(/[\s_-]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+
+  // If we have an ID, extract first 8 chars to match your new DB format
+  if (id && id.length >= 8) {
+    const shortId = id.split('-')[0]; // Takes '6db985eb' from UUID
+    return `${cleanName}-${shortId}-foryou-realestate`;
+  }
+
+  return `${cleanName}-foryou-realestate`;
+}
+
+/**
+ * Extract property name from slug
+ * Basically removes "-foryou-realestate" suffix
+ */
+export function extractNameFromSlug(slug: string): string {
+  if (!slug) return '';
+  return slug.replace(/-foryou-realestate$/, '');
+}
+
+const propertyBySlugCache = new Map<string, { property: Property; timestamp: number }>();
+const SLUG_CACHE_DURATION = 10 * 60 * 1000; // 10 minutes
+
+// Map to collapse duplicate pending requests for the same slug
+const pendingSlugRequests = new Map<string, Promise<Property>>();
+
+/**
+ * Get property by slug
+ */
+export async function getPropertyBySlug(slug: string): Promise<Property> {
+  const startTime = Date.now();
+  if (!slug) throw new Error('Slug is required');
+
+  // Skip cache/pending for deep analysis to see absolute timing every time
+  // (We'll re-enable it after diagnostics)
+
+  try {
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[DIAGNOSTIC] getPropertyBySlug START for: ${slug}`);
+    }
+
+    // Call getProperty which hits /public/properties/${slug}
+    // and has its own logging for the network request
+    const property = await getProperty(slug);
+
+    const totalTime = Date.now() - startTime;
+    if (typeof window === 'undefined') {
+      console.log(`[DIAGNOSTIC] getPropertyBySlug TOTAL for ${slug}: ${totalTime}ms`);
+    }
+    return property;
+  } catch (err: any) {
+    if (typeof window === 'undefined') {
+      console.error(`[DIAGNOSTIC] getPropertyBySlug ERROR for ${slug} after ${Date.now() - startTime}ms:`, err.message);
+    }
+    throw err;
+  }
+}
+
+// ============================================
 // News API
 // ============================================
 
@@ -2285,6 +1673,39 @@ export async function getNews(page: number = 1, limit: number = 12): Promise<Get
   }
 }
 
+
+/**
+ * Get latest news (top 3)
+ * @returns List of 3 latest news items
+ */
+export async function getLatestNews(): Promise<NewsItem[]> {
+  try {
+    const response = await apiClient.get<ApiResponse<NewsItem[] | { data: NewsItem[] }>>('/public/news/latest');
+
+    if (!response.data.success) {
+      throw new Error('Failed to fetch latest news');
+    }
+
+    const data = response.data.data;
+    let newsArray: NewsItem[] = [];
+
+    if (Array.isArray(data)) {
+      newsArray = data;
+    } else if (data && typeof data === 'object' && 'data' in data && Array.isArray((data as any).data)) {
+      newsArray = (data as any).data;
+    }
+
+    // Ensure slug is populated (backend might return null)
+    return newsArray.map(item => ({
+      ...item,
+      slug: item.slug || item.id
+    }));
+  } catch (error) {
+    console.error('Failed to get latest news', error);
+    return [];
+  }
+}
+
 /**
  * Get news article by slug
  * @param slug - News article slug or ID
@@ -2321,6 +1742,76 @@ export async function getNewsBySlug(slug: string): Promise<NewsDetail | null> {
   }
 }
 
+// Vacancies API
+export interface Vacancy {
+  id: string;
+  position: string;
+  shortDescription: string;
+  tasks: string;
+  requirements: string;
+  results: string;
+  offers: string;
+  viewsCount: number;
+  applicationsCount: number;
+  createdAt: string;
+}
+
+export interface VacancyApplication {
+  name: string;
+  email: string;
+  phone: string;
+  message?: string;
+  cvUrl?: string;
+}
+
+export async function getVacancies(lang?: string): Promise<Vacancy[]> {
+  try {
+    const url = lang ? `/public/vacancies?lang=${lang}` : '/public/vacancies';
+    const response = await apiClient.get<ApiResponse<Vacancy[]>>(url);
+    if (response.data.success && Array.isArray(response.data.data)) {
+      return response.data.data;
+    }
+    return [];
+  } catch (error) {
+    console.error('Failed to fetch vacancies', error);
+    return [];
+  }
+}
+
+export async function getVacancyById(id: string, lang?: string): Promise<Vacancy | null> {
+  try {
+    const url = lang ? `/public/vacancies/${id}?lang=${lang}` : `/public/vacancies/${id}`;
+    const response = await apiClient.get<ApiResponse<Vacancy>>(url);
+    if (response.data.success) {
+      return response.data.data;
+    }
+    return null;
+  } catch (error) {
+    console.error(`Failed to fetch vacancy ${id}`, error);
+    return null;
+  }
+}
+
+export async function applyForVacancy(id: string, application: VacancyApplication): Promise<boolean> {
+  try {
+    const response = await apiClient.post<ApiResponse<any>>(`/public/vacancies/${id}/apply`, application);
+    return response.data.success;
+  } catch (error) {
+    console.error(`Failed to apply for vacancy ${id}`, error);
+    return false;
+  }
+}
+
 export default apiClient;
 
 
+
+export async function getPropertyUnits(slug: string): Promise<any[]> {
+  try {
+    const { data } = await apiClient.get<any>(`/public/properties/${slug}/units`);
+    return data.data || [];
+  } catch (error) {
+    console.error('Failed to load property units:', error);
+    return [];
+  }
+}

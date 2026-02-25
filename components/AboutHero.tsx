@@ -279,6 +279,8 @@ export function OfficeSection({ t }: { t: any }) {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [message, setMessage] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<any>(null);
   const markerRef = useRef<any>(null);
@@ -330,13 +332,23 @@ export function OfficeSection({ t }: { t: any }) {
             // Create custom marker element
             const el = document.createElement('div');
             el.className = 'office-marker';
+            el.style.width = '0';
+            el.style.height = '0';
             el.style.position = 'relative';
             el.style.display = 'flex';
-            el.style.flexDirection = 'column';
             el.style.alignItems = 'center';
+            el.style.justifyContent = 'center';
 
-            // SVG Icon
+            // SVG Icon Container
             const svgContainer = document.createElement('div');
+            svgContainer.style.position = 'absolute';
+            svgContainer.style.bottom = '0'; // Bottom of SVG (tip) at the container's center
+            svgContainer.style.left = '50%';
+            svgContainer.style.transform = 'translateX(-50%)';
+            svgContainer.style.display = 'flex';
+            svgContainer.style.flexDirection = 'column';
+            svgContainer.style.alignItems = 'center';
+
             svgContainer.innerHTML = `
               <svg width="40" height="50" viewBox="0 0 384 512" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M172.268 501.67C26.97 291.031 0 269.413 0 192 0 85.961 85.961 0 192 0s192 85.961 192 192c0 77.413-26.97 99.031-172.268 309.67-9.535 13.774-29.93 13.773-39.464 0zM192 272c44.183 0 80-35.817 80-80s-35.817-80-80-80-80 35.817-80 80 35.817 80 80 80z" fill="#003077"/>
@@ -347,7 +359,10 @@ export function OfficeSection({ t }: { t: any }) {
             // Text Label
             const label = document.createElement('div');
             label.textContent = 'ForYou Office';
-            label.style.marginTop = '10px';
+            label.style.position = 'absolute';
+            label.style.top = '10px'; // 10px below the pin tip
+            label.style.left = '50%';
+            label.style.transform = 'translateX(-50%)';
             label.style.backgroundColor = 'white';
             label.style.color = '#003077';
             label.style.padding = '6px 12px';
@@ -360,11 +375,10 @@ export function OfficeSection({ t }: { t: any }) {
 
             el.appendChild(label);
 
-            // Add office marker with offset to account for label
+            // Add office marker
             const marker = new mapboxgl.Marker({
               element: el,
-              anchor: 'bottom',
-              offset: [0, -42] // Shift up so the pin tip is at the coordinate (approx label height + margin)
+              anchor: 'center', // Center of our 0x0 element is the anchor
             })
               .setLngLat([55.1689534, 25.0964000])
               .addTo(map);
@@ -415,9 +429,26 @@ export function OfficeSection({ t }: { t: any }) {
     };
   }, []);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Handle form submission
+    if (isSubmitting) return;
+
+    setIsSubmitting(true);
+    try {
+      // Simulate submission
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      setIsSuccess(true);
+      setName('');
+      setPhone('');
+      setMessage('');
+
+      // Reset success after 5 seconds
+      setTimeout(() => setIsSuccess(false), 5000);
+    } catch (error) {
+      console.error('Office form submission failed:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // Generate time slots (9 AM to 6 PM, every hour)
@@ -433,51 +464,63 @@ export function OfficeSection({ t }: { t: any }) {
           <div className={styles.officeFormContainer}>
             <h2 className={styles.officeTitle}>{t('officeTitle')}</h2>
             <p className={styles.officeDescription}>{t('officeDescription')}</p>
-            <form className={styles.officeForm} onSubmit={handleSubmit}>
-              <h3 className={styles.formTitle}>{t('officeForm.title')}</h3>
 
-
-
-              <div className={styles.formRow}>
-                <div className={styles.formField}>
-                  <label>{t('officeForm.nameLabel')}</label>
-                  <input
-                    type="text"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder={t('officeForm.namePlaceholder')}
-                    required
-                  />
+            {isSuccess ? (
+              <div className={styles.officeSuccess}>
+                <div className={styles.officeSuccessIcon}>
+                  <svg width="40" height="40" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" stroke="#003077" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M22 4L12 14.01l-3-3" stroke="#003077" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
                 </div>
-                <div className={styles.formField}>
-                  <label>{t('officeForm.phoneLabel')}</label>
-                  <div className={styles.phoneInputWrapper}>
-                    <span className={styles.phonePrefix}>+</span>
+                <h3 className={styles.officeSuccessTitle}>Success!</h3>
+                <p className={styles.officeSuccessText}>Your meeting request has been sent successfully.</p>
+              </div>
+            ) : (
+              <form className={styles.officeForm} onSubmit={handleSubmit}>
+                <h3 className={styles.formTitle}>{t('officeForm.title')}</h3>
+
+                <div className={styles.formRow}>
+                  <div className={styles.formField}>
+                    <label>{t('officeForm.nameLabel')}</label>
+                    <input
+                      type="text"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      placeholder={t('officeForm.namePlaceholder')}
+                      required
+                      disabled={isSubmitting}
+                    />
+                  </div>
+                  <div className={styles.formField}>
+                    <label>{t('officeForm.phoneLabel')}</label>
                     <input
                       type="tel"
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
                       placeholder={t('officeForm.phonePlaceholder')}
                       required
+                      disabled={isSubmitting}
                     />
                   </div>
                 </div>
-              </div>
 
-              <div className={styles.formField}>
-                <label>{t('officeForm.messageLabel')}</label>
-                <textarea
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
-                  placeholder={t('officeForm.messagePlaceholder')}
-                  rows={4}
-                />
-              </div>
+                <div className={styles.formField}>
+                  <label>{t('officeForm.messageLabel')}</label>
+                  <textarea
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    placeholder={t('officeForm.messagePlaceholder')}
+                    rows={4}
+                    disabled={isSubmitting}
+                  />
+                </div>
 
-              <button type="submit" className={styles.submitButton}>
-                {t('officeForm.submitButton')}
-              </button>
-            </form>
+                <button type="submit" className={styles.submitButton} disabled={isSubmitting}>
+                  {isSubmitting ? '...' : t('officeForm.submitButton')}
+                </button>
+              </form>
+            )}
           </div>
         </div>
       </div>
@@ -514,6 +557,7 @@ export function FAQSection({ t }: { t: any }) {
   }, [isVisible]);
 
   const faqItems = t.raw('faq') || [];
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   return (
     <div
@@ -521,43 +565,175 @@ export function FAQSection({ t }: { t: any }) {
       ref={faqRef}
     >
       <div className={styles.faqContainer}>
-        <h2 className={styles.faqTitle}>{t('faqTitle')}</h2>
-        <div className={styles.faqList}>
-          {faqItems.map((item: any, index: number) => (
-            <div
-              key={index}
-              className={`${styles.faqItem} ${openIndex === index ? styles.open : ''}`}
+        {/* Left Column */}
+        <div className={styles.faqLeft}>
+          <h2 className={styles.faqTitle}>{t('faqTitle')}</h2>
+
+          <div className={styles.faqContactBlock}>
+            <h3 className={styles.faqContactTitle}>{t('faqContactTitle')}</h3>
+            <p className={styles.faqContactText}>
+              {t('faqContactText')}
+            </p>
+            <button
+              className={styles.faqContactButton}
+              onClick={() => setIsModalOpen(true)}
             >
-              <button
-                className={styles.faqQuestion}
-                onClick={() => setOpenIndex(openIndex === index ? null : index)}
+              {t('faqContactButton')}
+            </button>
+          </div>
+        </div>
+
+        {/* Right Column */}
+        <div className={styles.faqRight}>
+          <div className={styles.faqList}>
+            {faqItems.map((item: any, index: number) => (
+              <div
+                key={index}
+                className={`${styles.faqItem} ${openIndex === index ? styles.open : ''}`}
               >
-                <span>{item.question}</span>
-                <svg
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                  className={styles.faqIcon}
+                <button
+                  className={styles.faqQuestion}
+                  onClick={() => setOpenIndex(openIndex === index ? null : index)}
                 >
-                  <path
-                    d="M6 9L12 15L18 9"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </button>
-              <div className={styles.faqAnswer}>
-                <p>{item.answer}</p>
+                  <span>{item.question}</span>
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                    className={styles.faqIcon}
+                  >
+                    <path
+                      d="M6 9L12 15L18 9"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </button>
+                <div className={styles.faqAnswer}>
+                  <p>{item.answer}</p>
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </div>
+
+      <FAQContactModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
     </div>
+  );
+}
+
+import { createPortal } from 'react-dom';
+
+function FAQContactModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
+  const [step, setStep] = useState<'form' | 'success'>('form');
+  const [loading, setLoading] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
+
+  // Reset state when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setStep('form');
+      setLoading(false);
+      // Prevent scrolling on body when modal is open
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isOpen]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+
+    // Simulate API call
+    await new Promise(resolve => setTimeout(resolve, 1500));
+
+    setLoading(false);
+    setStep('success');
+  };
+
+  if (!isOpen || !mounted) return null;
+
+  return createPortal(
+    <div className={`${styles.modalOverlay} ${isOpen ? styles.open : ''}`} onClick={onClose}>
+      <div className={styles.modalContent} onClick={e => e.stopPropagation()}>
+        <button className={styles.modalClose} onClick={onClose}>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M6 6L18 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+
+        {step === 'form' ? (
+          <>
+            <h3 className={styles.modalTitle}>Contact Us</h3>
+            <p className={styles.modalSubtitle}>Fill out the form and we'll get back to you shortly.</p>
+
+            <form className={styles.modalForm} onSubmit={handleSubmit}>
+              <div className={styles.modalInputGroup}>
+                <label className={styles.modalLabel}>Info</label>
+                <input
+                  type="text"
+                  placeholder="Name"
+                  required
+                  className={styles.modalInput}
+                />
+                <input
+                  type="tel"
+                  placeholder="Phone number"
+                  required
+                  className={styles.modalInput}
+                />
+              </div>
+
+              <div className={styles.modalInputGroup}>
+                <label className={styles.modalLabel}>Question</label>
+                <textarea
+                  placeholder="How can we help you?"
+                  required
+                  className={styles.modalTextarea}
+                ></textarea>
+              </div>
+
+              <button
+                type="submit"
+                className={styles.modalSubmit}
+                disabled={loading}
+              >
+                {loading ? 'Sending...' : 'Send Message'}
+              </button>
+            </form>
+          </>
+        ) : (
+          <div className={styles.successContent}>
+            <div className={styles.successIcon}>
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M20 6L9 17L4 12" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </div>
+            <h3 className={styles.successTitle}>Thank You!</h3>
+            <p className={styles.successText}>
+              Your message has been sent successfully. <br />
+              We will contact you as soon as possible.
+            </p>
+          </div>
+        )}
+      </div>
+    </div>,
+    document.body
   );
 }
 

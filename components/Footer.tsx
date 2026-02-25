@@ -60,6 +60,9 @@ export default function Footer() {
               <li>
                 <Link href={getLocalizedPath('/blog')}>{t('navigation.news')}</Link>
               </li>
+              <li>
+                <Link href={getLocalizedPath('/careers')}>{t('navigation.careers')}</Link>
+              </li>
             </ul>
           </div>
 

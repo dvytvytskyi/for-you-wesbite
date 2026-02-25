@@ -3,6 +3,7 @@ import { Property as ApiProperty } from '@/lib/api';
 // Defined to match MapboxMap expectation
 export interface MapProperty {
     id: string;
+    slug: string;
     name: string;
     nameRu: string;
     location: {
@@ -145,7 +146,7 @@ export function convertPropertyToMapFormat(property: ApiProperty, locale: string
     };
 
     // Convert facilities to amenities
-    const amenities = property.facilities.map(f =>
+    const amenities = (property.facilities || []).map(f =>
         locale === 'ru' ? f.nameRu : f.nameEn
     );
 
@@ -181,6 +182,7 @@ export function convertPropertyToMapFormat(property: ApiProperty, locale: string
 
     return {
         id: property.id,
+        slug: property.slug || '',
         name: property.name,
         nameRu: property.name, // API doesn't have separate nameRu, using name
         location,

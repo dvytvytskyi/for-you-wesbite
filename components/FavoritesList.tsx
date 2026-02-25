@@ -26,14 +26,16 @@ export default function FavoritesList() {
             const ids = idsParam.split(',').filter(Boolean);
             if (ids.length > 0) {
                 setLoadingShared(true);
-                // Fetch all properties by ID
-                Promise.all(ids.map(id => getProperty(id)))
-                    .then(properties => {
-                        // Filter out any nulls if property not found
-                        setSharedProperties(properties.filter(Boolean));
+                // Fetch all properties by ID, handling individual failures
+                Promise.all(ids.map(id =>
+                    getProperty(id).catch(err => {
+                        console.error(`Failed to fetch property ${id}:`, err);
+                        return null;
                     })
-                    .catch(err => {
-                        console.error('Error fetching shared properties:', err);
+                ))
+                    .then(properties => {
+                        // Filter out any nulls if property not found or fetch failed
+                        setSharedProperties(properties.filter((p): p is Property => p !== null));
                     })
                     .finally(() => {
                         setLoadingShared(false);

@@ -5,6 +5,7 @@ import { useTranslations, useLocale } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
+import { createPortal } from 'react-dom';
 import styles from './ProjectImage.module.css';
 
 export default function ProjectImage() {
@@ -19,6 +20,9 @@ export default function ProjectImage() {
     name: '',
     phone: '',
   });
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -49,10 +53,12 @@ export default function ProjectImage() {
 
   const handleContactClick = () => {
     setIsModalOpen(true);
+    setIsSuccess(false);
   };
 
   const handleCloseModal = () => {
     setIsModalOpen(false);
+    setTimeout(() => setIsSuccess(false), 300); // Reset success after modal closes
   };
 
   // Close modal on Escape key
@@ -81,10 +87,30 @@ export default function ProjectImage() {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: Implement form submission// Optionally close modal after submission
-    // handleCloseModal();
+    if (isSubmitting) return;
+
+    setIsSubmitting(true);
+
+    // Simulate submission
+    try {
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      setIsSuccess(true);
+      setFormData({ name: '', phone: '' });
+
+      // If in modal, maybe close after a delay
+      if (isModalOpen) {
+        setTimeout(() => {
+          // Only close if still open and successful
+          handleCloseModal();
+        }, 3000);
+      }
+    } catch (error) {
+      console.error('Form submission failed:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -93,13 +119,12 @@ export default function ProjectImage() {
         className={`${styles.imageWrapper} ${isVisible ? styles.visible : ''}`}
       >
         <Image
-          src="https://res.cloudinary.com/dgv0rxd60/image/upload/f_auto,q_auto:eco,w_1920/v1768389724/golf.jpg"
-          alt="Golf Edge by Emaar"
+          src="/Address-Residences-Zabeel-3.webp"
+          alt="Address Residences Zabeel by Emaar"
           fill
           style={{ objectFit: 'cover' }}
           sizes="100vw"
           loading="lazy"
-          unoptimized
         />
         <div className={styles.overlay}></div>
       </div>
@@ -149,7 +174,7 @@ export default function ProjectImage() {
 
             <div className={styles.actions}>
               <Link
-                href={getLocalizedPath('/properties/3ec6a3be-02d4-460c-947c-cda4314e591b')}
+                href={getLocalizedPath('/properties?search=Address+Residences+Zabeel')}
                 className={styles.readMoreButton}
               >
                 {t('readMore')}
@@ -164,41 +189,55 @@ export default function ProjectImage() {
           </div>
 
           <div className={`${styles.rightColumn} ${isVisible ? styles.visible : ''}`}>
-            <form className={styles.contactForm} onSubmit={handleSubmit}>
-              <h3 className={styles.formTitle}>{t('form.title')}</h3>
-              <p className={styles.formDescription}>{t('form.description')}</p>
+            {isSuccess ? (
+              <div className={styles.successMessage}>
+                <div className={styles.successIcon}>
+                  <svg width="40" height="40" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" stroke="#EBA44E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M22 4L12 14.01l-3-3" stroke="#EBA44E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </div>
+                <h3 className={styles.successTitle}>{t('form.success')}</h3>
+              </div>
+            ) : (
+              <form className={styles.contactForm} onSubmit={handleSubmit}>
+                <h3 className={styles.formTitle}>{t('form.title')}</h3>
+                <p className={styles.formDescription}>{t('form.description')}</p>
 
-              <input
-                type="text"
-                placeholder={t('form.name')}
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className={styles.formInput}
-                required
-              />
-              <div className={styles.phoneInputWrapper}>
-                <span className={styles.phonePrefix}>+</span>
                 <input
-                  type="tel"
-                  placeholder={t('form.phone')}
-                  value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  type="text"
+                  placeholder={t('form.name')}
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   className={styles.formInput}
                   required
+                  disabled={isSubmitting}
                 />
-              </div>
-              <button type="submit" className={styles.submitButton}>
-                {t('form.send')}
-              </button>
+                <div className={styles.phoneInputWrapper}>
+                  <span className={styles.phonePrefix}>+</span>
+                  <input
+                    type="tel"
+                    placeholder={t('form.phone')}
+                    value={formData.phone}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    className={styles.formInput}
+                    required
+                    disabled={isSubmitting}
+                  />
+                </div>
+                <button type="submit" className={styles.submitButton} disabled={isSubmitting}>
+                  {isSubmitting ? '...' : t('form.send')}
+                </button>
 
-              <p className={styles.formNote}>{t('form.note')}</p>
-            </form>
+                <p className={styles.formNote}>{t('form.note')}</p>
+              </form>
+            )}
           </div>
         </div>
       </div>
 
       {/* Contact Modal */}
-      {isModalOpen && (
+      {isModalOpen && typeof document !== 'undefined' && createPortal(
         <div
           className={styles.modalOverlay}
           onClick={handleBackdropClick}
@@ -224,32 +263,46 @@ export default function ProjectImage() {
                 <h2 className={styles.modalTitle}>{t('form.title')}</h2>
                 <p className={styles.modalDescription}>{t('form.description')}</p>
 
-                <form className={styles.modalForm} onSubmit={handleSubmit}>
-                  <input
-                    type="text"
-                    placeholder={t('form.name')}
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className={styles.modalInput}
-                    required
-                  />
-                  <div className={styles.modalPhoneWrapper}>
-                    <span className={styles.modalPhonePrefix}>+</span>
+                {isSuccess ? (
+                  <div className={styles.modalSuccess}>
+                    <div className={styles.modalSuccessIcon}>
+                      <svg width="60" height="60" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" stroke="#EBA44E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                        <path d="M22 4L12 14.01l-3-3" stroke="#EBA44E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    </div>
+                    <h3 className={styles.modalSuccessTitle}>{t('form.success')}</h3>
+                  </div>
+                ) : (
+                  <form className={styles.modalForm} onSubmit={handleSubmit}>
                     <input
-                      type="tel"
-                      placeholder={t('form.phone')}
-                      value={formData.phone}
-                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                      type="text"
+                      placeholder={t('form.name')}
+                      value={formData.name}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                       className={styles.modalInput}
                       required
+                      disabled={isSubmitting}
                     />
-                  </div>
-                  <button type="submit" className={styles.modalSubmitButton}>
-                    {t('form.send')}
-                  </button>
+                    <div className={styles.modalPhoneWrapper}>
+                      <span className={styles.modalPhonePrefix}>+</span>
+                      <input
+                        type="tel"
+                        placeholder={t('form.phone')}
+                        value={formData.phone}
+                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                        className={styles.modalInput}
+                        required
+                        disabled={isSubmitting}
+                      />
+                    </div>
+                    <button type="submit" className={styles.modalSubmitButton} disabled={isSubmitting}>
+                      {isSubmitting ? '...' : t('form.send')}
+                    </button>
 
-                  <p className={styles.modalNote}>{t('form.note')}</p>
-                </form>
+                    <p className={styles.modalNote}>{t('form.note')}</p>
+                  </form>
+                )}
               </div>
 
               {/* Right Column - Agent Info */}
@@ -277,7 +330,8 @@ export default function ProjectImage() {
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </section>
   );
