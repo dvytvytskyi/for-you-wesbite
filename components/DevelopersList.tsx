@@ -2,77 +2,201 @@
 
 import { useTranslations, useLocale } from 'next-intl';
 import Image from 'next/image';
-import { useState, useEffect, useRef } from 'react';
+import Link from 'next/link';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { getDevelopers, Developer as ApiDeveloper } from '@/lib/api';
 import styles from './DevelopersList.module.css';
+import DeveloperCardSkeleton from '@/components/DeveloperCardSkeleton';
 
 interface Developer {
   id: string;
+  slug?: string;
   name: string;
+  nameEn?: string;
+  nameRu?: string;
   logo: string | null;
-  description: string | null;
+  previewImage?: string | null;
+  shortDescription?: string | null;
+  description: string | null | undefined;
+  descriptionEn?: string | null;
+  descriptionRu?: string | null;
   images: string[] | null;
   projectsCount: number;
-  createdAt?: string;
 }
+
+const ITEMS_PER_PAGE = 20;
+
+const DeveloperListItem = ({ developer, getDeveloperPath }: { developer: Developer, getDeveloperPath: (s: string) => string }) => {
+  const [imageError, setImageError] = useState(false);
+
+  // Logic: use 2nd image for better preview, fallback to preview image or 1st image
+  const mainImage = (developer.images && developer.images.length > 1)
+    ? developer.images[1]
+    : (developer.previewImage || (developer.images && developer.images.length > 0 ? developer.images[0] : developer.logo));
+
+  return (
+    <Link
+      href={getDeveloperPath(developer.slug || developer.id)}
+      className={styles.developerCard}
+    >
+      {/* Top 60% - Main Image */}
+      <div className={styles.cardImageSection}>
+        {mainImage && !imageError ? (
+          <Image
+            src={mainImage}
+            alt={developer.name}
+            fill
+            className={styles.mainCardImage}
+            sizes="(max-width: 768px) 100vw, 33vw"
+            unoptimized
+            onError={() => setImageError(true)}
+          />
+        ) : (
+          <div className={styles.imagePlaceholder}>
+            <span className={styles.placeholderText}>ForYou</span>
+          </div>
+        )}
+      </div>
+
+      {/* Overlapping Logo */}
+      <div className={styles.overlappingLogoWrapper}>
+        {developer.logo ? (
+          <div className={styles.smallLogoContainer}>
+            <Image
+              src={developer.logo}
+              alt={developer.name}
+              fill
+              className={styles.smallLogo}
+              sizes="60px"
+              unoptimized
+            />
+          </div>
+        ) : (
+          <div className={styles.smallLogoPlaceholder}>
+            {developer.name.charAt(0).toUpperCase()}
+          </div>
+        )}
+      </div>
+
+      {/* Bottom 40% - Info */}
+      <div className={styles.cardInfoSection}>
+        <div className={styles.cardHeaderRow}>
+          <h3 className={styles.developerName}>{developer.name}</h3>
+        </div>
+
+        {developer.description && (
+          <p className={styles.cardDescription}>
+            {developer.description}
+          </p>
+        )}
+      </div>
+    </Link>
+  );
+};
 
 export default function DevelopersList() {
   const t = useTranslations('developers');
   const locale = useLocale();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const sectionRef = useRef<HTMLElement>(null);
   const [isVisible, setIsVisible] = useState(false);
-  const [developers, setDevelopers] = useState<Developer[]>([]);
-  const [selectedDeveloper, setSelectedDeveloper] = useState<Developer | null>(null);
+  const [allDevelopers, setAllDevelopers] = useState<Developer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
+
+  // Get current page from URL
+  const currentPage = parseInt(searchParams.get('page') || '1', 10);
+  const totalPages = Math.ceil(allDevelopers.length / ITEMS_PER_PAGE);
+  const validPage = Math.max(1, Math.min(currentPage, totalPages || 1));
+
+  // Get developers for current page
+  const startIndex = (validPage - 1) * ITEMS_PER_PAGE;
+  const endIndex = startIndex + ITEMS_PER_PAGE;
+  const developers = allDevelopers.slice(startIndex, endIndex);
 
   useEffect(() => {
     const loadDevelopers = async () => {
       setLoading(true);
       setError(null);
-      try {const apiDevelopers = await getDevelopers();if (!Array.isArray(apiDevelopers)) {setError('Invalid data format from API');
+      try {
+        const { developers: apiDevelopers } = await getDevelopers({ summary: true, limit: 500 });
+        console.log('DEBUG: RAW API DEVELOPERS:', apiDevelopers);
+
+        if (!Array.isArray(apiDevelopers)) {
+          setError('Invalid data format from API');
           setLoading(false);
           return;
         }
-        
+
         // Convert API developers to component format
         const convertedDevelopers: Developer[] = apiDevelopers.map(dev => {
-          // Get description text (can be from description.description or description.title)
-          const descriptionText = dev.description 
-            ? (dev.description.description || dev.description.title || null)
-            : null;
-          
+          // Dynamic localization based on locale
+          const name = locale === 'ru' ? (dev.nameRu || dev.nameEn || dev.name) : (dev.nameEn || dev.name);
+
+          let descriptionText: string | null | undefined = locale === 'ru' ? dev.descriptionRu : dev.descriptionEn;
+
+          if (!descriptionText) {
+            descriptionText = dev.shortDescription || (dev.description
+              ? (dev.description.description || dev.description.title || null)
+              : null);
+          }
+
           return {
             id: dev.id,
-            name: dev.name,
+            slug: dev.slug,
+            name: name as string,
+            nameEn: dev.nameEn,
+            nameRu: dev.nameRu,
             logo: dev.logo,
+            previewImage: dev.previewImage,
             description: descriptionText,
+            descriptionEn: dev.descriptionEn,
+            descriptionRu: dev.descriptionRu,
             images: dev.images,
             projectsCount: dev.projectsCount?.total || 0,
-            createdAt: dev.createdAt,
           };
         });
-        
-        // Filter out developers without logos
-        const developersWithLogos = convertedDevelopers.filter(dev => {
-          return dev.logo && dev.logo.trim() !== '';
-        });
-        setDevelopers(developersWithLogos);
-        
-        if (developersWithLogos.length > 0) {
-          setSelectedDeveloper(developersWithLogos[0]);
-        }
-        
-        if (process.env.NODE_ENV === 'development') {
-          const developersWithImages = developersWithLogos.filter(d => d.images && d.images.length > 0).length;}
-      } catch (err: any) {setError(err.message || 'Failed to load developers');
+
+        setAllDevelopers(convertedDevelopers);
+      } catch (err: any) {
+        setError(err.message || 'Failed to load developers');
       } finally {
         setLoading(false);
       }
     };
-    
+
     loadDevelopers();
+  }, []);
+
+  // Update URL when page changes
+  const handlePageChange = useCallback((newPage: number) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (newPage === 1) {
+      params.delete('page');
+    } else {
+      params.set('page', newPage.toString());
+    }
+
+    const newUrl = params.toString()
+      ? `${window.location.pathname}?${params.toString()}`
+      : window.location.pathname;
+
+    router.replace(newUrl, { scroll: false });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [searchParams, router]);
+
+  // Ensure page is valid when developers change
+  useEffect(() => {
+    if (allDevelopers.length > 0 && validPage > totalPages && totalPages > 0) {
+      handlePageChange(1);
+    }
+  }, [allDevelopers.length, validPage, totalPages, handlePageChange]);
+
+  useEffect(() => {
+    // Scroll to top on mount
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
   }, []);
 
   useEffect(() => {
@@ -98,31 +222,19 @@ export default function DevelopersList() {
     };
   }, []);
 
-  const handleDeveloperSelect = (developer: Developer) => {
-    setSelectedDeveloper(developer);
-    // Reset failed images when switching developers
-    setFailedImages(new Set());
-  };
-
-  const getLocalizedPath = (path: string) => {
-    return locale === 'en' ? path : `/${locale}${path}`;
-  };
-
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return '';
-    try {
-      const date = new Date(dateString);
-      return date.toLocaleDateString(locale === 'ru' ? 'ru-RU' : 'en-US');
-    } catch {
-      return '';
-    }
+  const getDeveloperPath = (idOrSlug: string) => {
+    return locale === 'en' ? `/developers/${idOrSlug}` : `/${locale}/developers/${idOrSlug}`;
   };
 
   if (loading) {
     return (
       <section className={styles.developersList}>
         <div className={styles.container}>
-          <div className={styles.loading}>{t('loading') || 'Loading...'}</div>
+          <div className={styles.developersGrid}>
+            {Array.from({ length: 8 }).map((_, index) => (
+              <DeveloperCardSkeleton key={index} />
+            ))}
+          </div>
         </div>
       </section>
     );
@@ -138,151 +250,61 @@ export default function DevelopersList() {
     );
   }
 
-  if (developers.length === 0 && !loading) {
-    return (
-      <section className={styles.developersList}>
-        <div className={styles.container}>
-          <div className={styles.noDevelopers}>
-            {t('noDevelopers') || 'No developers found'}
-          </div>
-        </div>
-      </section>
-    );
-  }
-
   return (
     <section className={styles.developersList} ref={sectionRef}>
-      <div className={`${styles.container} ${isVisible ? styles.visible : ''}`}>
-        <div className={styles.content}>
-          {/* Ліва частина - список девелоперів (60%) */}
-          <div className={styles.developersGrid}>
-            {developers.length > 0 ? developers.map((developer) => (
-              <div
-                key={developer.id}
-                className={`${styles.developerCard} ${
-                  selectedDeveloper?.id === developer.id ? styles.selected : ''
-                }`}
-                onClick={() => handleDeveloperSelect(developer)}
-              >
-                <div className={styles.logoWrapper}>
-                  {developer.logo ? (
-                    <div className={styles.logoContainer}>
-                      <Image
-                        src={developer.logo}
-                        alt={developer.name}
-                        fill
-                        className={styles.logo}
-                        sizes="120px"
-                      />
-                    </div>
-                  ) : (
-                    <div className={styles.logoPlaceholder}>
-                      <span className={styles.logoPlaceholderText}>
-                        {developer.name.charAt(0).toUpperCase()}
-                      </span>
-                    </div>
-                  )}
-                </div>
-                <h3 className={styles.developerName}>{developer.name}</h3>
-              </div>
-            )) : (
-              <div className={styles.noDevelopers}>
-                {t('noDevelopers') || 'No developers found'}
-              </div>
-            )}
-          </div>
-
-          {/* Права частина - інформація по девелоперу (40%) */}
-          <div className={styles.developerDetails}>
-            {selectedDeveloper ? (
-              <>
-                <div className={styles.detailsHeader}>
-                  {selectedDeveloper.logo ? (
-                    <div className={styles.detailsLogoContainer}>
-                      <Image
-                        src={selectedDeveloper.logo}
-                        alt={selectedDeveloper.name}
-                        width={120}
-                        height={120}
-                        className={styles.detailsLogo}
-                      />
-                    </div>
-                  ) : (
-                    <div className={styles.detailsLogoPlaceholder}>
-                      <span className={styles.detailsLogoPlaceholderText}>
-                        {selectedDeveloper.name.charAt(0).toUpperCase()}
-                      </span>
-                    </div>
-                  )}
-                  <h2 className={styles.detailsName}>{selectedDeveloper.name}</h2>
-                </div>
-
-                {selectedDeveloper.description && (
-                  <div className={styles.description}>
-                    <p>{selectedDeveloper.description}</p>
-                  </div>
-                )}
-
-                {selectedDeveloper.images && selectedDeveloper.images.length > 0 && (
-                  <div className={styles.images}>
-                    <h3 className={styles.imagesTitle}>{t('images')}</h3>
-                    <div className={styles.imagesGrid}>
-                      {selectedDeveloper.images
-                        .filter((image) => {
-                          // Filter out placeholder or invalid images
-                          const isPlaceholder = image && (
-                            image.includes('unsplash.com') ||
-                            image.includes('placeholder') ||
-                            image.includes('via.placeholder.com') ||
-                            image.includes('dummyimage.com') ||
-                            image.includes('placehold.it') ||
-                            image.includes('fakeimg.pl')
-                          );
-                          
-                          const isValidUrl = image && (image.startsWith('http://') || image.startsWith('https://'));
-                          
-                          // Filter out images that failed to load
-                          const hasFailed = failedImages.has(image);
-                          
-                          return isValidUrl && !isPlaceholder && !hasFailed;
-                        })
-                        .map((image, index) => (
-                          <div key={index} className={styles.imageItem}>
-                            <Image
-                              src={image}
-                              alt={`${selectedDeveloper.name} - Image ${index + 1}`}
-                              fill
-                              style={{ objectFit: 'cover' }}
-                              sizes="(max-width: 1200px) 50vw, 33vw"
-                              unoptimized
-                              onError={(e) => {
-                                // Add to failed images set
-                                setFailedImages(prev => new Set(prev).add(image));
-                                // Hide the image and its wrapper
-                                const target = e.target as HTMLImageElement;
-                                target.style.display = 'none';
-                                const wrapper = target.closest(`.${styles.imageItem}`);
-                                if (wrapper) {
-                                  (wrapper as HTMLElement).style.display = 'none';
-                                }
-                              }}
-                            />
-                          </div>
-                        ))}
-                    </div>
-                  </div>
-                )}
-
-              </>
-            ) : (
-              <div className={styles.noSelection}>
-                <p>{t('noSelection')}</p>
-              </div>
-            )}
-          </div>
+      <div className={styles.container}>
+        <div className={styles.developersGrid}>
+          {developers.map((developer) => (
+            <DeveloperListItem
+              key={developer.id}
+              developer={developer}
+              getDeveloperPath={getDeveloperPath}
+            />
+          ))}
         </div>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className={styles.pagination}>
+            <button
+              className={styles.paginationButton}
+              onClick={() => handlePageChange(validPage - 1)}
+              disabled={validPage === 1}
+            >
+              {t('previous') || 'Previous'}
+            </button>
+            <div className={styles.paginationNumbers}>
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
+                if (
+                  page === 1 ||
+                  page === totalPages ||
+                  (page >= validPage - 2 && page <= validPage + 2)
+                ) {
+                  return (
+                    <button
+                      key={page}
+                      className={`${styles.paginationNumber} ${validPage === page ? styles.active : ''}`}
+                      onClick={() => handlePageChange(page)}
+                    >
+                      {page}
+                    </button>
+                  );
+                } else if (page === validPage - 3 || page === validPage + 3) {
+                  return <span key={page} className={styles.paginationEllipsis}>...</span>;
+                }
+                return null;
+              })}
+            </div>
+            <button
+              className={styles.paginationButton}
+              onClick={() => handlePageChange(validPage + 1)}
+              disabled={validPage >= totalPages}
+            >
+              {t('next') || 'Next'}
+            </button>
+          </div>
+        )}
       </div>
     </section>
   );
 }
-

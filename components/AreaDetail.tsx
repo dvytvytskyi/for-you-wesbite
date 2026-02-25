@@ -77,8 +77,8 @@ export default function AreaDetail({ slug }: AreaDetailProps) {
       try {
         let devs = await getDevelopersSimple();
         if (!devs || devs.length === 0) {
-          const fullDevs = await getDevelopers();
-          devs = fullDevs.map(d => ({ id: d.id, name: d.name }));
+          const { developers: fullDevs } = await getDevelopers();
+          devs = fullDevs.map(d => ({ id: d.id, name: d.name || 'Unknown' }));
         }
         setDevelopers(devs.sort((a, b) => a.name.localeCompare(b.name)));
       } catch (err) { }
@@ -174,22 +174,9 @@ export default function AreaDetail({ slug }: AreaDetailProps) {
 
         setArea(areaData);
         setCurrentSlide(0);
-
-        // Load properties for this area - initially load 36 for better performance
-        setLoadingProperties(true);
-        try {
-          const propertiesResult = await getProperties({ areaId: apiArea.id, limit: 36 }, true);
-          setProperties(propertiesResult.properties || []);
-          setTotalProperties(propertiesResult.total || 0);
-        } catch (err) {
-          setProperties([]);
-          setTotalProperties(0);
-        } finally {
-          setLoadingProperties(false);
-        }
+        setLoading(false);
       } catch (err: any) {
         setError(err.message || 'Failed to load area');
-      } finally {
         setLoading(false);
       }
     };

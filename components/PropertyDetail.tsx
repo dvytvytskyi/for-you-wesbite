@@ -865,7 +865,12 @@ export default function PropertyDetail({ propertyId, initialProperty = null }: P
               {property.developer && (
                 <div className={styles.developer}>
                   <span className={styles.developerLabel}>{t('developer')}:</span>
-                  <span className={styles.developerName}>{property.developer.name}</span>
+                  <span className={styles.developerName}>
+                    {locale === 'ru'
+                      ? (property.developer.nameRu || property.developer.nameEn || property.developer.name)
+                      : (property.developer.nameEn || property.developer.name)
+                    }
+                  </span>
                 </div>
               )}
             </div>
@@ -958,12 +963,17 @@ export default function PropertyDetail({ propertyId, initialProperty = null }: P
             )}
 
             {/* Developer Details */}
-            {property.developer && property.developer.description && (
+            {property.developer && (property.developer.description || property.developer.descriptionEn || property.developer.descriptionRu) && (
               <div className={styles.descriptionSection}>
                 <h2 className={styles.sectionTitle}>
                   {locale === 'ru' ? 'О девелопере' : 'About Developer'}
                 </h2>
-                <p className={styles.description}>{property.developer.description}</p>
+                <p className={styles.description}>
+                  {locale === 'ru'
+                    ? (property.developer.descriptionRu || property.developer.descriptionEn || property.developer.description)
+                    : (property.developer.descriptionEn || property.developer.description)
+                  }
+                </p>
               </div>
             )}
 

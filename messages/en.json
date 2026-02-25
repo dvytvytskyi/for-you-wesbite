@@ -382,7 +382,9 @@
     "viewButton": "View",
     "images": "Images",
     "createdAt": "Established",
-    "noSelection": "Select a developer to view details"
+    "noSelection": "Select a developer to view details",
+    "previous": "Previous",
+    "next": "Next"
   },
   "areaDetail": {
     "loading": "Loading area details...",
@@ -508,5 +510,12 @@
     "about": "ForYou Real Estate",
     "news": "Dubai Real Estate News",
     "careers": "Real Estate Jobs in Dubai"
+  },
+  "developerDetail": {
+    "aboutTitle": "About Developer",
+    "galleryTitle": "Gallery",
+    "projectsTitle": "Developer Projects",
+    "offPlan": "Off-plan",
+    "secondary": "Secondary"
   }
 }

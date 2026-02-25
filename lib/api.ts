@@ -14,7 +14,7 @@ if (typeof window !== 'undefined') {
 // Create axios instance
 const apiClient: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 15000, // Reduced from 30s to 15s to fail faster and show fallbacks
+  timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -170,8 +170,12 @@ export interface Property {
   developer: {
     id: string;
     name: string;
+    nameEn?: string;
+    nameRu?: string;
     logo?: string | null;
     description?: string;
+    descriptionEn?: string;
+    descriptionRu?: string;
     images?: string[];
   } | null;
   latitude: number;
@@ -303,6 +307,11 @@ export interface Investment {
  */
 export interface GetPropertiesResult {
   properties: Property[];
+  total: number;
+}
+
+export interface GetDevelopersResult {
+  developers: Developer[];
   total: number;
 }
 
@@ -546,9 +555,12 @@ const MEDIA_BASE_URL = 'https://admin.foryou-realestate.com';
 const ensureAbsoluteUrl = (url: any) => {
   if (typeof url !== 'string' || !url) return '';
   if (url.startsWith('http')) return url;
-  if (url.startsWith('/')) return `${MEDIA_BASE_URL}${url}`;
-  if (url.startsWith('storage/')) return `${MEDIA_BASE_URL}/${url}`;
-  return url;
+
+  let cleanUrl = url.trim();
+  if (cleanUrl.startsWith('./')) cleanUrl = cleanUrl.substring(2);
+  if (cleanUrl.startsWith('/')) return `${MEDIA_BASE_URL}${cleanUrl}`;
+
+  return `${MEDIA_BASE_URL}/${cleanUrl}`;
 };
 
 // Helper function to normalize property data
@@ -1229,12 +1241,19 @@ export async function getAreaById(areaIdOrSlug: string): Promise<Area | null> {
  */
 export interface Developer {
   id: string;
-  name: string;
+  slug?: string;
+  name?: string; // legacy
+  nameEn?: string;
+  nameRu?: string;
   logo: string | null;
-  description: {
+  previewImage?: string | null;
+  shortDescription?: string | null;
+  description?: { // legacy object format
     title: string;
     description: string;
   } | null;
+  descriptionEn?: string;
+  descriptionRu?: string;
   images: string[] | null;
   projectsCount: {
     total: number;
@@ -1248,15 +1267,26 @@ export interface Developer {
  * Get all developers
  * Falls back to /public/data if /public/developers is not available
  */
-export async function getDevelopers(): Promise<Developer[]> {
+export async function getDevelopers(params?: { summary?: boolean; page?: number; limit?: number }): Promise<GetDevelopersResult> {
   try {
     const url = '/public/developers';
 
-    const response = await apiClient.get<ApiResponse<any[]>>(url);
-    let developers = response.data.data;
+    const response = await apiClient.get<ApiResponse<any>>(url, { params });
+    const apiResponse = response.data;
+
+    let developersData: any[] = [];
+    if (apiResponse.data) {
+      if (Array.isArray(apiResponse.data)) {
+        developersData = apiResponse.data;
+      } else if (apiResponse.data.data && Array.isArray(apiResponse.data.data)) {
+        developersData = apiResponse.data.data;
+      } else if (apiResponse.data.developers && Array.isArray(apiResponse.data.developers)) {
+        developersData = apiResponse.data.developers;
+      }
+    }
 
     // Process developers: handle description (can be JSON string or object)
-    const processedDevelopers: Developer[] = developers.map((dev: any) => {
+    const processedDevelopers: Developer[] = developersData.map((dev: any) => {
       let description: { title: string; description: string } | null = null;
 
       if (dev.description) {
@@ -1288,10 +1318,17 @@ export async function getDevelopers(): Promise<Developer[]> {
 
       return {
         id: dev.id,
-        name: dev.name,
-        logo: dev.logo,
+        slug: dev.slug,
+        name: dev.nameEn || dev.name_en || dev.name,
+        nameEn: dev.nameEn || dev.name_en,
+        nameRu: dev.nameRu || dev.name_ru,
+        logo: ensureAbsoluteUrl(dev.logo),
+        previewImage: ensureAbsoluteUrl(dev.previewImage || dev.preview_image || dev.mainImage || dev.main_image),
+        shortDescription: dev.shortDescription || dev.short_description,
         description,
-        images: dev.images || null,
+        descriptionEn: dev.descriptionEn || dev.description_en,
+        descriptionRu: dev.descriptionRu || dev.description_ru,
+        images: Array.isArray(dev.images) ? dev.images.map(ensureAbsoluteUrl) : null,
         projectsCount: dev.projectsCount || {
           total: 0,
           offPlan: 0,
@@ -1301,42 +1338,28 @@ export async function getDevelopers(): Promise<Developer[]> {
       };
     });
 
-    if (process.env.NODE_ENV === 'development') {
-      const developersWithImages = processedDevelopers.filter(d => d.images && Array.isArray(d.images) && d.images.length > 0).length;
-      const developersWithDescription = processedDevelopers.filter(d => d.description).length;
-      const developersWithLogo = processedDevelopers.filter(d => d.logo).length;
+    const apiRes = apiResponse as any;
+    let totalCount = apiRes.total ||
+      apiRes.totalCount ||
+      (apiRes.pagination && apiRes.pagination.total) ||
+      (apiRes.data && (apiRes.data.total || apiRes.data.totalCount)) ||
+      processedDevelopers.length;
 
-
-
-
-
-    }
-
-    return processedDevelopers;
+    return { developers: processedDevelopers, total: totalCount };
   } catch (error: any) {
     // If 404, fallback to /public/data
     if (error.response?.status === 404) {
-
-
       try {
         // Get developers from public data
-
         const publicData = await getPublicData(true);
-
-
         const developersFromData = publicData.developers || [];
 
-
-
         if (!Array.isArray(developersFromData)) {
-
-          return [];
+          return { developers: [], total: 0 };
         }
 
         if (developersFromData.length === 0) {
-
-
-          return [];
+          return { developers: [], total: 0 };
         }
 
 
@@ -1382,13 +1405,10 @@ export async function getDevelopers(): Promise<Developer[]> {
 
 
 
-        return developersWithCounts;
+        return { developers: developersWithCounts, total: developersWithCounts.length };
       } catch (fallbackError: any) {
-
-
-        // Return empty array instead of throwing, so page can still render
-
-        return [];
+        // Return empty result instead of throwing, so page can still render
+        return { developers: [], total: 0 };
       }
     }
 
@@ -1403,11 +1423,52 @@ export async function getDevelopers(): Promise<Developer[]> {
  */
 export async function getDeveloperById(developerId: string): Promise<Developer | null> {
   try {
-    const developers = await getDevelopers();
-    const developer = developers.find(d => d.id === developerId);
+    // Try direct endpoint first
+    try {
+      const response = await apiClient.get<ApiResponse<any>>(`/public/developers/${developerId}`);
+      if (response.data && response.data.success) {
+        // Handle potential nested data structure
+        const dev = response.data.data?.data || response.data.data;
+        if (dev) {
+          let description: { title: string; description: string } | null = null;
+          if (dev.description) {
+            if (typeof dev.description === 'string') {
+              try {
+                const parsed = JSON.parse(dev.description);
+                description = { title: parsed.title || '', description: parsed.description || '' };
+              } catch {
+                description = { title: '', description: dev.description };
+              }
+            } else {
+              description = { title: dev.description.title || '', description: dev.description.description || '' };
+            }
+          }
+          return {
+            id: dev.id,
+            slug: dev.slug,
+            name: dev.nameEn || dev.name_en || dev.name,
+            nameEn: dev.nameEn || dev.name_en,
+            nameRu: dev.nameRu || dev.name_ru,
+            logo: ensureAbsoluteUrl(dev.logo),
+            previewImage: ensureAbsoluteUrl(dev.previewImage || dev.preview_image || dev.mainImage || dev.main_image),
+            shortDescription: dev.shortDescription || dev.short_description,
+            description,
+            descriptionEn: dev.descriptionEn || dev.description_en,
+            descriptionRu: dev.descriptionRu || dev.description_ru,
+            images: Array.isArray(dev.images) ? dev.images.map(ensureAbsoluteUrl) : null,
+            projectsCount: dev.projectsCount || { total: 0, offPlan: 0, secondary: 0 },
+            createdAt: dev.createdAt,
+          };
+        }
+      }
+    } catch (e) {
+      // If direct endpoint fails, fallback to searching in all developers
+    }
+
+    const { developers } = await getDevelopers();
+    const developer = developers.find((d: any) => d.id === developerId);
     return developer || null;
   } catch (error: any) {
-
     return null;
   }
 }

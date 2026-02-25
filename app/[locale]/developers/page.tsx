@@ -1,4 +1,5 @@
 import Header from '@/components/Header';
+import Footer from '@/components/Footer';
 import DevelopersList from '@/components/DevelopersList';
 
 import { unstable_setRequestLocale, getTranslations } from 'next-intl/server';
@@ -37,6 +38,7 @@ export default function DevelopersPage({ params: { locale } }: { params: { local
     <>
       <Header />
       <DevelopersList />
+      <Footer />
     </>
   );
 }
