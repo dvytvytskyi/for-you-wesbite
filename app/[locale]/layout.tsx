@@ -5,6 +5,7 @@ import { notFound } from 'next/navigation';
 import { locales } from '@/i18n';
 import { FavoritesProvider } from '@/lib/favoritesContext';
 import Tracker from '@/components/Tracker';
+import FloatingSocial from '@/components/FloatingSocial';
 
 export function generateStaticParams() {
   return locales.map((locale) => ({ locale }));
@@ -109,6 +110,7 @@ export default async function LocaleLayout({
         <NextIntlClientProvider messages={messages}>
           <FavoritesProvider>
             {children}
+            <FloatingSocial />
           </FavoritesProvider>
         </NextIntlClientProvider>
       </body>

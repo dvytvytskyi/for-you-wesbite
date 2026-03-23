@@ -6,6 +6,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import Link from 'next/link';
+import { registerUser } from '@/lib/api';
 import styles from './AuthForm.module.css';
 
 const registerSchema = z.object({
@@ -63,15 +64,16 @@ export default function RegisterForm() {
     setError(null);
     
     try {
-      // TODO: Replace with actual API call
       const { confirmPassword, ...submitData } = data;
-      // const response = await axios.post('/api/auth/register', submitData);// Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const response = await registerUser(submitData);
       
-      // BROKER or INVESTOR - show pending message
-      setSuccess(true);
+      if (response.success) {
+        setSuccess(true);
+      } else {
+        setError(response.message || t('registerError'));
+      }
     } catch (err: any) {
-      setError(err.message || t('registerError'));
+      setError(err.response?.data?.message || err.message || t('registerError'));
     } finally {
       setIsLoading(false);
     }

@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { createPortal } from 'react-dom';
+import { submitCallback } from '@/lib/api';
 import styles from './ProjectImage.module.css';
 
 export default function ProjectImage() {
@@ -87,22 +88,24 @@ export default function ProjectImage() {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isSubmitting) return;
 
     setIsSubmitting(true);
 
-    // Simulate submission
     try {
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      await submitCallback({
+        name: formData.name,
+        phone: formData.phone,
+        source: 'Get in touch / Contact Us (Project)'
+      });
+      
       setIsSuccess(true);
       setFormData({ name: '', phone: '' });
 
-      // If in modal, maybe close after a delay
       if (isModalOpen) {
         setTimeout(() => {
-          // Only close if still open and successful
           handleCloseModal();
         }, 3000);
       }

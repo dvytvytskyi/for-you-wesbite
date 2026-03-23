@@ -79,8 +79,8 @@ export default function PropertyDetail({ propertyId, initialProperty = null }: P
       // Initialize unit images as loading
       if (initialProperty.units && initialProperty.units.length > 0) {
         const unitsWithImages = initialProperty.units
-          .filter(unit => unit.planImage)
-          .map(unit => unit.id);
+          .filter(unit => unit.planImage && unit.id)
+          .map(unit => unit.id as string);
         setUnitImagesLoading(new Set(unitsWithImages));
       }
       return;
@@ -102,8 +102,8 @@ export default function PropertyDetail({ propertyId, initialProperty = null }: P
         // Initialize unit images as loading
         if (data.units && data.units.length > 0) {
           const unitsWithImages = data.units
-            .filter(unit => unit.planImage)
-            .map(unit => unit.id);
+            .filter(unit => unit.planImage && unit.id)
+            .map(unit => unit.id as string);
           setUnitImagesLoading(new Set(unitsWithImages));
         }
       } catch (err: any) {
@@ -223,20 +223,49 @@ export default function PropertyDetail({ propertyId, initialProperty = null }: P
     const loadOtherProperties = async () => {
       setLoadingOtherProperties(true);
       try {
-        if (process.env.NODE_ENV === 'development') {
+        const targetPrice = property.propertyType === 'off-plan'
+          ? (property.priceFrom || 0)
+          : (property.price || 0);
+
+        const filters: any = {
+          limit: 25,
+          propertyType: property.propertyType
+        };
+
+        // Filter by price +/- 10% if price is available
+        if (targetPrice > 0) {
+          filters.priceFrom = Math.round(targetPrice * 0.9);
+          filters.priceTo = Math.round(targetPrice * 1.1);
         }
 
-        // Load fewer properties to reduce load - 25 instead of 50 for faster loading
-        const result = await getProperties({ limit: 25 }, true);
+        const result = await getProperties(filters, true);
         const allProperties = result.properties || [];
 
         // Filter out current property and shuffle
         const filtered = allProperties.filter(p => p.id !== property.id);
-        const shuffled = [...filtered].sort(() => Math.random() - 0.5);
 
-        // Take 12 random properties (reduced for faster loading)
-        const randomProperties = shuffled.slice(0, 12);
-        setOtherProperties(randomProperties);
+        // If we have too few properties with price filter, try without price filter but keep type
+        if (filtered.length < 4 && targetPrice > 0) {
+          const fallbackResult = await getProperties({
+            limit: 25,
+            propertyType: property.propertyType
+          }, true);
+          const fallbackProperties = (fallbackResult.properties || []).filter(p => p.id !== property.id);
+          
+          // Merge and deduplicate
+          const combined = [...filtered];
+          fallbackProperties.forEach(p => {
+            if (!combined.some(cp => cp.id === p.id)) {
+              combined.push(p);
+            }
+          });
+          
+          const shuffled = combined.sort(() => Math.random() - 0.5);
+          setOtherProperties(shuffled.slice(0, 12));
+        } else {
+          const shuffled = [...filtered].sort(() => Math.random() - 0.5);
+          setOtherProperties(shuffled.slice(0, 12));
+        }
 
       } catch (err) {
         setOtherProperties([]);
@@ -468,8 +497,30 @@ export default function PropertyDetail({ propertyId, initialProperty = null }: P
     return locale === 'en' ? path : `/${locale}${path}`;
   };
 
-  const getName = () => property.name;
-  const getDescription = () => property.description;
+  const getName = () => {
+    if (property.propertyType === 'secondary') {
+      const type = locale === 'ru' ? 'Апартаменты' : 'Apartment';
+      const areaName = getLocation();
+      if (areaName) {
+        return locale === 'ru' ? `${type} в ${areaName}` : `${type} in ${areaName}`;
+      }
+      return type;
+    }
+    return property.name;
+  };
+  
+  const getDescription = () => {
+    if (locale === 'ru' && property.descriptionRu) {
+      return property.descriptionRu;
+    }
+    return property.description;
+  };
+
+  const getReadiness = () => {
+    if (property.propertyType !== 'off-plan') return null;
+    return property.readiness || property.status || null;
+  };
+
   // For off-plan properties: area is a string "areaName, cityName" or null
   // For secondary properties: area is an object
   const getAreaName = () => {
@@ -480,15 +531,19 @@ export default function PropertyDetail({ propertyId, initialProperty = null }: P
       // Off-plan: extract area name from string (before comma)
       return property.area.split(',')[0].trim();
     }
-    return locale === 'ru' ? property.area.nameRu : property.area.nameEn;
+    return locale === 'ru' && property.area.nameRu ? property.area.nameRu : property.area.nameEn;
   };
   const getCityName = () => {
     if (!property.city) {
       return '';
     }
-    return locale === 'ru' ? property.city.nameRu : property.city.nameEn;
+    return locale === 'ru' && property.city.nameRu ? property.city.nameRu : property.city.nameEn;
   };
   const getLocation = () => {
+    if (property.propertyType === 'secondary' && property.displayAddress) {
+      return property.displayAddress;
+    }
+    
     if (property.area === null || property.area === undefined) {
       // If area is null, try to use city if available
       return getCityName();
@@ -506,7 +561,7 @@ export default function PropertyDetail({ propertyId, initialProperty = null }: P
     return parts.join(', ') || '';
   };
   const getFacilityName = (facility: typeof property.facilities[0]) =>
-    locale === 'ru' ? facility.nameRu : facility.nameEn;
+    locale === 'ru' && facility.nameRu ? facility.nameRu : facility.nameEn;
   // Formatting functions are now imported from utils
   const formatPrice = formatNumber;
   const formatSize = (size: number) => formatNumber(Math.round(size * 100) / 100);
@@ -827,8 +882,14 @@ export default function PropertyDetail({ propertyId, initialProperty = null }: P
 
               <div className={styles.priceSection}>
                 <div className={styles.price}>{getPriceDisplay()}</div>
-                {property.propertyType === 'off-plan' && property.paymentPlan && (
-                  <div className={styles.paymentPlan}>{property.paymentPlan}</div>
+                {property.propertyType === 'off-plan' && property.paymentPlansJson && property.paymentPlansJson.length > 0 && (
+                  <div className={styles.paymentPlan}>{property.paymentPlansJson[0].Plan_name}</div>
+                )}
+                {property.propertyType === 'off-plan' && getReadiness() && (
+                  <div className={styles.readinessBadge}>
+                    <span className={styles.readinessLabel}>{locale === 'ru' ? 'Завершение: ' : 'Readiness: '}</span>
+                    <span className={styles.readinessValue}>{getReadiness()}</span>
+                  </div>
                 )}
               </div>
 
@@ -860,9 +921,18 @@ export default function PropertyDetail({ propertyId, initialProperty = null }: P
                     <span>{getSizeDisplay()}</span>
                   </div>
                 )}
+                {property.propertyType === 'secondary' && property.furnishing && (
+                  <div className={styles.detailItem}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M20 9v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V9"></path>
+                      <path d="M9 22V12h6v10M2 10.6L12 2l10 8.6"></path>
+                    </svg>
+                    <span>{property.furnishing === 'Furnished' ? (locale === 'ru' ? 'С мебелью' : 'Furnished') : (locale === 'ru' ? 'Без мебели' : 'Unfurnished')}</span>
+                  </div>
+                )}
               </div>
 
-              {property.developer && (
+              {property.propertyType !== 'secondary' && property.developer?.name && property.developer.name.trim() !== '' && (
                 <div className={styles.developer}>
                   <span className={styles.developerLabel}>{t('developer')}:</span>
                   <span className={styles.developerName}>
@@ -879,7 +949,10 @@ export default function PropertyDetail({ propertyId, initialProperty = null }: P
             {getDescription() && (
               <div className={styles.descriptionSection}>
                 <h2 className={styles.sectionTitle}>{t('description')}</h2>
-                <p className={styles.description}>{getDescription()}</p>
+                <div 
+                  className={styles.description} 
+                  dangerouslySetInnerHTML={{ __html: getDescription() }} 
+                />
               </div>
             )}
 
@@ -1071,10 +1144,10 @@ export default function PropertyDetail({ propertyId, initialProperty = null }: P
                 </div>
                 <div className={styles.unitsList} ref={unitsScrollRef}>
                   {property.units.map((unit) => {
-                    const isImageLoading = unit.planImage && unitImagesLoading.has(unit.id);
+                    const isImageLoading = unit.planImage && unit.id && unitImagesLoading.has(unit.id);
 
                     return (
-                      <div key={unit.id} className={styles.unitCard}>
+                      <div key={unit.id || unit.unitId} className={styles.unitCard}>
                         <div className={styles.unitHeader}>
                           <div className={styles.unitId}>{unit.unitId}</div>
                           <div className={styles.unitType}>{unit.type}</div>
@@ -1098,25 +1171,31 @@ export default function PropertyDetail({ propertyId, initialProperty = null }: P
                               sizes="(max-width: 768px) 100vw, 300px"
                               loading="lazy"
                               onLoad={() => {
-                                setUnitImagesLoading(prev => {
-                                  const next = new Set(prev);
-                                  next.delete(unit.id);
-                                  return next;
-                                });
+                                if (unit.id) {
+                                  setUnitImagesLoading(prev => {
+                                    const next = new Set(prev);
+                                    next.delete(unit.id as string);
+                                    return next;
+                                  });
+                                }
                               }}
                               onError={() => {
-                                setUnitImagesLoading(prev => {
-                                  const next = new Set(prev);
-                                  next.delete(unit.id);
-                                  return next;
-                                });
+                                if (unit.id) {
+                                  setUnitImagesLoading(prev => {
+                                    const next = new Set(prev);
+                                    next.delete(unit.id as string);
+                                    return next;
+                                  });
+                                }
                               }}
                               onLoadingComplete={() => {
-                                setUnitImagesLoading(prev => {
-                                  const next = new Set(prev);
-                                  next.delete(unit.id);
-                                  return next;
-                                });
+                                if (unit.id) {
+                                  setUnitImagesLoading(prev => {
+                                    const next = new Set(prev);
+                                    next.delete(unit.id as string);
+                                    return next;
+                                  });
+                                }
                               }}
                             />
                           </div>
@@ -1178,6 +1257,7 @@ export default function PropertyDetail({ propertyId, initialProperty = null }: P
               propertyPrice={property.priceAED ?? undefined}
               propertyType={property.propertyType}
               propertyName={getName()}
+              property={property}
             />
           </div>
         </div>

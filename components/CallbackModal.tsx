@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
+import { submitCallback } from '@/lib/api';
 import styles from './CallbackModal.module.css';
 
 interface CallbackModalProps {
@@ -17,6 +18,7 @@ export default function CallbackModal({ isOpen, onClose, projectName }: Callback
     const [phone, setPhone] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isSuccess, setIsSuccess] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
         if (isOpen) {
@@ -35,10 +37,14 @@ export default function CallbackModal({ isOpen, onClose, projectName }: Callback
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsSubmitting(true);
+        setError(null);
 
-        // Simulate API call
         try {
-            await new Promise(resolve => setTimeout(resolve, 1500));
+            await submitCallback({
+                name,
+                phone,
+                source: projectName ? `Callback from ${projectName}` : 'Callback Form'
+            });
             setIsSuccess(true);
             setTimeout(() => {
                 onClose();
@@ -64,53 +70,43 @@ export default function CallbackModal({ isOpen, onClose, projectName }: Callback
 
                 {!isSuccess ? (
                     <form className={styles.form} onSubmit={handleSubmit}>
-                        <h2 className={styles.title}>
-                            {locale === 'ru' ? 'Заказать звонок' : 'Request Callback'}
-                        </h2>
+                        <h2 className={styles.title}>{t('title')}</h2>
                         <p className={styles.subtitle}>
-                            {projectName
-                                ? (locale === 'ru' ? `Оставьте контакты по проекту ${projectName}, и наш эксперт свяжется с вами.` : `Leave your contact details for ${projectName}, and our expert will contact you.`)
-                                : (locale === 'ru' ? 'Оставьте ваши контакты, и наш эксперт свяжется с вами в ближайшее время.' : 'Leave your contact details, and our expert will contact you shortly.')
+                            {projectName 
+                                ? `${projectName}. ${t('subtitle')}`
+                                : t('subtitle')
                             }
                         </p>
 
                         <div className={styles.inputGroup}>
-                            <label htmlFor="name">{locale === 'ru' ? 'Ваше имя' : 'Your Name'}</label>
+                            <label htmlFor="name">{t('nameLabel')}</label>
                             <input
                                 type="text"
                                 id="name"
                                 value={name}
                                 onChange={(e) => setName(e.target.value)}
-                                placeholder={locale === 'ru' ? 'Введите имя' : 'Enter your name'}
+                                placeholder={t('namePlaceholder')}
                                 required
                             />
                         </div>
 
                         <div className={styles.inputGroup}>
-                            <label htmlFor="phone">{locale === 'ru' ? 'Номер телефона' : 'Phone Number'}</label>
+                            <label htmlFor="phone">{t('phoneLabel')}</label>
                             <input
                                 type="tel"
                                 id="phone"
                                 value={phone}
                                 onChange={(e) => setPhone(e.target.value)}
-                                placeholder="+971 --- --- -- --"
+                                placeholder={t('phonePlaceholder')}
                                 required
                             />
                         </div>
 
                         <button type="submit" className={styles.submitButton} disabled={isSubmitting}>
-                            {isSubmitting
-                                ? (locale === 'ru' ? 'Отправка...' : 'Sending...')
-                                : (locale === 'ru' ? 'Перезвоните мне' : 'Call me back')
-                            }
+                            {isSubmitting ? t('sending') : t('submitButton')}
                         </button>
 
-                        <p className={styles.disclaimer}>
-                            {locale === 'ru'
-                                ? 'Нажимая на кнопку, вы соглашаетесь с политикой конфиденциальности.'
-                                : 'By clicking the button, you agree to our privacy policy.'
-                            }
-                        </p>
+                        <p className={styles.disclaimer}>{t('disclaimer')}</p>
                     </form>
                 ) : (
                     <div className={styles.success}>
@@ -119,13 +115,8 @@ export default function CallbackModal({ isOpen, onClose, projectName }: Callback
                                 <polyline points="20 6 9 17 4 12"></polyline>
                             </svg>
                         </div>
-                        <h2 className={styles.title}>{locale === 'ru' ? 'Спасибо!' : 'Thank you!'}</h2>
-                        <p className={styles.subtitle}>
-                            {locale === 'ru'
-                                ? 'Ваша заявка принята. Мы свяжемся с вами в ближайшее время.'
-                                : 'Your request has been received. We will contact you shortly.'
-                            }
-                        </p>
+                        <h2 className={styles.title}>{t('successTitle')}</h2>
+                        <p className={styles.subtitle}>{t('successSubtitle')}</p>
                     </div>
                 )}
             </div>

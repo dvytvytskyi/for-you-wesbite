@@ -648,8 +648,8 @@
 
 .sectionTitle {
   font-family: 'Inter', sans-serif;
-  font-size: 20px;
-  font-weight: 600;
+  font-size: 18px;
+  font-weight: 500;
   color: #003077;
   margin: 0 0 16px 0;
 }
@@ -659,7 +659,45 @@
   font-size: 14px;
   line-height: 1.6;
   color: rgb(93 93 93 / 80%);
-  margin: 0;
+}
+
+.description h1 {
+  font-size: 18px;
+  font-weight: 500;
+  color: #003077;
+  margin: 0 0 12px 0;
+}
+
+.description h2, .description h3 {
+  font-size: 16px;
+  font-weight: 500;
+  color: #003077;
+  margin: 16px 0 8px 0;
+}
+
+.description p {
+  margin-bottom: 12px;
+}
+
+.description ul, .description ol {
+  padding-left: 1.25rem;
+  margin-bottom: 16px;
+  list-style-position: outside; /* Ensure bullets align properly with multi-line text */
+}
+
+.description li {
+  margin-bottom: 6px;
+  padding-left: 4px;
+}
+
+.description strong {
+  color: #003077;
+  font-weight: 500;
+}
+
+.description a {
+  color: #003077;
+  text-decoration: underline;
 }
 
 /* Facilities */
@@ -1298,9 +1336,11 @@
 
 /* Other Properties Section */
 .otherPropertiesSection {
+  margin-top: 60px;
   max-width: 1200px;
-  margin: 0 auto;
-  padding: 60px 24px 80px 24px;
+  margin-left: auto;
+  margin-right: auto;
+  padding: 0 24px 80px 24px;
   width: 100%;
   box-sizing: border-box;
 }
@@ -1309,17 +1349,15 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 40px;
-  gap: 20px;
+  margin-bottom: 24px;
 }
 
 .otherPropertiesTitle {
-  font-family: 'Cormorant Garamond', serif;
-  font-size: 36px;
-  font-weight: 400;
+  font-family: 'Inter', sans-serif;
+  font-size: 24px;
+  font-weight: 600;
   color: #003077;
   margin: 0;
-  flex: 1;
 }
 
 .scrollButtons {
@@ -1328,42 +1366,37 @@
 }
 
 .scrollButton {
-  width: 32px;
-  height: 32px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
-  background: rgba(0, 48, 119, 0.1);
-  border: 1px solid rgba(0, 48, 119, 0.2);
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.1);
   color: #003077;
+  cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  cursor: pointer;
   transition: all 0.3s ease;
+  flex-shrink: 0;
 }
 
 .scrollButton:hover {
   background: #003077;
-  border-color: #003077;
   color: #ffffff;
 }
 
-.scrollButton svg {
-  width: 16px;
-  height: 16px;
-}
-
 .otherPropertiesScrollWrapper {
-  position: relative;
-  width: 100%;
+  margin: 0 -24px;
+  padding: 0 24px;
 }
 
 .otherPropertiesScrollContainer {
   overflow-x: auto;
   overflow-y: hidden;
-  padding-bottom: 20px;
   scrollbar-width: none;
   -ms-overflow-style: none;
-  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+  padding-bottom: 20px;
 }
 
 .otherPropertiesScrollContainer::-webkit-scrollbar {
@@ -1373,12 +1406,14 @@
 .otherPropertiesCardsWrapper {
   display: flex;
   gap: 24px;
+  width: max-content;
+  align-items: stretch;
 }
 
 .otherPropertyCardWrapper {
+  width: 320px;
   flex-shrink: 0;
-  width: calc((100% - 3 * 24px) / 4);
-  min-width: 320px;
+  display: flex;
 }
 
 .loadingOtherProperties {
@@ -1637,4 +1672,66 @@
   .mobileImageIndicator {
     display: block;
   }
+}
+.secondaryDetailsSection {
+  margin-bottom: 40px;
+}
+
+.detailsGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+  background: rgba(242, 244, 247, 0.5);
+  padding: 24px;
+  border-radius: 12px;
+}
+
+.detailCardItem {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.detailLabel {
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  color: rgb(93 93 93 / 60%);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.detailValue {
+  font-family: 'Inter', sans-serif;
+  font-size: 16px;
+  font-weight: 500;
+  color: #003077;
+}
+
+@media (max-width: 600px) {
+  .detailsGrid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+}
+
+.readinessBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(235, 164, 78, 0.1);
+  color: #EBA44E;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  margin-top: 8px;
+}
+
+.readinessLabel {
+  opacity: 0.8;
+}
+
+.readinessValue {
+  font-weight: 600;
 }

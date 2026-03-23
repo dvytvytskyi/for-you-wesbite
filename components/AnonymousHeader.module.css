@@ -1,0 +1,58 @@
+.header {
+  height: 70px;
+  background: white;
+  border-bottom: 1px solid rgba(0, 48, 119, 0.05);
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+}
+
+.container {
+  width: 100%;
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 0 40px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.appTitle {
+  font-family: 'Inter', sans-serif;
+  font-size: 18px;
+  font-weight: 600;
+  color: #003077;
+  letter-spacing: -0.02em;
+}
+
+.right {
+  display: flex;
+  align-items: center;
+}
+
+.languageSwitcher {
+  display: flex;
+  gap: 12px;
+}
+
+.langBtn {
+  background: transparent;
+  border: none;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  color: rgb(93 93 93 / 40%);
+  cursor: pointer;
+  padding: 4px;
+  transition: color 0.2s ease;
+}
+
+.langBtn.active {
+  color: #003077;
+}
+
+.langBtn:hover:not(.active) {
+  color: #003077;
+}

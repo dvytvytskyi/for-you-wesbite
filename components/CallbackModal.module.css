@@ -180,4 +180,9 @@
     .modal {
         padding: 30px 20px;
     }
+
+    .inputGroup input,
+    .subtitle {
+        font-size: 16px;
+    }
 }

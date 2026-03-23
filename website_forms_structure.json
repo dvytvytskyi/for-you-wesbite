@@ -1,0 +1,122 @@
+{
+  "forms": [
+    {
+      "id": "investment_request",
+      "name": "Investment Request Form",
+      "component": "InvestmentForm.tsx",
+      "location": "/components/investment/InvestmentForm.tsx",
+      "description": "Form for submitting investment interest for a property.",
+      "fields": [
+        { "name": "firstName", "type": "string", "required": true, "label": "First Name" },
+        { "name": "lastName", "type": "string", "required": true, "label": "Last Name" },
+        { "name": "email", "type": "email", "required": true, "label": "Email Address" },
+        { "name": "phone", "type": "tel", "required": true, "label": "Phone Number" },
+        { "name": "amount", "type": "string", "required": false, "label": "Investment Amount" },
+        { "name": "date", "type": "date", "required": false, "label": "Investment Date" },
+        { "name": "notes", "type": "textarea", "required": false, "label": "Additional Notes" }
+      ],
+      "endpoint": "POST /api/investments"
+    },
+    {
+      "id": "schedule_meeting",
+      "name": "Schedule a Meeting",
+      "component": "AboutHero.tsx",
+      "location": "/components/AboutHero.tsx",
+      "description": "Form on the About Us page to book an office meeting.",
+      "fields": [
+        { "name": "date", "type": "date", "required": true, "label": "Meeting Date" },
+        { "name": "time", "type": "time", "required": true, "label": "Meeting Time" },
+        { "name": "specialist", "type": "select", "required": false, "label": "Specialist" },
+        { "name": "name", "type": "string", "required": true, "label": "Your Name" },
+        { "name": "phone", "type": "tel", "required": true, "label": "Phone Number" },
+        { "name": "email", "type": "email", "required": true, "label": "Email" },
+        { "name": "message", "type": "textarea", "required": false, "label": "Notes" }
+      ],
+      "endpoint": "POST /api/meetings"
+    },
+    {
+      "id": "get_in_touch",
+      "name": "Project Contact Form",
+      "component": "ProjectImage.tsx / PropertyDetail.tsx",
+      "location": "/components/ProjectImage.tsx",
+      "description": "Form to inquire about a specific project or property.",
+      "fields": [
+        { "name": "name", "type": "string", "required": true, "label": "Name" },
+        { "name": "phone", "type": "tel", "required": true, "label": "Phone" },
+        { "name": "message", "type": "textarea", "required": false, "label": "Message" }
+      ],
+      "endpoint": "POST /api/callback"
+    },
+    {
+      "id": "book_a_call",
+      "name": "Global Callback Form",
+      "component": "CallbackModal.tsx / NewsDetail.tsx",
+      "location": "/components/CallbackModal.tsx",
+      "description": "Simple callback form used across the site (headers, footers, sidebars).",
+      "fields": [
+        { "name": "name", "type": "string", "required": true, "label": "Your Name" },
+        { "name": "phone", "type": "tel", "required": true, "label": "Phone Number" }
+      ],
+      "endpoint": "POST /api/callback"
+    },
+    {
+      "id": "job_application",
+      "name": "Career Application",
+      "component": "CareersPageContent.tsx",
+      "location": "/components/CareersPageContent.tsx",
+      "description": "Form for applying to vacancies.",
+      "fields": [
+        { "name": "name", "type": "string", "required": true, "label": "Full Name" },
+        { "name": "email", "type": "email", "required": true, "label": "Email Address" },
+        { "name": "phone", "type": "tel", "required": true, "label": "Phone Number" },
+        { "name": "cvUrl", "type": "url", "required": false, "label": "Link to CV/Portfolio" },
+        { "name": "message", "type": "textarea", "required": false, "label": "Cover Letter" }
+      ],
+      "endpoint": "POST /api/applications"
+    },
+    {
+      "id": "user_registration",
+      "name": "User Registration",
+      "component": "RegisterForm.tsx",
+      "location": "/components/auth/RegisterForm.tsx",
+      "description": "Form to create a new user account.",
+      "fields": [
+        { "name": "firstName", "type": "string", "required": true, "label": "First Name" },
+        { "name": "lastName", "type": "string", "required": true, "label": "Last Name" },
+        { "name": "email", "type": "email", "required": true, "label": "Email" },
+        { "name": "phone", "type": "tel", "required": true, "label": "Phone" },
+        { "name": "password", "type": "password", "required": true, "label": "Password" },
+        { "name": "confirmPassword", "type": "password", "required": true, "label": "Confirm Password" },
+        { "name": "role", "type": "select", "required": true, "label": "Role (Client, Broker, Investor)" },
+        { "name": "licenseNumber", "type": "string", "required": false, "label": "License Number (for brokers)" }
+      ],
+      "endpoint": "POST /api/auth/register"
+    },
+    {
+      "id": "user_login",
+      "name": "User Login",
+      "component": "LoginForm.tsx",
+      "location": "/components/auth/LoginForm.tsx",
+      "description": "Standard login form.",
+      "fields": [
+        { "name": "email", "type": "email", "required": true, "label": "Email" },
+        { "name": "password", "type": "password", "required": true, "label": "Password" }
+      ],
+      "endpoint": "POST /api/auth/login"
+    },
+    {
+      "id": "forgot_password",
+      "name": "Forgot Password Flow",
+      "component": "ForgotPasswordForm.tsx",
+      "location": "/components/auth/ForgotPasswordForm.tsx",
+      "description": "Multi-step flow for resetting password (email, code verification, new password).",
+      "fields": [
+        { "name": "email", "type": "email", "required": true, "label": "Email" },
+        { "name": "code", "type": "string", "required": true, "label": "Verification Code" },
+        { "name": "newPassword", "type": "password", "required": true, "label": "New Password" },
+        { "name": "confirmPassword", "type": "password", "required": true, "label": "Confirm Password" }
+      ],
+      "endpoint": "POST /api/auth/forgot-password / POST /api/auth/verify-code / POST /api/auth/reset-password"
+    }
+  ]
+}

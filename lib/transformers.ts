@@ -58,9 +58,9 @@ export function convertPropertyToMapFormat(property: ApiProperty, locale: string
             // Secondary: area is an object
             return {
                 area: property.area.nameEn,
-                areaRu: property.area.nameRu,
+                areaRu: property.area.nameRu || property.area.nameEn || '',
                 city: property.city?.nameEn || '',
-                cityRu: property.city?.nameRu || '',
+                cityRu: property.city?.nameRu || property.city?.nameEn || '',
             };
         } else {
             // Area is null
@@ -68,7 +68,7 @@ export function convertPropertyToMapFormat(property: ApiProperty, locale: string
                 area: '',
                 areaRu: '',
                 city: property.city?.nameEn || '',
-                cityRu: property.city?.nameRu || '',
+                cityRu: property.city?.nameRu || property.city?.nameEn || '',
             };
         }
     };
@@ -106,8 +106,7 @@ export function convertPropertyToMapFormat(property: ApiProperty, locale: string
 
     const getBathrooms = () => {
         if (property.propertyType === 'off-plan') {
-            // For off-plan properties, bathroomsFrom/To are always null
-            return 0;
+            return property.bathroomsFrom || 0;
         }
         return property.bathrooms || 0;
     };
@@ -131,8 +130,8 @@ export function convertPropertyToMapFormat(property: ApiProperty, locale: string
     const getUnits = () => {
         if (property.propertyType === 'off-plan' && property.units) {
             return property.units.map(unit => ({
-                bedrooms: property.bedroomsFrom || 0,
-                bathrooms: 0, // For off-plan, bathrooms are always null
+                bedrooms: parseInt(unit.bedrooms || '0', 10),
+                bathrooms: 0, // Individual units might still have null/missing bathrooms in some cases
                 size: {
                     sqm: unit.totalSize,
                     sqft: unit.totalSizeSqft || (unit.totalSize * 10.764), // Convert if not provided
@@ -147,7 +146,7 @@ export function convertPropertyToMapFormat(property: ApiProperty, locale: string
 
     // Convert facilities to amenities
     const amenities = (property.facilities || []).map(f =>
-        locale === 'ru' ? f.nameRu : f.nameEn
+        locale === 'ru' && f.nameRu ? f.nameRu : f.nameEn
     );
 
     // Validate and convert coordinates (handle both number and string formats)
@@ -184,7 +183,7 @@ export function convertPropertyToMapFormat(property: ApiProperty, locale: string
         id: property.id,
         slug: property.slug || '',
         name: property.name,
-        nameRu: property.name, // API doesn't have separate nameRu, using name
+        nameRu: property.name, // Still using name as nameRu is usually handled in component
         location,
         price: getPrice(),
         developer: {
@@ -200,7 +199,7 @@ export function convertPropertyToMapFormat(property: ApiProperty, locale: string
         amenities,
         units: getUnits(),
         description: property.description,
-        descriptionRu: property.description,
+        descriptionRu: property.descriptionRu || property.description,
         isForYouChoice: property.isForYouChoice,
     };
 }

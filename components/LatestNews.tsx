@@ -5,7 +5,7 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import styles from './LatestNews.module.css';
 import NewsCard from './NewsCard';
-import { getNews, NewsItem as ApiNewsItem } from '@/lib/api';
+import { getNews, NewsItem as ApiNewsItem, submitCallback } from '@/lib/api';
 
 interface NewsItem {
     id: string;
@@ -158,9 +158,18 @@ function NewsletterModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setStatus('loading');
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        setStatus('success');
+        try {
+            await submitCallback({
+                name: 'Newsletter Subscriber',
+                phone: 'N/A',
+                email: email,
+                source: 'Newsletter Subscription (Latest News)'
+            });
+            setStatus('success');
+        } catch (err) {
+            console.error('Newsletter error:', err);
+            setStatus('idle');
+        }
     };
 
     if (!isOpen || !mounted) return null;

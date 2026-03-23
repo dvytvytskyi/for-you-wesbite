@@ -259,6 +259,11 @@ export default function InvestmentForm({
           </svg>
           <span style={{ color: '#ffffff' }}>WhatsApp</span>
         </a>
+        {property && property.propertyType === 'secondary' && property.rera && (
+          <div style={{ marginTop: '12px', fontSize: '13px', color: 'rgb(93 93 93 / 80%)', display: 'flex', justifyContent: 'flex-start', fontFamily: 'Inter, sans-serif' }}>
+            RERA Permit: <span style={{ marginLeft: '4px', fontWeight: '600', color: '#003077' }}>{property.rera}</span>
+          </div>
+        )}
       </div>
 
       {error && (
@@ -387,6 +392,11 @@ export default function InvestmentForm({
 
         <div className={styles.termsMessage}>
           {t('termsMessage') || 'When sending, I agree to terms and conditions.'}
+          {property && property.propertyType === 'secondary' && (
+            <span style={{ display: 'block', marginTop: '8px', fontSize: '11px', lineHeight: '1.4', color: '#9ca3af' }}>
+              This property was taken from open source platforms in Dubai, and is not a legal property of ForYou Real Estate. All right are reserved to the owner and advertiser of this property. In case of removal, or any other legal action - please contact info@foryou-realestate.com
+            </span>
+          )}
         </div>
 
         <button

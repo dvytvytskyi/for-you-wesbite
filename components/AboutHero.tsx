@@ -3,6 +3,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
 import Image from 'next/image';
+import { scheduleMeeting, submitCallback } from '@/lib/api';
+import Partners from './Partners';
 import styles from './AboutHero.module.css';
 
 interface Leader {
@@ -109,67 +111,7 @@ export default function AboutHero() {
       </div>
 
       {/* Partners Section */}
-      <div className={styles.partnersSection}>
-        <div className={styles.partnersContainer}>
-          <h2 className={styles.partnersTitle}>{t('partnersTitle')}</h2>
-          <div className={styles.partnersScroll}>
-            <div className={styles.partnersList}>
-              {/* Banks and financial institutions from foryou-cb.com/about */}
-              {[
-                { name: 'TBC BANK', logo: 'https://static.tildacdn.com/tild3536-6263-4862-a136-393839396365/tbc.png' },
-                { name: 'SOVCOMBANK WEALTH MANAGEMENT', logo: 'https://static.tildacdn.com/tild6332-6237-4237-b534-396137623233/Group_1597880355.png' },
-                { name: 'CENTERCREDIT', logo: 'https://static.tildacdn.com/tild3134-3762-4138-b037-326633656431/image_2.png' },
-                { name: 'Уралсиб', logo: 'https://static.tildacdn.com/tild6361-6530-4031-b237-616634306338/image_4.png' },
-                { name: 'FREEDOM BANK PRIO', logo: 'https://static.tildacdn.com/tild6261-6465-4966-b733-333364393637/image_5.png' },
-                { name: 'center home', logo: 'https://static.tildacdn.com/tild3637-6466-4433-a331-353137353864/Clip_path_group.svg' },
-                { name: 'СБЕР', logo: 'https://static.tildacdn.com/tild3863-6130-4135-b138-653236663639/Clip_path_group.svg' },
-                { name: 'А Клуб', logo: 'https://static.tildacdn.com/tild6435-3537-4064-a337-353763663232/Clip_path_group.svg' },
-                { name: 'МТС БАНК', logo: 'https://static.tildacdn.com/tild6439-3131-4264-a239-656336656331/image_1808.png' },
-                { name: 'Raiffeisen BANK', logo: 'https://static.tildacdn.com/tild3363-3334-4431-b337-313037376138/image_6.png' },
-                { name: 'AT', logo: 'https://static.tildacdn.com/tild6536-6166-4731-a137-316139653139/Group_1597880269-rem.png' },
-                { name: 'Береке', logo: 'https://static.tildacdn.com/tild3832-3534-4633-a332-353330333064/bereke.png' }
-              ].map((bank, index) => (
-                <div key={`partner-${index}`} className={styles.partnerLogo}>
-                  <Image
-                    src={bank.logo}
-                    alt={bank.name}
-                    width={200}
-                    height={80}
-                    style={{ objectFit: 'contain', maxHeight: '80px', width: 'auto' }}
-                    unoptimized
-                  />
-                </div>
-              ))}
-              {/* Duplicate for seamless infinite loop */}
-              {[
-                { name: 'TBC BANK', logo: 'https://static.tildacdn.com/tild3536-6263-4862-a136-393839396365/tbc.png' },
-                { name: 'SOVCOMBANK WEALTH MANAGEMENT', logo: 'https://static.tildacdn.com/tild6332-6237-4237-b534-396137623233/Group_1597880355.png' },
-                { name: 'CENTERCREDIT', logo: 'https://static.tildacdn.com/tild3134-3762-4138-b037-326633656431/image_2.png' },
-                { name: 'Уралсиб', logo: 'https://static.tildacdn.com/tild6361-6530-4031-b237-616634306338/image_4.png' },
-                { name: 'FREEDOM BANK PRIO', logo: 'https://static.tildacdn.com/tild6261-6465-4966-b733-333364393637/image_5.png' },
-                { name: 'center home', logo: 'https://static.tildacdn.com/tild3637-6466-4433-a331-353137353864/Clip_path_group.svg' },
-                { name: 'СБЕР', logo: 'https://static.tildacdn.com/tild3863-6130-4135-b138-653236663639/Clip_path_group.svg' },
-                { name: 'А Клуб', logo: 'https://static.tildacdn.com/tild6435-3537-4064-a337-353763663232/Clip_path_group.svg' },
-                { name: 'МТС БАНК', logo: 'https://static.tildacdn.com/tild6439-3131-4264-a239-656336656331/image_1808.png' },
-                { name: 'Raiffeisen BANK', logo: 'https://static.tildacdn.com/tild3363-3334-4431-b337-313037376138/image_6.png' },
-                { name: 'AT', logo: 'https://static.tildacdn.com/tild6536-6166-4731-a137-316139653139/Group_1597880269-rem.png' },
-                { name: 'Береке', logo: 'https://static.tildacdn.com/tild3832-3534-4633-a332-353330333064/bereke.png' }
-              ].map((bank, index) => (
-                <div key={`partner-duplicate-${index}`} className={styles.partnerLogo}>
-                  <Image
-                    src={bank.logo}
-                    alt={bank.name}
-                    width={200}
-                    height={80}
-                    style={{ objectFit: 'contain', maxHeight: '80px', width: 'auto' }}
-                    unoptimized
-                  />
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
+      <Partners />
 
       {/* Team Section */}
       <TeamSection t={t} />
@@ -435,8 +377,12 @@ export function OfficeSection({ t }: { t: any }) {
 
     setIsSubmitting(true);
     try {
-      // Simulate submission
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      await scheduleMeeting({
+        name,
+        phone,
+        notes: message,
+        location: 'Main Office'
+      });
       setIsSuccess(true);
       setName('');
       setPhone('');
@@ -633,6 +579,9 @@ function FAQContactModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => 
   const [step, setStep] = useState<'form' | 'success'>('form');
   const [loading, setLoading] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [message, setMessage] = useState('');
 
   useEffect(() => {
     setMounted(true);
@@ -658,11 +607,22 @@ function FAQContactModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => 
     e.preventDefault();
     setLoading(true);
 
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1500));
-
-    setLoading(false);
-    setStep('success');
+    try {
+      await submitCallback({
+        name,
+        phone,
+        message,
+        source: 'FAQ Contact Modal'
+      });
+      setStep('success');
+      setName('');
+      setPhone('');
+      setMessage('');
+    } catch (error) {
+      console.error('FAQ Contact form submission failed:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (!isOpen || !mounted) return null;
@@ -688,12 +648,16 @@ function FAQContactModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => 
                 <input
                   type="text"
                   placeholder="Name"
+                  value={name}
+                  onChange={e => setName(e.target.value)}
                   required
                   className={styles.modalInput}
                 />
                 <input
                   type="tel"
                   placeholder="Phone number"
+                  value={phone}
+                  onChange={e => setPhone(e.target.value)}
                   required
                   className={styles.modalInput}
                 />
@@ -703,6 +667,8 @@ function FAQContactModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => 
                 <label className={styles.modalLabel}>Question</label>
                 <textarea
                   placeholder="How can we help you?"
+                  value={message}
+                  onChange={e => setMessage(e.target.value)}
                   required
                   className={styles.modalTextarea}
                 ></textarea>

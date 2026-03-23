@@ -14,6 +14,7 @@ interface DeveloperDetailData {
     name: string;
     nameEn?: string;
     nameRu?: string;
+    nameAr?: string;
     logo: string | null;
     previewImage?: string | null;
     description?: {
@@ -22,7 +23,17 @@ interface DeveloperDetailData {
     } | null;
     descriptionEn?: string | null;
     descriptionRu?: string | null;
+    descriptionAr?: string | null;
+    avgPricesDescription?: string | null;
+    avgPrices?: { text: string; price: string }[] | null;
     images?: string[] | null;
+    areas?: {
+        id: string;
+        nameEn: string;
+        nameRu: string;
+        slug: string;
+    }[] | null;
+    communities?: any[] | null; // Reuse the structure from API
     projectsCount?: {
         total: number;
         offPlan: number;
@@ -56,6 +67,7 @@ export default function DeveloperDetail({ id }: DeveloperDetailProps) {
     });
     const [heroImageError, setHeroImageError] = useState(false);
     const [brokenImages, setBrokenImages] = useState<Set<string>>(new Set());
+    const [showAllImages, setShowAllImages] = useState(false);
 
     const handleImageError = (imgUrl: string) => {
         setBrokenImages(prev => new Set(prev).add(imgUrl));
@@ -219,7 +231,9 @@ export default function DeveloperDetail({ id }: DeveloperDetailProps) {
                                             <Image src={developer.logo} alt={developer.name} width={100} height={100} className={styles.logo} unoptimized />
                                         </div>
                                     )}
-                                    <h1 className={styles.heroTitle}>{developer.name}</h1>
+                                    <h1 className={styles.heroTitle}>
+                                        {(locale === 'ar' && developer.nameAr) ? developer.nameAr : developer.name}
+                                    </h1>
                                 </div>
                             </div>
                         </div>
@@ -227,14 +241,78 @@ export default function DeveloperDetail({ id }: DeveloperDetailProps) {
                 </div>
 
                 {/* Description */}
-                {(developer.description || developer.descriptionEn || developer.descriptionRu) && (
+                {(developer.descriptionAr || developer.descriptionEn || developer.descriptionRu || developer.description?.description || developer.description?.title) && (
                     <div className={styles.descriptionSection}>
                         <h2 className={styles.sectionTitle}>{t('aboutTitle')}</h2>
                         <div className={styles.descriptionText}>
-                            {locale === 'ru'
-                                ? (developer.descriptionRu || (developer.description?.description || developer.description?.title))
-                                : (developer.descriptionEn || (developer.description?.description || developer.description?.title))
+                            {locale === 'ar' && developer.descriptionAr
+                                ? developer.descriptionAr
+                                : locale === 'ru'
+                                ? (developer.descriptionRu || developer.description?.description || developer.description?.title)
+                                : (developer.descriptionEn || developer.description?.description || developer.description?.title)
                             }
+                        </div>
+                    </div>
+                )}
+
+                {/* Average Prices */}
+                {developer.avgPrices && developer.avgPrices.length > 0 && (
+                    <div className={styles.pricesSection}>
+                        <h2 className={styles.sectionTitle}>{t('avgPricesTitle')}</h2>
+                        {developer.avgPricesDescription && (
+                            <div className={styles.descriptionText} style={{ marginBottom: '24px' }}>
+                                {developer.avgPricesDescription}
+                            </div>
+                        )}
+                        <div className={styles.pricesGrid}>
+                            {developer.avgPrices.map((item, idx) => (
+                                <div key={idx} className={styles.priceItem}>
+                                    <span className={styles.priceType}>{item.text}</span>
+                                    <span className={styles.priceValue}>{item.price}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* Areas */}
+                {developer.areas && developer.areas.length > 0 && (
+                    <div className={styles.areasSection}>
+                        <h2 className={styles.sectionTitle}>{t('areasTitle')}</h2>
+                        <div className={styles.areasGrid}>
+                            {developer.areas.map((area: any) => (
+                                <div key={area.id} className={styles.areaChip}>
+                                    {locale === 'ru' ? area.nameRu : area.nameEn}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* Communities */}
+                {developer.communities && developer.communities.length > 0 && (
+                    <div className={styles.communitiesSection}>
+                        <h2 className={styles.sectionTitle}>{t('communitiesTitle')}</h2>
+                        <div className={styles.communitiesGrid}>
+                            {developer.communities.map((community: any) => (
+                                <div key={community.id} className={styles.communityCard}>
+                                    {community.images?.general?.[0] && (
+                                        <div className={styles.communityImage}>
+                                            <Image src={community.images.general[0]} alt={community.title} fill unoptimized />
+                                        </div>
+                                    )}
+                                    <div className={styles.communityInfo}>
+                                        <h3 className={styles.communityTitle}>{community.title}</h3>
+                                        <div className={styles.communityArea}>{community.area?.nameEn}</div>
+                                        {community.priceRange && (
+                                            <div className={styles.communityPrice}>
+                                                {community.priceRange.from?.toLocaleString()} - {community.priceRange.to?.toLocaleString()} AED
+                                            </div>
+                                        )}
+                                        <p className={styles.communityDesc}>{community.description?.substring(0, 150)}...</p>
+                                    </div>
+                                </div>
+                            ))}
                         </div>
                     </div>
                 )}
@@ -246,6 +324,7 @@ export default function DeveloperDetail({ id }: DeveloperDetailProps) {
                         <div className={styles.imagesGrid}>
                             {developer.images
                                 .filter(img => !brokenImages.has(img))
+                                .slice(0, showAllImages ? undefined : 4)
                                 .map((img, index) => (
                                     <div key={index} className={styles.imageWrapper} onClick={() => setSelectedImage(img)}>
                                         <Image
@@ -259,6 +338,16 @@ export default function DeveloperDetail({ id }: DeveloperDetailProps) {
                                     </div>
                                 ))}
                         </div>
+                        {!showAllImages && developer.images.filter(img => !brokenImages.has(img)).length > 4 && (
+                            <div className={styles.showMoreContainer}>
+                                <button
+                                    className={styles.showMoreButton}
+                                    onClick={() => setShowAllImages(true)}
+                                >
+                                    {t('showMoreImages')}
+                                </button>
+                            </div>
+                        )}
                     </div>
                 )}
 

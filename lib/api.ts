@@ -40,8 +40,8 @@ apiClient.interceptors.request.use(
       // API keys validation - errors handled silently for performance
     }
 
-    config.headers['X-Api-Key'] = API_KEY;
-    config.headers['X-Api-Secret'] = API_SECRET;
+    config.headers['x-api-key'] = API_KEY;
+    config.headers['x-api-secret'] = API_SECRET;
 
     // Add JWT token if available (for authenticated users)
     if (typeof window !== 'undefined') {
@@ -125,37 +125,46 @@ export interface Property {
   id: string;
   slug?: string;
   propertyType: 'off-plan' | 'secondary';
+  status: string;
+  saleStatus: string;
+  readiness?: string;
+  completionDatetime?: string;
   name: string;
   description: string;
+  descriptionRu?: string;
   photos: string[];
   images?: Array<{
     small: string;
     full: string;
   }>;
 
-  // Country and city can be null for off-plan properties
+  // Map Coordinates
+  latitude: number;
+  longitude: number;
+  videoUrl?: string;
+
+  // Country and city
   country: {
     id: string;
     nameEn: string;
-    nameRu: string;
-    nameAr: string;
-    code: string;
+    nameRu?: string;
+    nameAr?: string;
+    code?: string;
   } | null;
   city: {
     id: string;
     nameEn: string;
-    nameRu: string;
-    nameAr: string;
+    nameRu?: string;
+    nameAr?: string;
   } | null;
 
-  // For off-plan properties: area is a string "areaName, cityName" (e.g., "Dubai Marina, Dubai") or null
-  // For secondary properties: area is an object with full area details
+  // Area can be an object or a string
   area: string | {
     id: string;
-    slug: string;
+    slug?: string;
     nameEn: string;
-    nameRu: string;
-    nameAr: string;
+    nameRu?: string;
+    nameAr?: string;
     description?: {
       title?: string;
       description?: string;
@@ -170,6 +179,7 @@ export interface Property {
   developer: {
     id: string;
     name: string;
+    slug?: string;
     nameEn?: string;
     nameRu?: string;
     logo?: string | null;
@@ -178,48 +188,73 @@ export interface Property {
     descriptionRu?: string;
     images?: string[];
   } | null;
-  latitude: number;
-  longitude: number;
 
-  // Off-plan fields
+  // Off-plan fields (Metrics & Specific Data)
   priceFrom?: number | null;
   priceFromAED?: number | null;
   bedroomsFrom?: number | null;
   bedroomsTo?: number | null;
-  bathroomsFrom?: number | null; // Always null for off-plan
-  bathroomsTo?: number | null; // Always null for off-plan
+  bathroomsFrom?: number | null;
+  bathroomsTo?: number | null;
   sizeFrom?: number | null;
   sizeFromSqft?: number | null;
   sizeTo?: number | null;
   sizeToSqft?: number | null;
-  paymentPlan?: string | null;
+  
+  paymentPlansJson?: Array<{
+    Plan_name: string;
+    months_after_handover: number;
+    Payments: Array<Array<{
+      Payment_time: string;
+      Percent_of_payment: string;
+    }>>;
+  }> | null;
+  
   units?: Array<{
-    id: string;
+    id?: string;
     unitId: string;
-    type: 'apartment' | 'villa' | 'penthouse' | 'townhouse' | 'office';
+    type: string;
     price: number;
-    priceAED: number | null;
+    priceAED?: number | null;
     totalSize: number;
-    totalSizeSqft: number | null;
-    balconySize: number | null;
-    balconySizeSqft: number | null;
+    totalSizeSqft?: number | null;
+    balconySize?: number | null;
+    balconySizeSqft?: number | null;
+    bedrooms?: string;
+    floor?: string;
     planImage: string | null;
   }> | null;
 
-  // Secondary fields (always null for off-plan)
-  price?: number | null; // Always null for off-plan
-  priceAED?: number | null; // Always null for off-plan
+  // Secondary fields
+  price?: number | null;
+  priceAED?: number | null;
   bedrooms?: number;
   bathrooms?: number;
-  size?: number | null; // Always null for off-plan
-  sizeSqft?: number | null; // Always null for off-plan
+  size?: number | null;
+  sizeSqft?: number | null;
+  buildingName?: string;
+  communityName?: string;
+  agentName?: string;
+  agentPhone?: string;
+  agentWhatsapp?: string;
+  agentEmail?: string;
+  agentPhoto?: string;
+  brokerName?: string;
+  brokerLogo?: string;
+  reference?: string;
+  rera?: string;
+  verified?: boolean;
+  displayAddress?: string;
+  furnishing?: string;
+  externalId?: string;
+  listingDate?: string;
 
   // Common fields
   facilities: Array<{
     id: string;
     nameEn: string;
-    nameRu: string;
-    nameAr: string;
+    nameRu?: string;
+    nameAr?: string;
     iconName: string | null;
   }>;
   createdAt: string;
@@ -278,6 +313,38 @@ export interface InvestmentRequest {
   userLastName?: string;
   referenceId?: string;
 }
+
+// Property Finder API
+export interface PropertyFinderFilters {
+  category?: 'residential' | 'commercial';
+  status?: 'off-plan' | 'secondary' | 'completed' | 'off_plan';
+  developer?: string;
+  search?: string;
+  areaId?: string;
+  priceMin?: number;
+  priceMax?: number;
+  bedrooms?: string | number;
+  sortBy?: string;
+  sortOrder?: 'ASC' | 'DESC';
+  page?: number;
+  limit?: number;
+}
+
+export interface PropertyFinderProject {
+  id: string;
+  name: string;
+  category: string;
+  status: string;
+  developer: string;
+  location: string;
+  price?: number | string;
+  priceAED?: number;
+  images: string[];
+  fullData?: any;
+  createdAt?: string;
+}
+
+// Investment API continues
 
 export interface Investment {
   id: string;
@@ -403,7 +470,7 @@ export async function getProperties(filters?: PropertyFilters, useCache: boolean
     if (filters?.isForYouChoice !== undefined) params.append('isForYouChoice', filters.isForYouChoice.toString());
     if (filters?.summary) params.append('summary', 'true');
 
-    const url = `/properties?${params.toString()}`;
+    const url = `/public/properties?${params.toString()}`;
 
     try {
       const response = await apiClient.get<ApiResponse<Property[]>>(url);
@@ -415,18 +482,28 @@ export async function getProperties(filters?: PropertyFilters, useCache: boolean
       }
 
       let data: any[] = [];
+      let totalCount = 0;
+
       if (apiResponse.data) {
-        data = Array.isArray(apiResponse.data) ? apiResponse.data : (apiResponse.data.data || apiResponse.data.properties || []);
+        if (Array.isArray(apiResponse.data)) {
+          data = apiResponse.data;
+        } else if (apiResponse.data.properties && Array.isArray(apiResponse.data.properties)) {
+          data = apiResponse.data.properties;
+          totalCount = apiResponse.data.pagination?.total || apiResponse.data.total || 0;
+        } else if (apiResponse.data.data && Array.isArray(apiResponse.data.data)) {
+          data = apiResponse.data.data;
+        }
       } else if (Array.isArray(apiResponse.properties)) {
         data = apiResponse.properties;
       }
 
-      let totalCount = apiResponse.total ||
-        apiResponse.totalCount ||
-        (apiResponse.pagination && apiResponse.pagination.total) ||
-        (apiResponse.data && (apiResponse.data.total || apiResponse.data.totalCount));
-
-      if (!totalCount && data.length > 0) totalCount = data.length;
+      if (!totalCount) {
+        totalCount = apiResponse.total ||
+          apiResponse.totalCount ||
+          (apiResponse.pagination && apiResponse.pagination.total) ||
+          (apiResponse.data && (apiResponse.data.total || apiResponse.data.totalCount)) ||
+          data.length;
+      }
 
       const normalizedData = (Array.isArray(data) ? data : []).map(p => normalizeProperty(p));
 
@@ -552,6 +629,85 @@ export async function getPropertySummary(id: string): Promise<Property> {
 }
 
 
+export async function getPropertyFinderProjects(filters?: PropertyFinderFilters): Promise<{ projects: PropertyFinderProject[], total: number }> {
+  try {
+    const params = new URLSearchParams();
+    if (filters?.category) params.append('category', filters.category);
+    
+    // Map status from frontend ('off-plan', 'secondary') to backend ('off_plan', 'completed')
+    if (filters?.status) {
+      let mappedStatus = filters.status;
+      if (mappedStatus === 'off-plan') mappedStatus = 'off_plan';
+      if (mappedStatus === 'secondary') mappedStatus = 'completed';
+      params.append('status', mappedStatus);
+    }
+    if (filters?.developer) params.append('developer', filters.developer);
+    if (filters?.search) params.append('search', filters.search);
+    if (filters?.areaId) params.append('areaId', filters.areaId);
+    if (filters?.priceMin) params.append('priceMin', filters.priceMin.toString());
+    if (filters?.priceMax) params.append('priceMax', filters.priceMax.toString());
+    if (filters?.bedrooms) params.append('bedrooms', filters.bedrooms.toString());
+    if (filters?.sortBy) params.append('sortBy', filters.sortBy);
+    if (filters?.sortOrder) params.append('sortOrder', filters.sortOrder);
+    params.append('page', (filters?.page || 1).toString());
+    params.append('limit', (filters?.limit || 24).toString());
+
+    const response = await apiClient.get<ApiResponse<{ projects: any[], pagination: any }>>(`/public/property-finder/projects?${params.toString()}`);
+    
+    console.log('[API] Property Finder Projects Response:', response.data);
+
+    if (response.data && response.data.success) {
+      const { projects, pagination } = response.data.data as any;
+      return {
+        projects: (projects || []).map((p: any) => ({
+          id: p.id,
+          name: p.name,
+          category: p.category,
+          status: p.completion_status || p.status || 'off_plan',
+          developer: p.developer_name || p.developer,
+          location: p.location_name || p.location,
+          price: p.min_price || p.price,
+          priceAED: p.min_price_aed || p.priceAED,
+          images: p.images || (p.fullData?.images ? p.fullData.images.map((i: any) => i.url) : []),
+          fullData: p.fullData,
+          createdAt: p.createdAt
+        })),
+        total: pagination?.total || (projects || []).length
+      };
+    }
+    return { projects: [], total: 0 };
+  } catch (error) {
+    console.error('Failed to get Property Finder projects', error);
+    return { projects: [], total: 0 };
+  }
+}
+
+export async function getPropertyFinderProject(id: string): Promise<PropertyFinderProject | null> {
+  try {
+    const response = await apiClient.get<ApiResponse<any>>(`/public/property-finder/projects/${id}`);
+    if (response.data && response.data.success && response.data.data) {
+      const p = response.data.data;
+      return {
+        id: p.id,
+        name: p.name,
+        category: p.category,
+        status: p.completion_status || p.status || 'off_plan',
+        developer: p.developer_name || p.developer,
+        location: p.location_name || p.location,
+        price: p.min_price || p.price,
+        priceAED: p.min_price_aed || p.priceAED,
+        images: p.images || (p.fullData?.images ? p.fullData.images.map((i: any) => i.url) : []),
+        fullData: p.fullData,
+        createdAt: p.createdAt
+      };
+    }
+    return null;
+  } catch (error) {
+    console.error(`Failed to get Property Finder project ${id}`, error);
+    return null;
+  }
+}
+
 const MEDIA_BASE_URL = 'https://admin.foryou-realestate.com';
 const ensureAbsoluteUrl = (url: any) => {
   if (typeof url !== 'string' || !url) return '';
@@ -564,6 +720,53 @@ const ensureAbsoluteUrl = (url: any) => {
   return `${MEDIA_BASE_URL}/${cleanUrl}`;
 };
 
+// Helper function to normalize unit data
+function normalizeUnit(unit: any): any {
+  if (!unit) return unit;
+
+  // Normalize unit price fields
+  if (unit.price !== null && unit.price !== undefined) {
+    unit.price = typeof unit.price === 'string' ? parseFloat(unit.price) : unit.price;
+  }
+  if (unit.priceAED !== null && unit.priceAED !== undefined) {
+    unit.priceAED = typeof unit.priceAED === 'string' ? parseFloat(unit.priceAED) : unit.priceAED;
+  } else if (unit.price !== null && unit.price !== undefined && unit.price > 0) {
+    // Calculate priceAED if missing
+    unit.priceAED = Math.round(unit.price * 3.673);
+  }
+
+  // Normalize unit size fields
+  if (unit.totalSize !== null && unit.totalSize !== undefined) {
+    unit.totalSize = typeof unit.totalSize === 'string' ? parseFloat(unit.totalSize) : unit.totalSize;
+  }
+  if (unit.totalSizeSqft !== null && unit.totalSizeSqft !== undefined) {
+    unit.totalSizeSqft = typeof unit.totalSizeSqft === 'string' ? parseFloat(unit.totalSizeSqft) : unit.totalSizeSqft;
+  } else if (unit.totalSize !== null && unit.totalSize !== undefined && unit.totalSize > 0) {
+    // Calculate totalSizeSqft if missing
+    unit.totalSizeSqft = Math.round(unit.totalSize * 10.764 * 100) / 100;
+  }
+
+  // Normalize bedrooms and floor for units (new fields)
+  if (unit.bedrooms !== null && unit.bedrooms !== undefined) {
+    unit.bedrooms = String(unit.bedrooms);
+  }
+  if (unit.floor !== null && unit.floor !== undefined) {
+    unit.floor = String(unit.floor);
+  }
+
+  if (unit.balconySize !== null && unit.balconySize !== undefined) {
+    unit.balconySize = typeof unit.balconySize === 'string' ? parseFloat(unit.balconySize) : unit.balconySize;
+  }
+  if (unit.balconySizeSqft !== null && unit.balconySizeSqft !== undefined) {
+    unit.balconySizeSqft = typeof unit.balconySizeSqft === 'string' ? parseFloat(unit.balconySizeSqft) : unit.balconySizeSqft;
+  } else if (unit.balconySize !== null && unit.balconySize !== undefined && unit.balconySize > 0) {
+    // Calculate balconySizeSqft if missing
+    unit.balconySizeSqft = Math.round(unit.balconySize * 10.764 * 100) / 100;
+  }
+
+  return unit;
+}
+
 // Helper function to normalize property data
 export function normalizeProperty(property: any): Property {
   if (!property) return {} as Property;
@@ -573,27 +776,19 @@ export function normalizeProperty(property: any): Property {
     property.name = property.nameEn || property.nameRu || 'Property';
   }
 
+  if (!property.descriptionRu) {
+    property.descriptionRu = property.description_ru || property.description;
+  }
+
   if (!property.propertyType) {
     property.propertyType = 'off-plan'; // Default fallback
   }
 
   // Ensure slug exists - Backend should provide it, but fallback just in case
   if (!property.slug || property.slug.endsWith('-foryou-realestate')) {
-    // New slug format: /new-{name}-{id} or /used-{name}-{id}
-    const typePrefix = property.propertyType === 'secondary' ? 'used' : 'new';
-
-    // Clean name logic similar to backend
-    const cleanName = (property.name || 'property')
-      .toLowerCase()
-      .trim()
-      .replace(/[^\w\s-]/g, '')
-      .replace(/[\s_-]+/g, '-')
-      .replace(/^-+|-+$/g, '');
-
-    // Use first 4 chars of ID if available
-    const shortId = property.id ? property.id.substring(0, 4) : '0000';
-
-    property.slug = `${typePrefix}-${cleanName}-${shortId}`;
+    // If backend didn't provide a real slug, we must use the ID as the slug
+    // Otherwise the property detail page will throw 404 because backend cannot find fake slugs.
+    property.slug = property.id;
   }
 
   // Ensure facilities is always an array
@@ -646,10 +841,12 @@ export function normalizeProperty(property: any): Property {
       property.priceFromAED = Math.round(property.priceFrom * 3.673);
     }
 
-    // For off-plan properties, bathroomsFrom/To should always be null
-    if (property.bathroomsFrom !== null || property.bathroomsTo !== null) {
-      property.bathroomsFrom = null;
-      property.bathroomsTo = null;
+    // For off-plan properties, normalize bathroomsFrom/To (now supported in API)
+    if (property.bathroomsFrom !== null && property.bathroomsFrom !== undefined) {
+      property.bathroomsFrom = typeof property.bathroomsFrom === 'string' ? parseInt(property.bathroomsFrom, 10) : property.bathroomsFrom;
+    }
+    if (property.bathroomsTo !== null && property.bathroomsTo !== undefined) {
+      property.bathroomsTo = typeof property.bathroomsTo === 'string' ? parseInt(property.bathroomsTo, 10) : property.bathroomsTo;
     }
 
     // Calculate sizeFromSqft/sizeToSqft if missing but sizeFrom/sizeTo exists (m² to sqft: 1 m² = 10.764 sqft)
@@ -668,6 +865,11 @@ export function normalizeProperty(property: any): Property {
     if ((property.priceAED === null || property.priceAED === undefined || property.priceAED === 0) &&
       property.price !== null && property.price !== undefined && property.price > 0) {
       property.priceAED = Math.round(property.price * 3.673);
+    }
+
+    // Normalize bathrooms for secondary
+    if (property.bathrooms !== null && property.bathrooms !== undefined) {
+      property.bathrooms = typeof property.bathrooms === 'string' ? parseInt(property.bathrooms, 10) : property.bathrooms;
     }
 
     // Calculate sizeSqft if missing but size exists
@@ -702,6 +904,57 @@ export function normalizeProperty(property: any): Property {
     }
   }
 
+  // Handle flattened fields from list response (e.g. city: "Dubai", developer: "Emaar")
+  if (typeof property.city === 'string' && property.city) {
+    const cityName = property.city;
+    property.city = { 
+      id: '', 
+      nameEn: cityName, 
+      nameRu: cityName === 'Dubai' ? 'Дубай' : (cityName === 'Abu Dhabi' ? 'Абу-Даби' : cityName)
+    };
+  }
+
+  if (typeof property.area === 'string' && property.area && !property.area.includes(',')) {
+    property.area = { id: '', nameEn: property.area, nameRu: property.area };
+  }
+
+  if (typeof property.developer === 'string' && property.developer) {
+    property.developer = { id: '', name: property.developer, nameEn: property.developer, nameRu: property.developer };
+  }
+
+  // Map list response fields to metrics for both types
+  if (property.propertyType === 'off-plan') {
+    // Map 'bedrooms' -> 'bedroomsFrom'
+    if (property.bedrooms !== null && property.bedrooms !== undefined && 
+        (property.bedroomsFrom === null || property.bedroomsFrom === undefined || property.bedroomsFrom === 0)) {
+      property.bedroomsFrom = typeof property.bedrooms === 'string' ? parseInt(property.bedrooms, 10) : property.bedrooms;
+    }
+    // Map 'bathrooms' -> 'bathroomsFrom'
+    if (property.bathrooms !== null && property.bathrooms !== undefined && 
+        (property.bathroomsFrom === null || property.bathroomsFrom === undefined || property.bathroomsFrom === 0)) {
+      property.bathroomsFrom = typeof property.bathrooms === 'string' ? parseInt(property.bathrooms, 10) : property.bathrooms;
+    }
+    // Map 'size' -> 'sizeFrom' and 'sizeSqft' -> 'sizeFromSqft'
+    if (property.size && !property.sizeFrom) property.sizeFrom = property.size;
+    if (property.sizeSqft && !property.sizeFromSqft) property.sizeFromSqft = property.sizeSqft;
+    
+    // Also map 'priceAED' to 'priceFromAED' if missing
+    if (property.priceAED && !property.priceFromAED) {
+      property.priceFromAED = property.priceAED;
+    }
+  } else {
+    // Secondary: ensure bathrooms and size are numbers
+    if (property.bathrooms !== null && property.bathrooms !== undefined) {
+      property.bathrooms = typeof property.bathrooms === 'string' ? parseInt(property.bathrooms, 10) : property.bathrooms;
+    }
+    if (property.size !== null && property.size !== undefined) {
+      property.size = typeof property.size === 'string' ? parseFloat(property.size) : property.size;
+    }
+    if (property.sizeSqft !== null && property.sizeSqft !== undefined) {
+      property.sizeSqft = typeof property.sizeSqft === 'string' ? parseFloat(property.sizeSqft) : property.sizeSqft;
+    }
+  }
+
   // Handle new area string format "Area, City"
   if (typeof property.area === 'string' && property.area.includes(',')) {
     // Keep it as string, transformer will split it
@@ -717,17 +970,20 @@ export function normalizeProperty(property: any): Property {
   if (property.city && typeof property.city === 'object') {
     property.city.nameEn = property.city.nameEn || property.city.name || 'Dubai';
     property.city.nameRu = property.city.nameRu || property.city.nameEn || 'Дубай';
-  } else if (typeof property.city === 'string') {
-    property.city = { id: property.city, nameEn: 'Dubai', nameRu: 'Дубай' };
   } else if (!property.city) {
     property.city = { id: '', nameEn: '', nameRu: '' };
   }
 
-  // Ensure developer has logo
+  // Ensure developer has logo and names
   if (property.developer && typeof property.developer === 'object') {
     if (!property.developer.logo && property.developer.logoEn) {
       property.developer.logo = property.developer.logoEn;
     }
+    property.developer.name = property.developer.name || property.developer.nameEn || 'Developer';
+    property.developer.nameEn = property.developer.nameEn || property.developer.name;
+    property.developer.nameRu = property.developer.nameRu || property.developer.nameEn;
+  } else if (!property.developer) {
+    property.developer = { id: '', name: '' };
   }
 
   // 1. Normalize photos field first
@@ -822,41 +1078,7 @@ export function normalizeProperty(property: any): Property {
 
   // Normalize units if they exist
   if (property.units && Array.isArray(property.units)) {
-    property.units = property.units.map((unit: any) => {
-      // Normalize unit price fields
-      if (unit.price !== null && unit.price !== undefined) {
-        unit.price = typeof unit.price === 'string' ? parseFloat(unit.price) : unit.price;
-      }
-      if (unit.priceAED !== null && unit.priceAED !== undefined) {
-        unit.priceAED = typeof unit.priceAED === 'string' ? parseFloat(unit.priceAED) : unit.priceAED;
-      } else if (unit.price !== null && unit.price !== undefined && unit.price > 0) {
-        // Calculate priceAED if missing
-        unit.priceAED = Math.round(unit.price * 3.673);
-      }
-
-      // Normalize unit size fields
-      if (unit.totalSize !== null && unit.totalSize !== undefined) {
-        unit.totalSize = typeof unit.totalSize === 'string' ? parseFloat(unit.totalSize) : unit.totalSize;
-      }
-      if (unit.totalSizeSqft !== null && unit.totalSizeSqft !== undefined) {
-        unit.totalSizeSqft = typeof unit.totalSizeSqft === 'string' ? parseFloat(unit.totalSizeSqft) : unit.totalSizeSqft;
-      } else if (unit.totalSize !== null && unit.totalSize !== undefined && unit.totalSize > 0) {
-        // Calculate totalSizeSqft if missing
-        unit.totalSizeSqft = Math.round(unit.totalSize * 10.764 * 100) / 100;
-      }
-
-      if (unit.balconySize !== null && unit.balconySize !== undefined) {
-        unit.balconySize = typeof unit.balconySize === 'string' ? parseFloat(unit.balconySize) : unit.balconySize;
-      }
-      if (unit.balconySizeSqft !== null && unit.balconySizeSqft !== undefined) {
-        unit.balconySizeSqft = typeof unit.balconySizeSqft === 'string' ? parseFloat(unit.balconySizeSqft) : unit.balconySizeSqft;
-      } else if (unit.balconySize !== null && unit.balconySize !== undefined && unit.balconySize > 0) {
-        // Calculate balconySizeSqft if missing
-        unit.balconySizeSqft = Math.round(unit.balconySize * 10.764 * 100) / 100;
-      }
-
-      return unit;
-    });
+    property.units = property.units.map(normalizeUnit);
   }
 
   return property as Property;
@@ -1240,12 +1462,42 @@ export async function getAreaById(areaIdOrSlug: string): Promise<Area | null> {
 /**
  * Developer interface
  */
+export interface AvgPrice {
+  text: string;
+  price: string;
+}
+
+export interface Community {
+  id: string;
+  title: string;
+  area: {
+    id: string;
+    nameEn: string;
+    slug: string;
+  };
+  mapPoint: string;
+  priceRange: {
+    from: number;
+    to: number;
+  };
+  unitAvailabilities: string[];
+  propertyTypes: string[];
+  icp: string[];
+  description: string;
+  images: {
+    general: string[];
+    exterior: string[];
+    interior: string[];
+  };
+}
+
 export interface Developer {
   id: string;
   slug?: string;
   name?: string; // legacy
   nameEn?: string;
   nameRu?: string;
+  nameAr?: string;
   logo: string | null;
   previewImage?: string | null;
   shortDescription?: string | null;
@@ -1255,7 +1507,16 @@ export interface Developer {
   } | null;
   descriptionEn?: string;
   descriptionRu?: string;
+  avgPricesDescription?: string;
+  avgPrices?: AvgPrice[];
   images: string[] | null;
+  areas?: {
+    id: string;
+    nameEn: string;
+    nameRu: string;
+    slug: string;
+  }[];
+  communities?: Community[];
   projectsCount: {
     total: number;
     offPlan: number;
@@ -1450,25 +1711,29 @@ export async function getDeveloperById(developerId: string): Promise<Developer |
             name: dev.nameEn || dev.name_en || dev.name,
             nameEn: dev.nameEn || dev.name_en,
             nameRu: dev.nameRu || dev.name_ru,
+            nameAr: dev.nameAr || dev.name_ar,
             logo: ensureAbsoluteUrl(dev.logo),
             previewImage: ensureAbsoluteUrl(dev.previewImage || dev.preview_image || dev.mainImage || dev.main_image),
             shortDescription: dev.shortDescription || dev.short_description,
             description,
-            descriptionEn: dev.descriptionEn || dev.description_en,
+            descriptionEn: dev.descriptionEn || dev.description_en || (typeof dev.description === 'string' ? dev.description : ''),
             descriptionRu: dev.descriptionRu || dev.description_ru,
+            avgPricesDescription: dev.avgPricesDescription,
+            avgPrices: dev.avgPrices,
             images: Array.isArray(dev.images) ? dev.images.map(ensureAbsoluteUrl) : null,
+            areas: dev.areas,
+            communities: dev.communities,
             projectsCount: dev.projectsCount || { total: 0, offPlan: 0, secondary: 0 },
             createdAt: dev.createdAt,
           };
         }
       }
     } catch (e) {
-      // If direct endpoint fails, fallback to searching in all developers
+      // If direct endpoint fails, continue to fallback search below
     }
 
     const { developers } = await getDevelopers();
-    const developer = developers.find((d: any) => d.id === developerId);
-    return developer || null;
+    return developers.find((d: any) => d.id === developerId || d.slug === developerId) || null;
   } catch (error: any) {
     return null;
   }
@@ -1906,16 +2171,79 @@ export async function applyForVacancy(id: string, application: VacancyApplicatio
   }
 }
 
-export default apiClient;
-
-
-
 export async function getPropertyUnits(slug: string): Promise<any[]> {
   try {
-    const { data } = await apiClient.get<any>(`/public/properties/${slug}/units`);
-    return data.data || [];
+    const { data } = await apiClient.get<ApiResponse<any[]>>(`/public/properties/${slug}/units`);
+    if (data.success && Array.isArray(data.data)) {
+      return data.data.map(normalizeUnit);
+    }
+    return [];
   } catch (error) {
     console.error('Failed to load property units:', error);
     return [];
   }
 }
+
+/**
+ * Registration Interface
+ */
+export interface RegisterPayload {
+  email: string;
+  phone: string;
+  password?: string;
+  firstName?: string;
+  lastName?: string;
+  role?: 'CLIENT' | 'BROKER' | 'INVESTOR' | 'PARTNER';
+  licenseNumber?: string;
+  source?: string;
+}
+
+/**
+ * Register a new user
+ */
+export async function registerUser(payload: RegisterPayload): Promise<ApiResponse<any>> {
+  const response = await apiClient.post<ApiResponse<any>>('/auth/register', payload);
+  return response.data;
+}
+
+/**
+ * Callback Interface
+ */
+export interface CallbackPayload {
+  name: string;
+  phone: string;
+  email?: string;
+  message?: string;
+  source?: string;
+}
+
+/**
+ * Submit a callback request (Lead)
+ */
+export async function submitCallback(payload: CallbackPayload): Promise<ApiResponse<any>> {
+  const response = await apiClient.post<ApiResponse<any>>('/callback', payload);
+  return response.data;
+}
+
+/**
+ * Meeting Interface
+ */
+export interface MeetingPayload {
+  name: string;
+  phone: string;
+  email?: string;
+  date?: string;
+  time?: string;
+  notes?: string;
+  location?: string;
+}
+
+/**
+ * Schedule a meeting
+ */
+export async function scheduleMeeting(payload: MeetingPayload): Promise<ApiResponse<any>> {
+  const response = await apiClient.post<ApiResponse<any>>('/meetings', payload);
+  return response.data;
+}
+
+export default apiClient;

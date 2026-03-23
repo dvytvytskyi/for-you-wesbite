@@ -39,7 +39,33 @@ function PropertyCard({ property, currentPage = 1, index = 10, isSelected = fals
   };
 
   const getName = () => {
-    return property.name; // API повертає name (без окремих nameRu)
+    if (property.propertyType === 'off-plan') {
+      if (property.name && property.name !== 'Property') {
+        return property.name;
+      }
+      
+      // Fallback: extract name from slug if name is missing or "Property"
+      if (property.slug) {
+        const parts = property.slug.split('-');
+        if (parts.length > 2) {
+          // Slug format: new-{name}-{id}
+          const namePart = parts.slice(1, -1).join(' ');
+          return namePart.charAt(0).toUpperCase() + namePart.slice(1);
+        }
+      }
+      
+      return property.developer?.name || (locale === 'ru' ? 'Новостройка' : 'New Project');
+    } else {
+      // Secondary: "Property type in Area"
+      const type = locale === 'ru' ? 'Апартаменты' : 'Apartment'; // Default type since it's missing in list API
+      const areaName = getLocation();
+      
+      if (areaName) {
+        return locale === 'ru' ? `${type} в ${areaName}` : `${type} in ${areaName}`;
+      }
+      
+      return type;
+    }
   };
 
   const getLocation = () => {
@@ -109,7 +135,13 @@ function PropertyCard({ property, currentPage = 1, index = 10, isSelected = fals
 
   const getBathrooms = () => {
     if (property.propertyType === 'off-plan') {
-      // For off-plan properties, bathroomsFrom/To are always null
+      if (property.bathroomsFrom !== null && property.bathroomsFrom !== undefined) {
+        if (property.bathroomsTo !== null && property.bathroomsTo !== undefined && property.bathroomsTo !== property.bathroomsFrom) {
+          return `${property.bathroomsFrom}-${property.bathroomsTo}`;
+        } else if (property.bathroomsFrom > 0) {
+          return `${property.bathroomsFrom}`;
+        }
+      }
       return '';
     } else {
       return property.bathrooms || '';
@@ -503,7 +535,7 @@ function PropertyCard({ property, currentPage = 1, index = 10, isSelected = fals
             <div className={styles.typeBadge}>
               {property.propertyType === 'off-plan' ? (t('type.offPlan') || 'Off Plan') : (t('type.secondary') || 'Secondary')}
             </div>
-            {property.developer && (
+            {property.propertyType !== 'secondary' && property.developer && (
               <div className={styles.developerBadge}>
                 {property.developer.logo && (
                   <img src={property.developer.logo} alt={getDeveloper()} className={styles.developerLogo} />
@@ -513,9 +545,10 @@ function PropertyCard({ property, currentPage = 1, index = 10, isSelected = fals
             )}
           </div>
           <button
-            className={styles.favoriteButton}
+            className={`${styles.favoriteButton} ${isFav ? styles.favoriteActive : ''}`}
             onClick={(e) => {
               e.preventDefault();
+              e.stopPropagation();
               toggleFavorite(property);
             }}
             aria-label="Add to favorites"

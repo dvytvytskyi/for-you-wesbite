@@ -224,7 +224,7 @@
     }
   },
   "footer": {
-    "copyright": "© 2025 ForYou Real Estate. All rights reserved.",
+    "copyright": "© 2026 ForYou Real Estate. All rights reserved.",
     "language": "Language",
     "tagline": "Discover Homes That Inspire the Modern World in Dubai",
     "contactUs": "Contact Us",
@@ -517,5 +517,18 @@
     "projectsTitle": "Developer Projects",
     "offPlan": "Off-plan",
     "secondary": "Secondary"
+  },
+  "callback": {
+    "title": "Request a Call",
+    "subtitle": "Leave your details and we will contact you shortly.",
+    "nameLabel": "Your Name",
+    "namePlaceholder": "John Doe",
+    "phoneLabel": "Phone Number",
+    "phonePlaceholder": "+971 50 123 4567",
+    "submitButton": "Request Call",
+    "sending": "Sending...",
+    "disclaimer": "By submitting this form, you agree to our privacy policy.",
+    "successTitle": "Thank You!",
+    "successSubtitle": "Your request has been sent successfully. We will call you soon."
   }
 }

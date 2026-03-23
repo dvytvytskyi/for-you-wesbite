@@ -1,0 +1,134 @@
+.header {
+  height: 90px;
+  background: white;
+  border-bottom: 1px solid rgba(0, 48, 119, 0.05);
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.02);
+}
+
+.container {
+  width: 100%;
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 0 40px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.logo {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+
+.logoImg {
+  height: 22.4px;
+  width: auto;
+  display: block;
+}
+
+.contactContainer {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+}
+
+.phoneNumber {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 300;
+  color: #003077;
+}
+
+.phoneNumber a {
+  text-decoration: none;
+  color: inherit;
+  font-size: 14px;
+}
+
+.socialButtons {
+  display: flex;
+  gap: 10px;
+}
+
+.socialBtn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 6px;
+  text-decoration: none;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  color: white;
+  transition: all 0.2s ease;
+}
+
+.socialBtn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+.whatsapp {
+  background: #25d366;
+}
+
+.telegram {
+  background: #0088cc;
+}
+
+.languageSwitcher {
+  display: flex;
+  gap: 8px;
+  border-left: 1px solid rgba(0, 48, 119, 0.08);
+  padding-left: 20px;
+}
+
+.langBtn {
+  background: transparent;
+  border: none;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  color: #999999;
+  cursor: pointer;
+  padding: 4px;
+  transition: all 0.2s ease;
+}
+
+.langBtn.active {
+  color: #003077;
+  font-weight: 600;
+}
+
+.langBtn:hover:not(.active) {
+  color: #003077;
+}
+
+@media (max-width: 1024px) {
+  .phoneNumber {
+    display: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .socialBtn span {
+    display: none;
+  }
+  
+  .socialBtn {
+    padding: 8px;
+  }
+  
+  .contactContainer {
+    gap: 16px;
+  }
+}
