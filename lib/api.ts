@@ -45,9 +45,18 @@ apiClient.interceptors.request.use(
 
     // Add JWT token if available (for authenticated users)
     if (typeof window !== 'undefined') {
-      const token = localStorage.getItem('token');
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
+      try {
+        // Robust check for various possible token keys used in the ecosystem
+        const token = localStorage.getItem('auth_token') || 
+                      localStorage.getItem('token') || 
+                      localStorage.getItem('foryou_token') ||
+                      localStorage.getItem('broker_token');
+                      
+        if (token) {
+          config.headers.Authorization = `Bearer ${token}`;
+        }
+      } catch (err) {
+        // Silent catch for localStorage issues
       }
     }
 
