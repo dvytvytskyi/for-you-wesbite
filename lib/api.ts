@@ -652,12 +652,13 @@ export async function getPropertyFinderProjects(filters?: PropertyFinderFilters)
     params.append('page', (filters?.page || 1).toString());
     const limit = filters?.limit || 24;
     params.append('limit', limit.toString());
-    params.append('perPage', limit.toString()); // Added for compatibility with user's backend
+    params.append('perPage', limit.toString()); // Backend uses perPage
 
-    const response = await apiClient.get<ApiResponse<any>>(`/public/property-finder/projects?${params.toString()}`);
+    // NEW ENDPOINT: Removed 'public' prefix as per user request for authenticated routes
+    const response = await apiClient.get<ApiResponse<any>>(`/property-finder/projects?${params.toString()}`);
     
     if (process.env.NODE_ENV === 'development') {
-      console.log('[API] Property Finder Projects Response:', response.data);
+      console.log('[API] Property Finder Listing Response:', response.data);
     }
 
     if (response.data && response.data.success) {
@@ -678,37 +679,35 @@ export async function getPropertyFinderProjects(filters?: PropertyFinderFilters)
         totalCount = pagination?.total || pagination?.totalCount || payload.total || payload.totalCount || rawProjects.length;
       }
 
-      // Helper: extract a string from a value that may be a string or object
+      // Helper: extract a string from a value that may be a localized object
       const getName = (val: any): string => {
+        if (!val) return '';
         if (typeof val === 'string') return val;
-        if (val && typeof val === 'object') return val.nameEn || val.nameRu || val.name || val.id || '';
+        if (typeof val === 'object') {
+          // Check for title.en structure or name property
+          return val.en || val.ru || val.nameEn || val.nameRu || val.name || val.id || '';
+        }
         return '';
       };
 
-      // Helper: collect all images from every possible field and normalize to absolute URLs
+      // Helper: collect all images from every possible field (supporting media.images structure)
       const extractImages = (p: any): string[] => {
         const raw: any[] = [];
-        // Priority 1: coverImage (new backend field)
+        // Priority 1: media.images (new structure)
+        const mediaImages = p.media?.images || p.fullData?.media?.images;
+        if (Array.isArray(mediaImages)) {
+          mediaImages.forEach((img: any) => {
+            if (img.original?.url) raw.push(img.original.url);
+            else if (img.url) raw.push(img.url);
+          });
+        }
+        // Priority 2: coverImage
         if (p.coverImage) raw.push(p.coverImage);
-        // Priority 2: images[] array
+        // Priority 3: root images array
         if (Array.isArray(p.images)) {
           p.images.forEach((img: any) => {
             if (typeof img === 'string') raw.push(img);
-            else if (img && typeof img === 'object') raw.push(img.url || img.full || img.small || img.src || '');
-          });
-        }
-        // Priority 3: fullData.images[]
-        if (p.fullData?.images && Array.isArray(p.fullData.images)) {
-          p.fullData.images.forEach((img: any) => {
-            if (typeof img === 'string') raw.push(img);
-            else if (img && typeof img === 'object') raw.push(img.url || img.full || img.small || img.src || '');
-          });
-        }
-        // Priority 4: fullData.photos[]
-        if (p.fullData?.photos && Array.isArray(p.fullData.photos)) {
-          p.fullData.photos.forEach((img: any) => {
-            if (typeof img === 'string') raw.push(img);
-            else if (img && typeof img === 'object') raw.push(img.url || img.full || img.small || img.src || '');
+            else if (img.url) raw.push(img.url);
           });
         }
         // Deduplicate, convert all to absolute URLs, filter empty
@@ -718,16 +717,16 @@ export async function getPropertyFinderProjects(filters?: PropertyFinderFilters)
       return {
         projects: (rawProjects || []).map((p: any) => ({
           id: p.id,
-          name: getName(p.name),
-          category: p.category,
-          status: p.completion_status || p.status || 'off_plan',
-          developer: getName(p.developer_name || p.developer),
-          location: getName(p.location_name || p.location),
-          price: p.min_price || p.price,
-          priceAED: p.min_price_aed || p.priceAED,
+          name: getName(p.title || p.name),
+          category: p.category || p.fullData?.category,
+          status: p.projectStatus || p.completion_status || p.status || p.fullData?.projectStatus || 'off_plan',
+          developer: getName(p.developer) || getName(p.developer_name),
+          location: getName(p.location),
+          price: p.startingPrice || p.min_price || p.price,
+          priceAED: p.startingPrice || p.min_price_aed || p.priceAED,
           images: extractImages(p),
           fullData: p.fullData,
-          createdAt: p.createdAt
+          createdAt: p.createdAt || p.lastSyncAt
         })),
         total: totalCount
       };
@@ -741,35 +740,39 @@ export async function getPropertyFinderProjects(filters?: PropertyFinderFilters)
 
 export async function getPropertyFinderProject(id: string): Promise<PropertyFinderProject | null> {
   try {
-    const response = await apiClient.get<ApiResponse<any>>(`/public/property-finder/projects/${id}`);
+    // NEW ENDPOINT: Removed 'public' prefix
+    const response = await apiClient.get<ApiResponse<any>>(`/property-finder/projects/${id}`);
+    
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[API] Property Finder Detail Response:', response.data);
+    }
+
     if (response.data && response.data.success && response.data.data) {
       const p = response.data.data;
 
       const getName = (val: any): string => {
+        if (!val) return '';
         if (typeof val === 'string') return val;
-        if (val && typeof val === 'object') return val.nameEn || val.nameRu || val.name || val.id || '';
+        if (typeof val === 'object') {
+          return val.en || val.ru || val.nameEn || val.nameRu || val.name || val.id || '';
+        }
         return '';
       };
 
       const extractImages = (p: any): string[] => {
         const raw: any[] = [];
+        const mediaImages = p.media?.images || p.fullData?.media?.images;
+        if (Array.isArray(mediaImages)) {
+          mediaImages.forEach((img: any) => {
+            if (img.original?.url) raw.push(img.original.url);
+            else if (img.url) raw.push(img.url);
+          });
+        }
         if (p.coverImage) raw.push(p.coverImage);
         if (Array.isArray(p.images)) {
           p.images.forEach((img: any) => {
             if (typeof img === 'string') raw.push(img);
-            else if (img && typeof img === 'object') raw.push(img.url || img.full || img.small || img.src || '');
-          });
-        }
-        if (p.fullData?.images && Array.isArray(p.fullData.images)) {
-          p.fullData.images.forEach((img: any) => {
-            if (typeof img === 'string') raw.push(img);
-            else if (img && typeof img === 'object') raw.push(img.url || img.full || img.small || img.src || '');
-          });
-        }
-        if (p.fullData?.photos && Array.isArray(p.fullData.photos)) {
-          p.fullData.photos.forEach((img: any) => {
-            if (typeof img === 'string') raw.push(img);
-            else if (img && typeof img === 'object') raw.push(img.url || img.full || img.small || img.src || '');
+            else if (img.url) raw.push(img.url);
           });
         }
         return [...new Set(raw)].map(ensureAbsoluteUrl).filter(Boolean);
@@ -777,16 +780,16 @@ export async function getPropertyFinderProject(id: string): Promise<PropertyFind
 
       return {
         id: p.id,
-        name: getName(p.name),
-        category: p.category,
-        status: p.completion_status || p.status || 'off_plan',
-        developer: getName(p.developer_name || p.developer),
-        location: getName(p.location_name || p.location),
-        price: p.min_price || p.price,
-        priceAED: p.min_price_aed || p.priceAED,
+        name: getName(p.title || p.name),
+        category: p.category || p.fullData?.category,
+        status: p.projectStatus || p.completion_status || p.status || p.fullData?.projectStatus || 'off_plan',
+        developer: getName(p.developer) || getName(p.developer_name),
+        location: getName(p.location),
+        price: p.startingPrice || p.min_price || p.price,
+        priceAED: p.startingPrice || p.min_price_aed || p.priceAED,
         images: extractImages(p),
         fullData: p.fullData,
-        createdAt: p.createdAt
+        createdAt: p.createdAt || p.lastSyncAt
       };
     }
     return null;
