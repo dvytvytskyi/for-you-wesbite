@@ -678,29 +678,57 @@ export async function getPropertyFinderProjects(filters?: PropertyFinderFilters)
         totalCount = pagination?.total || pagination?.totalCount || payload.total || payload.totalCount || rawProjects.length;
       }
 
-      return {
-        projects: (rawProjects || []).map((p: any) => {
-          // Robust text extraction for fields that might be objects from the API
-          const getName = (val: any) => {
-            if (typeof val === 'string') return val;
-            if (val && typeof val === 'object') return val.nameEn || val.nameRu || val.name || val.id || '';
-            return '';
-          };
+      // Helper: extract a string from a value that may be a string or object
+      const getName = (val: any): string => {
+        if (typeof val === 'string') return val;
+        if (val && typeof val === 'object') return val.nameEn || val.nameRu || val.name || val.id || '';
+        return '';
+      };
 
-          return {
-            id: p.id,
-            name: getName(p.name),
-            category: p.category,
-            status: p.completion_status || p.status || 'off_plan',
-            developer: getName(p.developer_name || p.developer),
-            location: getName(p.location_name || p.location),
-            price: p.min_price || p.price,
-            priceAED: p.min_price_aed || p.priceAED,
-            images: p.images || (p.fullData?.images ? p.fullData.images.map((i: any) => i.url) : []),
-            fullData: p.fullData,
-            createdAt: p.createdAt
-          };
-        }),
+      // Helper: collect all images from every possible field and normalize to absolute URLs
+      const extractImages = (p: any): string[] => {
+        const raw: any[] = [];
+        // Priority 1: coverImage (new backend field)
+        if (p.coverImage) raw.push(p.coverImage);
+        // Priority 2: images[] array
+        if (Array.isArray(p.images)) {
+          p.images.forEach((img: any) => {
+            if (typeof img === 'string') raw.push(img);
+            else if (img && typeof img === 'object') raw.push(img.url || img.full || img.small || img.src || '');
+          });
+        }
+        // Priority 3: fullData.images[]
+        if (p.fullData?.images && Array.isArray(p.fullData.images)) {
+          p.fullData.images.forEach((img: any) => {
+            if (typeof img === 'string') raw.push(img);
+            else if (img && typeof img === 'object') raw.push(img.url || img.full || img.small || img.src || '');
+          });
+        }
+        // Priority 4: fullData.photos[]
+        if (p.fullData?.photos && Array.isArray(p.fullData.photos)) {
+          p.fullData.photos.forEach((img: any) => {
+            if (typeof img === 'string') raw.push(img);
+            else if (img && typeof img === 'object') raw.push(img.url || img.full || img.small || img.src || '');
+          });
+        }
+        // Deduplicate, convert all to absolute URLs, filter empty
+        return [...new Set(raw)].map(ensureAbsoluteUrl).filter(Boolean);
+      };
+
+      return {
+        projects: (rawProjects || []).map((p: any) => ({
+          id: p.id,
+          name: getName(p.name),
+          category: p.category,
+          status: p.completion_status || p.status || 'off_plan',
+          developer: getName(p.developer_name || p.developer),
+          location: getName(p.location_name || p.location),
+          price: p.min_price || p.price,
+          priceAED: p.min_price_aed || p.priceAED,
+          images: extractImages(p),
+          fullData: p.fullData,
+          createdAt: p.createdAt
+        })),
         total: totalCount
       };
     }
@@ -716,16 +744,47 @@ export async function getPropertyFinderProject(id: string): Promise<PropertyFind
     const response = await apiClient.get<ApiResponse<any>>(`/public/property-finder/projects/${id}`);
     if (response.data && response.data.success && response.data.data) {
       const p = response.data.data;
+
+      const getName = (val: any): string => {
+        if (typeof val === 'string') return val;
+        if (val && typeof val === 'object') return val.nameEn || val.nameRu || val.name || val.id || '';
+        return '';
+      };
+
+      const extractImages = (p: any): string[] => {
+        const raw: any[] = [];
+        if (p.coverImage) raw.push(p.coverImage);
+        if (Array.isArray(p.images)) {
+          p.images.forEach((img: any) => {
+            if (typeof img === 'string') raw.push(img);
+            else if (img && typeof img === 'object') raw.push(img.url || img.full || img.small || img.src || '');
+          });
+        }
+        if (p.fullData?.images && Array.isArray(p.fullData.images)) {
+          p.fullData.images.forEach((img: any) => {
+            if (typeof img === 'string') raw.push(img);
+            else if (img && typeof img === 'object') raw.push(img.url || img.full || img.small || img.src || '');
+          });
+        }
+        if (p.fullData?.photos && Array.isArray(p.fullData.photos)) {
+          p.fullData.photos.forEach((img: any) => {
+            if (typeof img === 'string') raw.push(img);
+            else if (img && typeof img === 'object') raw.push(img.url || img.full || img.small || img.src || '');
+          });
+        }
+        return [...new Set(raw)].map(ensureAbsoluteUrl).filter(Boolean);
+      };
+
       return {
         id: p.id,
-        name: p.name,
+        name: getName(p.name),
         category: p.category,
         status: p.completion_status || p.status || 'off_plan',
-        developer: p.developer_name || p.developer,
-        location: p.location_name || p.location,
+        developer: getName(p.developer_name || p.developer),
+        location: getName(p.location_name || p.location),
         price: p.min_price || p.price,
         priceAED: p.min_price_aed || p.priceAED,
-        images: p.images || (p.fullData?.images ? p.fullData.images.map((i: any) => i.url) : []),
+        images: extractImages(p),
         fullData: p.fullData,
         createdAt: p.createdAt
       };
