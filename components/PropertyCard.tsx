@@ -46,18 +46,29 @@ function PropertyCard({ property, currentPage = 1, index = 10, isSelected = fals
       
       // Fallback: extract name from slug if name is missing or "Property"
       if (property.slug) {
-        const parts = property.slug.split('-');
-        if (parts.length > 2) {
-          // Slug format: new-{name}-{id}
-          const namePart = parts.slice(1, -1).join(' ');
-          return namePart.charAt(0).toUpperCase() + namePart.slice(1);
+        // Check if slug is just a UUID (contains 4 hyphens and matches UUID pattern)
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(property.slug);
+        
+        if (!isUuid) {
+          const parts = property.slug.split('-');
+          if (parts.length > 2) {
+            // Slug format: new-{name}-{id}
+            const namePart = parts.slice(1, -1).join(' ');
+            return namePart.charAt(0).toUpperCase() + namePart.slice(1);
+          }
         }
+      }
+      
+      const areaName = getLocation();
+      if (areaName) {
+        const base = locale === 'ru' ? 'Новый проект в' : 'Project in';
+        return `${base} ${areaName}`;
       }
       
       return property.developer?.name || (locale === 'ru' ? 'Новостройка' : 'New Project');
     } else {
       // Secondary: "Property type in Area"
-      const type = locale === 'ru' ? 'Апартаменты' : 'Apartment'; // Default type since it's missing in list API
+      const type = locale === 'ru' ? 'Апартаменти' : 'Apartment'; // Default type since it's missing in list API
       const areaName = getLocation();
       
       if (areaName) {
@@ -135,12 +146,16 @@ function PropertyCard({ property, currentPage = 1, index = 10, isSelected = fals
 
   const getBathrooms = () => {
     if (property.propertyType === 'off-plan') {
-      if (property.bathroomsFrom !== null && property.bathroomsFrom !== undefined) {
+      if (property.bathroomsFrom !== null && property.bathroomsFrom !== undefined && property.bathroomsFrom > 0) {
         if (property.bathroomsTo !== null && property.bathroomsTo !== undefined && property.bathroomsTo !== property.bathroomsFrom) {
           return `${property.bathroomsFrom}-${property.bathroomsTo}`;
-        } else if (property.bathroomsFrom > 0) {
+        } else {
           return `${property.bathroomsFrom}`;
         }
+      }
+      // Fallback for off-plan if bathroomsFrom is missing but bathrooms is present
+      if (property.bathrooms && property.bathrooms > 0) {
+        return `${property.bathrooms}`;
       }
       return '';
     } else {
@@ -150,43 +165,48 @@ function PropertyCard({ property, currentPage = 1, index = 10, isSelected = fals
 
   const getSize = () => {
     if (property.propertyType === 'off-plan') {
-      // For off-plan: use sizeFrom/sizeTo
+      // For off-plan: prefer sizeFrom/sizeTo, fallback to size/sizeSqft
       const sizeFrom = property.sizeFrom;
       const sizeTo = property.sizeTo;
       const sizeFromSqft = property.sizeFromSqft;
       const sizeToSqft = property.sizeToSqft;
+      
+      const propSize = property.size;
+      const propSizeSqft = property.sizeSqft;
 
-      // Check if we have valid size data
-      if (sizeFrom !== null && sizeFrom !== undefined && sizeFrom > 0) {
-        if (sizeTo !== null && sizeTo !== undefined && sizeTo > 0 && sizeTo !== sizeFrom) {
+      // Check if we have valid size data (either Sqm or Sqft)
+      const hasSizeFrom = (sizeFrom !== null && sizeFrom !== undefined && sizeFrom > 0) || 
+                          (sizeFromSqft !== null && sizeFromSqft !== undefined && sizeFromSqft > 0) ||
+                          (propSize !== null && propSize !== undefined && propSize > 0) ||
+                          (propSizeSqft !== null && propSizeSqft !== undefined && propSizeSqft > 0);
+
+      if (hasSizeFrom) {
+        const hasSizeTo = (sizeTo !== null && sizeTo !== undefined && sizeTo > 0 && sizeTo !== sizeFrom) ||
+                          (sizeToSqft !== null && sizeToSqft !== undefined && sizeToSqft > 0 && sizeToSqft !== sizeFromSqft);
+
+        if (hasSizeTo) {
           // Range: from - to
           let from: number;
           let to: number;
           if (locale === 'ru') {
-            from = sizeFrom;
-            to = sizeTo;
+            from = sizeFrom || propSize || Math.round((sizeFromSqft || propSizeSqft || 0) / 10.764);
+            to = sizeTo || Math.round((sizeToSqft || 0) / 10.764);
           } else {
-            from = sizeFromSqft !== null && sizeFromSqft !== undefined && sizeFromSqft > 0
-              ? sizeFromSqft
-              : Math.round(sizeFrom * 10.764);
-            to = sizeToSqft !== null && sizeToSqft !== undefined && sizeToSqft > 0
-              ? sizeToSqft
-              : Math.round(sizeTo * 10.764);
+            from = sizeFromSqft || propSizeSqft || Math.round((sizeFrom || propSize || 0) * 10.764);
+            to = sizeToSqft || Math.round((sizeTo || 0) * 10.764);
           }
           const unit = locale === 'ru' ? 'м²' : 'sq.ft';
           return `${formatNumber(from)} - ${formatNumber(to)} ${unit}`;
         } else {
-          // Single value: from
-          let size: number;
+          // Single value: from or fallback size
+          let sizeVal: number;
           if (locale === 'ru') {
-            size = sizeFrom;
+            sizeVal = sizeFrom || propSize || Math.round((sizeFromSqft || propSizeSqft || 0) / 10.764);
           } else {
-            size = sizeFromSqft !== null && sizeFromSqft !== undefined && sizeFromSqft > 0
-              ? sizeFromSqft
-              : Math.round(sizeFrom * 10.764);
+            sizeVal = sizeFromSqft || propSizeSqft || Math.round((sizeFrom || propSize || 0) * 10.764);
           }
           const unit = locale === 'ru' ? 'м²' : 'sq.ft';
-          return `${formatNumber(size)} ${unit}`;
+          return `${formatNumber(sizeVal)} ${unit}`;
         }
       }
       // No valid size data
@@ -590,7 +610,10 @@ function PropertyCard({ property, currentPage = 1, index = 10, isSelected = fals
               <span>
                 {(() => {
                   const bedsText = getBedrooms();
-                  if (locale !== 'ru') return `${bedsText} beds`;
+                  if (locale !== 'ru') {
+                    const count = parseInt(bedsText.split('-').pop() || '0', 10);
+                    return count === 1 ? `${bedsText} bed` : `${bedsText} beds`;
+                  }
 
                   // Extract the relevant number for pluralization (last number in range)
                   const nums = bedsText.match(/\d+/g);

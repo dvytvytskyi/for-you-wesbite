@@ -55,6 +55,9 @@ export default function Footer() {
                 <Link href={getLocalizedPath('/developers')}>{t('navigation.developers')}</Link>
               </li>
               <li>
+                <Link href={getLocalizedPath('/projects')}>{t('navigation.projects')}</Link>
+              </li>
+              <li>
                 <Link href={getLocalizedPath('/about')}>{t('navigation.about')}</Link>
               </li>
               <li>

@@ -650,16 +650,36 @@ export async function getPropertyFinderProjects(filters?: PropertyFinderFilters)
     if (filters?.sortBy) params.append('sortBy', filters.sortBy);
     if (filters?.sortOrder) params.append('sortOrder', filters.sortOrder);
     params.append('page', (filters?.page || 1).toString());
-    params.append('limit', (filters?.limit || 24).toString());
+    const limit = filters?.limit || 24;
+    params.append('limit', limit.toString());
+    params.append('perPage', limit.toString()); // Added for compatibility with user's backend
 
-    const response = await apiClient.get<ApiResponse<{ projects: any[], pagination: any }>>(`/public/property-finder/projects?${params.toString()}`);
+    const response = await apiClient.get<ApiResponse<any>>(`/public/property-finder/projects?${params.toString()}`);
     
-    console.log('[API] Property Finder Projects Response:', response.data);
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[API] Property Finder Projects Response:', response.data);
+    }
 
     if (response.data && response.data.success) {
-      const { projects, pagination } = response.data.data as any;
+      const payload = response.data.data;
+      let rawProjects: any[] = [];
+      let totalCount = 0;
+
+      // Robust check for different response structures
+      if (Array.isArray(payload)) {
+        rawProjects = payload;
+        totalCount = payload.length;
+      } else if (payload && typeof payload === 'object') {
+        // Check for nested .data or .projects or .items
+        rawProjects = payload.projects || payload.data || payload.items || [];
+        
+        // Handle pagination
+        const pagination = payload.pagination || payload.meta;
+        totalCount = pagination?.total || pagination?.totalCount || payload.total || payload.totalCount || rawProjects.length;
+      }
+
       return {
-        projects: (projects || []).map((p: any) => ({
+        projects: (rawProjects || []).map((p: any) => ({
           id: p.id,
           name: p.name,
           category: p.category,
@@ -672,7 +692,7 @@ export async function getPropertyFinderProjects(filters?: PropertyFinderFilters)
           fullData: p.fullData,
           createdAt: p.createdAt
         })),
-        total: pagination?.total || (projects || []).length
+        total: totalCount
       };
     }
     return { projects: [], total: 0 };

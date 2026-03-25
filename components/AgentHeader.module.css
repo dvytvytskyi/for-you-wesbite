@@ -32,6 +32,26 @@
   display: block;
 }
 
+.nav {
+  display: flex;
+  gap: 24px;
+  margin-left: 40px;
+  flex: 1;
+}
+
+.navLink {
+  text-decoration: none;
+  color: #003077;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  transition: color 0.2s;
+}
+
+.navLink:hover {
+  color: #d4a017;
+}
+
 .contactContainer {
   display: flex;
   align-items: center;

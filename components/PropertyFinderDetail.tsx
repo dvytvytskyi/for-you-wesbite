@@ -4,6 +4,7 @@ import { useTranslations, useLocale } from 'next-intl';
 import Image from 'next/image';
 import { PropertyFinderProject } from '@/lib/api';
 import { formatNumber } from '@/lib/utils';
+import { marked } from 'marked';
 import styles from './PropertyFinderDetail.module.css';
 
 interface Props {
@@ -16,7 +17,16 @@ export default function PropertyFinderDetail({ project, anonymous = false }: Pro
   const locale = useLocale();
 
   const fullData = project.fullData || {};
-  const description = locale === 'ru' ? (fullData.description_ru || fullData.description) : fullData.description;
+  let description = locale === 'ru' ? (fullData.description_ru || fullData.description) : fullData.description;
+  
+  if (description) {
+    try {
+      description = marked.parse(description, { async: false }) as string;
+    } catch (e) {
+      console.error('Markdown processing error:', e);
+    }
+  }
+  
   const amenities = fullData.amenities || [];
   const images = project.images || [];
 

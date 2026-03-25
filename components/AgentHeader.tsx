@@ -41,6 +41,15 @@ export default function AgentHeader() {
           </Link>
         </div>
 
+        <nav className={styles.nav}>
+           <Link href={getLocalizedPath('/')} className={styles.navLink}>
+             {locale === 'ru' ? 'Каталог' : 'Catalog'}
+           </Link>
+           <Link href="https://foryou-realestate.com" className={styles.navLink}>
+             {locale === 'ru' ? 'Сайт' : 'Main Website'}
+           </Link>
+        </nav>
+
         <div className={styles.contactContainer}>
           <div className={styles.phoneNumber}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

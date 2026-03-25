@@ -131,6 +131,7 @@ function HeaderContent() {
     { key: 'areas', path: '/areas' },
     { key: 'developers', path: '/developers' },
     { key: 'aboutUs', path: '/about' },
+    { key: 'projects', path: '/projects' },
     { key: 'news', path: '/news' },
     { key: 'careers', path: '/careers' },
   ];

@@ -12,6 +12,7 @@ import { formatNumber } from '@/lib/utils';
 import InvestmentForm from '@/components/investment/InvestmentForm';
 import PropertyDetailSkeleton from '@/components/PropertyDetailSkeleton';
 import PropertyCard from '@/components/PropertyCard';
+import { marked } from 'marked';
 import styles from './PropertyDetail.module.css';
 import Lightbox from '@/components/Lightbox';
 
@@ -510,10 +511,20 @@ export default function PropertyDetail({ propertyId, initialProperty = null }: P
   };
   
   const getDescription = () => {
-    if (locale === 'ru' && property.descriptionRu) {
-      return property.descriptionRu;
+    const desc = (locale === 'ru' && property.descriptionRu) 
+      ? property.descriptionRu 
+      : (property.description || '');
+    
+    if (!desc) return '';
+    
+    // Parse Markdown to HTML
+    try {
+      // Configure marked for simple parsing
+      return marked.parse(desc, { async: false }) as string;
+    } catch (e) {
+      console.error('Markdown processing error:', e);
+      return desc;
     }
-    return property.description;
   };
 
   const getReadiness = () => {

@@ -2,6 +2,7 @@
 
 import { useLocale } from 'next-intl';
 import { useRouter, usePathname } from 'next/navigation';
+import Link from 'next/link';
 import styles from './AnonymousHeader.module.css';
 
 export default function AnonymousHeader() {
@@ -18,12 +19,23 @@ export default function AnonymousHeader() {
     router.push(`/${newLocale}${path}`);
   };
 
+  // Added getLocalizedPath function
+  const getLocalizedPath = (path: string) => {
+    return `/${locale}${path}`;
+  };
+
   return (
     <header className={styles.header}>
       <div className={styles.container}>
-        <div className={styles.appTitle}>
-          {locale === 'ru' ? 'Каталог Проектов' : 'Project Catalog'}
-        </div>
+        <Link href={getLocalizedPath('/')} className={styles.appTitle}>
+          {locale === 'ru' ? 'Каталог Проектів' : 'Project Catalog'}
+        </Link>
+
+        <nav className={styles.nav}>
+          <Link href="https://foryou-realestate.com" className={styles.navLink}>
+             {locale === 'ru' ? 'Головна' : 'Home'}
+          </Link>
+        </nav>
 
         <div className={styles.right}>
           <div className={styles.languageSwitcher}>

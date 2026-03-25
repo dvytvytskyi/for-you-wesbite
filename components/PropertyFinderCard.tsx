@@ -34,7 +34,17 @@ export default function PropertyFinderCard({ project, anonymous = false }: Props
   };
 
   const getDetailPath = () => {
-    const base = anonymous ? '/app' : '/agent';
+    // Determine the base path based on whether it is on a subdomain or main site
+    let base = anonymous ? '/app' : '/agent';
+    
+    // If we're on the main website (no subdomain detected or explicitly on /projects path)
+    if (typeof window !== 'undefined' && !window.location.hostname.includes('agent.') && !window.location.hostname.includes('app.')) {
+      base = '/projects';
+    } else if (typeof window === 'undefined') {
+       // Server-side default for the main projects page
+       base = '/projects';
+    }
+
     const path = `${base}/${project.id}`;
     return locale === 'en' ? path : `/${locale}${path}`;
   };
