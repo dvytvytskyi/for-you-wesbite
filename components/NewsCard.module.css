@@ -29,9 +29,7 @@
   transition: transform 0.6s ease;
 }
 
-.card:hover .imageContainer img {
-  transform: scale(1.05);
-}
+
 
 .overlay {
   display: none;
@@ -159,9 +157,7 @@
   box-shadow: 0 12px 30px rgba(0, 48, 119, 0.15);
 }
 
-.featuredCard:hover .imageContainer img {
-  transform: scale(1.02);
-}
+
 
 .featuredCard .imageContainer {
   height: 100%;

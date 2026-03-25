@@ -91,9 +91,7 @@
   transition: transform 0.6s ease;
 }
 
-.card:hover .mainImage {
-  transform: scale(1.05);
-}
+
 
 .imageSkeleton {
   position: absolute;

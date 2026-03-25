@@ -139,9 +139,7 @@
   scroll-snap-stop: always;
 }
 
-.card:hover {
-  transform: scale(1.02);
-}
+
 
 .cardImage {
   position: relative;
