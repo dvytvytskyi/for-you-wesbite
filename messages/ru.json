@@ -279,8 +279,9 @@
       "secondary": "Вторичка"
     },
     "developer": "Застройщик",
-    "priceOnRequest": "Цена по запросу",
-    "viewAllPhotos": "Смотреть все фото"
+    "from": "От",
+    "priceOnRequest": "По запросу",
+    "viewAllPhotos": "Все фото"
   },
   "filters": {
     "title": "Фильтры",

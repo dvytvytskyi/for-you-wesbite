@@ -679,19 +679,28 @@ export async function getPropertyFinderProjects(filters?: PropertyFinderFilters)
       }
 
       return {
-        projects: (rawProjects || []).map((p: any) => ({
-          id: p.id,
-          name: p.name,
-          category: p.category,
-          status: p.completion_status || p.status || 'off_plan',
-          developer: p.developer_name || p.developer,
-          location: p.location_name || p.location,
-          price: p.min_price || p.price,
-          priceAED: p.min_price_aed || p.priceAED,
-          images: p.images || (p.fullData?.images ? p.fullData.images.map((i: any) => i.url) : []),
-          fullData: p.fullData,
-          createdAt: p.createdAt
-        })),
+        projects: (rawProjects || []).map((p: any) => {
+          // Robust text extraction for fields that might be objects from the API
+          const getName = (val: any) => {
+            if (typeof val === 'string') return val;
+            if (val && typeof val === 'object') return val.nameEn || val.nameRu || val.name || val.id || '';
+            return '';
+          };
+
+          return {
+            id: p.id,
+            name: getName(p.name),
+            category: p.category,
+            status: p.completion_status || p.status || 'off_plan',
+            developer: getName(p.developer_name || p.developer),
+            location: getName(p.location_name || p.location),
+            price: p.min_price || p.price,
+            priceAED: p.min_price_aed || p.priceAED,
+            images: p.images || (p.fullData?.images ? p.fullData.images.map((i: any) => i.url) : []),
+            fullData: p.fullData,
+            createdAt: p.createdAt
+          };
+        }),
         total: totalCount
       };
     }
