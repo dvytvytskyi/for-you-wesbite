@@ -219,6 +219,22 @@ export default function MapFilters({ filters, onFilterChange }: MapFiltersProps)
     return (
         <div className={styles.filtersWrapper}>
             <div className={styles.filtersRow} data-has-open-dropdown={hasOpenDropdown}>
+                {/* Off Plan / Secondary Toggle */}
+                <div className={styles.typeToggle}>
+                    <button
+                        className={`${styles.typeButton} ${localFilters.type === 'new' ? styles.active : ''}`}
+                        onClick={() => handleChange('type', 'new')}
+                    >
+                        {t('type.offPlan') || (locale === 'ru' ? 'Off-Plan' : 'Off-Plan')}
+                    </button>
+                    <button
+                        className={`${styles.typeButton} ${localFilters.type === 'secondary' ? styles.active : ''}`}
+                        onClick={() => handleChange('type', 'secondary')}
+                    >
+                        {t('type.secondary') || (locale === 'ru' ? 'Готово' : 'Completed')}
+                    </button>
+                </div>
+
                 <div className={styles.searchWrapper}>
                     <input
                         type="text"

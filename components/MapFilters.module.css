@@ -28,6 +28,47 @@
   /* Chrome, Safari, Opera */
 }
 
+.typeToggle {
+  display: flex;
+  gap: 0;
+  border: 1px solid rgba(0, 48, 119, 0.2);
+  border-radius: 8px;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: #ffffff;
+}
+
+.typeButton {
+  padding: 8px 16px;
+  border: none;
+  background: transparent;
+  color: #003077;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border-right: 1px solid rgba(0, 48, 119, 0.2);
+  white-space: nowrap;
+  height: 37px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.typeButton:last-child {
+  border-right: none;
+}
+
+.typeButton:hover {
+  background: rgba(0, 48, 119, 0.05);
+}
+
+.typeButton.active {
+  background: #003077;
+  color: #ffffff;
+}
+
 .searchWrapper {
   min-width: 151px;
 }

@@ -75,9 +75,14 @@ export default function MapPageContent() {
             };
 
             // Fetch both in parallel
+            // Determine property type and status for API
+            const propertyType = currentFilters.type === 'new' ? 'off-plan' : 'secondary';
+            const pfStatus = currentFilters.type === 'new' ? 'off-plan' : 'completed';
+
+            // Fetch both in parallel
             const [offPlanMarkers, pfMarkers] = await Promise.all([
-                getMapMarkers({ ...apiFilters, propertyType: 'off-plan' }),
-                getPropertyFinderMapMarkers()
+                getMapMarkers({ ...apiFilters, propertyType }),
+                getPropertyFinderMapMarkers(pfStatus)
             ]);
 
             // Convert off-plan markers

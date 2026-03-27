@@ -6,7 +6,7 @@ import dynamic from 'next/dynamic';
 import AgentHeader from '@/components/AgentHeader';
 import { getPropertyFinderMapMarkers, ensureAbsoluteUrl } from '@/lib/api';
 import styles from '@/app/[locale]/map/page.module.css';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 
 // Reuse MapboxMap from main site
 const MapboxMap = dynamic(() => import('@/components/MapboxMap'), {
