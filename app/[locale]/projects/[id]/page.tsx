@@ -1,7 +1,10 @@
 import { getPropertyFinderProject } from '@/lib/api';
 import PropertyFinderDetail from '@/components/PropertyFinderDetail';
+import Header from '@/components/Header';
+import Footer from '@/components/Footer';
 import { notFound } from 'next/navigation';
 import { Metadata } from 'next';
+import { unstable_setRequestLocale } from 'next-intl/server';
 
 interface Props {
   params: { id: string; locale: string };
@@ -18,12 +21,19 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function ProjectPage({ params }: Props) {
-  const project = await getPropertyFinderProject(params.id);
-  if (!project) notFound();
+  const { id, locale } = params;
+  unstable_setRequestLocale(locale);
+
+  const project = await getPropertyFinderProject(id);
+  if (!project || (project as any).error) notFound();
 
   return (
-    <main style={{ paddingTop: '80px', minHeight: '100vh', background: '#fff' }}>
-      <PropertyFinderDetail project={project} />
-    </main>
+    <>
+      <Header />
+      <main style={{ minHeight: '100vh', background: '#fff' }}>
+        <PropertyFinderDetail project={project} />
+      </main>
+      <Footer />
+    </>
   );
 }

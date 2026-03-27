@@ -1,11 +1,18 @@
 'use client';
 
 import { useLocale } from 'next-intl';
+import { usePathname } from 'next/navigation';
 import { generateWhatsAppLink } from '@/lib/utils';
 import styles from './FloatingSocial.module.css';
 
 export default function FloatingSocial() {
   const locale = useLocale();
+  const pathname = usePathname();
+
+  // Hide on map page and in app module
+  if (pathname?.includes('/map') || pathname?.includes('/app')) {
+    return null;
+  }
 
   const whatsappLink = generateWhatsAppLink({
     locale,

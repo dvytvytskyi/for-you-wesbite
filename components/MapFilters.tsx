@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
-import { getAreasSimple, getDevelopersSimple } from '@/lib/api';
+import { getAreasSimple, getDevelopersSimple, getPropertyFinderLocations } from '@/lib/api';
 import styles from './MapFilters.module.css';
 
 interface Filters {
@@ -71,16 +71,36 @@ export default function MapFilters({ filters, onFilterChange }: MapFiltersProps)
         const loadData = async () => {
             try {
                 setLoadingData(true);
-                const [areasData, developersData] = await Promise.all([
+                const [areasData, developersData, pfLocations] = await Promise.all([
                     getAreasSimple(),
-                    getDevelopersSimple()
+                    getDevelopersSimple(),
+                    getPropertyFinderLocations()
                 ]);
 
-                const sortedAreas = [...areasData]
-                    .sort((a, b) => (locale === 'ru' ? a.nameRu : a.nameEn).localeCompare(locale === 'ru' ? b.nameRu : b.nameEn));
+                // Map PF locations to standard Area format
+                const mappedPF = (pfLocations || []).map(loc => {
+                    const name = typeof loc === 'string' ? loc : (loc.name || loc.label || '');
+                    const id = typeof loc === 'string' ? loc : (loc.id || loc.name || '');
+                    return { id, nameEn: name, nameRu: name, slug: id };
+                });
+
+                // Merge regular areas with PF areas, prioritizing regular ones for name uniqueness
+                const combinedAreas = [...areasData];
+                mappedPF.forEach(pf => {
+                    if (pf.nameEn && !combinedAreas.some(a => a.nameEn?.toLowerCase() === pf.nameEn.toLowerCase())) {
+                        combinedAreas.push(pf as any);
+                    }
+                });
+
+                const sortedAreas = combinedAreas
+                    .sort((a, b) => {
+                        const nameA = locale === 'ru' ? (a as any).nameRu || a.nameEn : a.nameEn;
+                        const nameB = locale === 'ru' ? (b as any).nameRu || b.nameEn : b.nameEn;
+                        return (nameA || '').localeCompare(nameB || '');
+                    });
 
                 const sortedDevelopers = [...developersData].sort((a, b) =>
-                    a.name.localeCompare(b.name)
+                    (a.name || '').localeCompare(b.name || '')
                 );
 
                 setAreas(sortedAreas as any);
@@ -211,7 +231,7 @@ export default function MapFilters({ filters, onFilterChange }: MapFiltersProps)
 
                 {/* Location */}
                 <div className={styles.dropdownWrapper} ref={locationRef} data-open={isLocationOpen}>
-                    <button className={styles.dropdownButton} onClick={() => setIsLocationOpen(!isLocationOpen)}>
+                    <button className={styles.dropdownButton} onClick={() => setIsLocationOpen(!isLocationOpen)} title="To be made soon">
                         <span>{getLocationLabel()}</span>
                         <svg width="10" height="10" viewBox="0 0 24 24" fill="none" className={isLocationOpen ? styles.rotated : ''}>
                             <path d="M6 9L12 15L18 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />

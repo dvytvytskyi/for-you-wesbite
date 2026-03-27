@@ -676,3 +676,43 @@
     font-size: 16px;
   }
 }
+.searchBox {
+  position: sticky;
+  top: -8px;
+  background: #ffffff;
+  padding: 8px 4px;
+  margin: -8px -8px 8px -8px;
+  border-bottom: 1px solid rgba(0, 48, 119, 0.08);
+  z-index: 10;
+}
+
+.dropdownSearch {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid rgba(0, 48, 119, 0.1);
+  border-radius: 6px;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  outline: none;
+  transition: all 0.2s ease;
+  background: #f8faff;
+}
+
+.dropdownSearch:focus {
+  border-color: #003077;
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(0, 48, 119, 0.05);
+}
+
+.dropdownList {
+  max-height: 240px;
+  overflow-y: auto;
+  margin-top: 4px;
+}
+
+.noResults {
+  padding: 12px;
+  text-align: center;
+  color: rgba(0, 48, 119, 0.5);
+  font-size: 13px;
+}

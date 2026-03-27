@@ -26,18 +26,24 @@ export async function generateMetadata({ params }: PropertyDetailPageProps): Pro
     const property = await getPropertyBySlug(slug);
     console.log(`[METADATA] Fetched property in ${Date.now() - startMeta}ms`);
 
-    const title = `${property.name} | ForYou Real Estate`;
-    const description = property.description
+    const areaName = typeof property.area === 'string' 
+      ? property.area.split(',')[0].trim() 
+      : (locale === 'ru' ? property.area?.nameRu : property.area?.nameEn) || 'Dubai';
+
+    // Premium Title Template for SEO or Custom SEO Title
+    const defaultTitle = locale === 'ru' 
+      ? `${property.name} в ${areaName} — Цены, Планы оплат и Сроки сдачи 2024`
+      : `${property.name} in ${areaName} — Prices, Payment Plans and Completion 2024`;
+
+    const title = (locale === 'ru' ? property.seoTitleRu : property.seoTitle) || defaultTitle;
+
+    const description = (locale === 'ru' ? property.seoDescriptionRu : property.seoDescription) || (property.description
       ? property.description.substring(0, 160).replace(/<[^>]*>?/gm, '') + '...'
-      : t('propertiesDescription');
+      : t('propertiesDescription'));
 
     const imageUrl = property.photos && property.photos.length > 0
       ? property.photos[0]
       : 'https://foryou-realestate.com/images/main-preview.jpg';
-
-    // Helper to get price for schema/metadata
-    const price = property.priceFromAED || property.priceFrom || 0;
-    const formattedPrice = new Intl.NumberFormat(locale, { style: 'currency', currency: 'AED' }).format(price);
 
     return {
       title: title,
@@ -90,7 +96,7 @@ export default async function PropertyDetailPage({ params }: PropertyDetailPageP
     notFound();
   }
 
-  // Structured Data (JSON-LD)
+  // Structured Data (JSON-LD) - RealEstateListing
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "RealEstateListing",
@@ -98,6 +104,7 @@ export default async function PropertyDetailPage({ params }: PropertyDetailPageP
     "image": property.photos || [],
     "description": property.description ? property.description.replace(/<[^>]*>?/gm, '') : "",
     "url": `https://foryou-realestate.com/${locale}/properties/${slug}`,
+    "dateModified": property.updatedAt || new Date().toISOString(),
     "address": {
       "@type": "PostalAddress",
       "addressLocality": "Dubai",
@@ -121,11 +128,43 @@ export default async function PropertyDetailPage({ params }: PropertyDetailPageP
     }
   };
 
+  // Structured Data (JSON-LD) - BreadcrumbList
+  const breadcrumbLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      {
+        "@type": "ListItem",
+        "position": 1,
+        "name": locale === 'ru' ? "Недвижимость" : "Properties",
+        "item": `https://foryou-realestate.com/${locale}/properties`
+      },
+      {
+        "@type": "ListItem",
+        "position": 2,
+        "name": property.propertyType === 'off-plan' 
+          ? (locale === 'ru' ? "Off-plan" : "Off-plan") 
+          : (locale === 'ru' ? "Вторичная" : "Secondary"),
+        "item": `https://foryou-realestate.com/${locale}/properties?type=${property.propertyType === 'off-plan' ? 'offPlan' : 'secondary'}`
+      },
+      {
+         "@type": "ListItem",
+         "position": 3,
+         "name": property.name,
+         "item": `https://foryou-realestate.com/${locale}/properties/${slug}`
+      }
+    ]
+  };
+
   return (
     <>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }}
       />
       <Header />
       <Suspense fallback={<PropertyDetailSkeleton />}>

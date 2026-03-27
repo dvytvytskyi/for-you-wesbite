@@ -58,8 +58,8 @@ export default function ProjectLanding({ project, locale }: ProjectProps) {
       {/* Breadcrumbs for SEO */}
       <nav className={styles.breadcrumbs} aria-label="Breadcrumb">
         <ol>
-          <li><a href={`/${locale}`}>{isEn ? 'Home' : 'Головна'}</a></li>
-          <li><a href={`/${locale}/projects`}>{isEn ? 'Dubai Projects' : 'Проекти Дубаю'}</a></li>
+          <li><a href={`/${locale}`}>{isEn ? 'Home' : 'Главная'}</a></li>
+          <li><a href={`/${locale}/projects`}>{isEn ? 'Dubai Projects' : 'Проекты Дубая'}</a></li>
           <li aria-current="page">{project.name}</li>
         </ol>
       </nav>
@@ -72,7 +72,7 @@ export default function ProjectLanding({ project, locale }: ProjectProps) {
           <h1 className={styles.heroTitle}>{project.name}</h1>
           <p className={styles.heroSubtitle}>{project.location}</p>
           <div className={styles.heroPrice}>
-            <span>{isEn ? 'Investment starts at' : 'Інвестиції від'}</span>
+            <span>{isEn ? 'Investment starts at' : 'Инвестиции от'}</span>
             <strong>{project.priceFrom} AED</strong>
           </div>
         </div>
@@ -97,33 +97,51 @@ export default function ProjectLanding({ project, locale }: ProjectProps) {
         </div>
       </section>
 
-      {/* 3. PAYMENT PLAN - Structured data table */}
-      <section className={styles.paymentSection}>
-        <div className={styles.section}>
-          <h2 className={styles.sectionTitle} style={{ textAlign: 'center' }}>{isEn ? 'Payment Milestones' : 'Графік платежів'}</h2>
-          <div className={styles.planContainer}>
-            {project.paymentPlan.map((p, i) => (
-              <div key={i} className={styles.planCard}>
-                <div className={styles.planHeader}>
-                  <span className={styles.planVal}>{p.percent}</span>
-                  <span className={styles.planLabel}>{p.stage}</span>
+      {/* 3. UNITS & FLOOR PLANS - NEW SECTION */}
+      <section className={styles.section}>
+        <h2 className={styles.sectionTitle} style={{ textAlign: 'center' }}>{isEn ? 'Available Units & Pricing' : 'Доступные планировки и цены'}</h2>
+        <div className={styles.unitsGrid}>
+           {(project as any).units?.map((u: any, i: number) => (
+             <div key={i} className={styles.unitCard}>
+                {u.planImage && (
+                  <div className={styles.unitImage}>
+                    <Image src={u.planImage} alt={`Floor plan ${u.type}`} fill style={{ objectFit: 'contain' }} />
+                  </div>
+                )}
+                <div className={styles.unitInfo}>
+                   <h4>{u.type === '0' ? (isEn ? 'Studio' : 'Студия') : `${u.type} BR`}</h4>
+                   <p>{u.size}</p>
+                   <div className={styles.unitPrice}>{u.price} AED</div>
                 </div>
-                <p>{p.details}</p>
-              </div>
-            ))}
-          </div>
+             </div>
+           ))}
         </div>
       </section>
 
+      {/* 4. PAYMENT PLAN - Structured data table */}
+
       {/* 4. INTERIOR GALLERY */}
       <section className={styles.section}>
-        <h2 className={styles.sectionTitle} style={{ textAlign: 'center' }}>{isEn ? 'Interior Design & Layouts' : 'Інтер’єр та планування'}</h2>
+        <h2 className={styles.sectionTitle} style={{ textAlign: 'center' }}>{isEn ? 'Experience the Interiors' : 'Интерьеры и удобства'}</h2>
         <div className={styles.gallery}>
-          {project.images.slice(2, 6).map((img, i) => (
-            <figure key={i} className={styles.galleryItem}>
-              <Image src={img} alt={`${project.name} room ${i+1}`} fill style={{ objectFit: 'cover' }} />
-            </figure>
-          ))}
+          {project.images.map((img, i) => {
+            const altVariations = isEn 
+              ? [`Exclusive view of ${project.name}`, `Luxury Interior in ${project.name} Dubai`, `World-class amenities at ${project.name}`, `Stunning architectural detail of ${project.name}`]
+              : [`Эксклюзивный вид ${project.name}`, `Роскошный интерьер в ${project.name} Дубай`, `Инфраструктура мирового уровня в ${project.name}`, `Архитектурные детали ${project.name}`];
+            const altText = altVariations[i % altVariations.length];
+            
+            return (
+              <div key={i} className={styles.galleryItem}>
+                <Image 
+                  src={img} 
+                  alt={altText} 
+                  fill 
+                  style={{ objectFit: 'cover' }} 
+                  sizes="(max-width: 768px) 100vw, 33vw"
+                />
+              </div>
+            );
+          })}
         </div>
       </section>
 

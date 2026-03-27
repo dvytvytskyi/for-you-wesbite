@@ -58,8 +58,12 @@ export default function InvestmentForm({
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [formattedAmount, setFormattedAmount] = useState<string>('');
-  const authenticated = isAuthenticated();
+  const [authenticated, setAuthenticated] = useState<boolean>(false);
   const { isFavorite, toggleFavorite, removeFromFavorites } = useFavorites();
+
+  useEffect(() => {
+    setAuthenticated(isAuthenticated());
+  }, []);
 
   const schema = investmentSchema;
   const defaultAmount = propertyPriceFrom || propertyPrice || 0;

@@ -6,7 +6,7 @@ import { getAreasSimple, getDevelopersSimple } from '@/lib/api';
 import styles from './FilterModal.module.css';
 
 interface Filters {
-  type: 'new' | 'secondary';
+  type: 'all' | 'new' | 'secondary';
   search: string;
   location: string[];
   bedrooms: number[];
@@ -14,6 +14,8 @@ interface Filters {
   sizeTo: string;
   priceFrom: string;
   priceTo: string;
+  furnishingType?: string;
+  listingType?: 'sale' | 'rent';
   sort: string;
   developerId?: string;
   cityId?: string;
@@ -130,6 +132,12 @@ export default function FilterModal({ isOpen, onClose, filters, onApply, onReset
         {/* Type Selector */}
         <div className={styles.section}>
           <div className={styles.typeSelector}>
+            <button
+              className={`${styles.typeBtn} ${tempFilters.type === 'all' ? styles.active : ''}`}
+              onClick={() => updateFilter('type', 'all')}
+            >
+              {locale === 'ru' ? 'Все' : 'All'}
+            </button>
             <button
               className={`${styles.typeBtn} ${tempFilters.type === 'new' ? styles.active : ''}`}
               onClick={() => updateFilter('type', 'new')}

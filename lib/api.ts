@@ -1,15 +1,16 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
 
 // API Configuration
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://admin.foryou-realestate.com/api';
+const ADMIN_API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://admin.foryou-realestate.com/api';
+
+// On the client, we use our local next.js proxy to bypass CORS
+// On the server, we go direct for performance
+const IS_BROWSER = typeof window !== 'undefined';
+const API_BASE_URL = ADMIN_API_BASE;
+
 const API_KEY = process.env.NEXT_PUBLIC_API_KEY || 'fyr_7084daf35cf6427f60e06bccd675f133b8a19ce4866cf941156bb4f38fba4016';
 const API_SECRET = process.env.NEXT_PUBLIC_API_SECRET || '2e9e9a3a8080f207cf1c684baaeff40dcd4404c10f4d2207340bb48ee8ccdccda3f4e2fde5bd74fa4d8f463e361c45c9437206a97abb772415263e3a69655a73';
 
-if (typeof window !== 'undefined') {
-  console.log('🌐 API Client Initialized:');
-  console.log('   Base URL:', API_BASE_URL);
-  console.log('   Key starts with:', API_KEY.substring(0, 10));
-}
 
 // Create axios instance
 const apiClient: AxiosInstance = axios.create({
@@ -23,9 +24,6 @@ const apiClient: AxiosInstance = axios.create({
 // Aggressive logging for ALL requests on server
 apiClient.interceptors.request.use((config) => {
   (config as any)._startTime = Date.now();
-  if (typeof window === 'undefined') {
-    console.log(`%c[API-REQ] ${config.method?.toUpperCase()} ${config.url}`, 'color: #3498db');
-  }
   return config;
 });
 
@@ -122,10 +120,11 @@ export interface PropertyFilters {
   priceFrom?: number | string; // USD (can be number or string from URL params)
   priceTo?: number | string; // USD (can be number or string from URL params)
   search?: string;
-  sortBy?: 'createdAt' | 'name' | 'price' | 'priceFrom' | 'size' | 'sizeFrom';
+  sortBy?: 'createdAt' | 'name' | 'price' | 'priceFrom' | 'size' | 'sizeFrom' | 'random';
   sortOrder?: 'ASC' | 'DESC';
   page?: number; // Page number for server-side pagination
   limit?: number; // Items per page for server-side pagination
+  seed?: number | string; // For stable random sorting
   isForYouChoice?: boolean;
   summary?: boolean;
 }
@@ -141,6 +140,10 @@ export interface Property {
   name: string;
   description: string;
   descriptionRu?: string;
+  seoTitle?: string;
+  seoDescription?: string;
+  seoTitleRu?: string;
+  seoDescriptionRu?: string;
   photos: string[];
   images?: Array<{
     small: string;
@@ -209,14 +212,16 @@ export interface Property {
   sizeFromSqft?: number | null;
   sizeTo?: number | null;
   sizeToSqft?: number | null;
+  paymentPlan?: string;
+  unitsCount?: number | null;
   
   paymentPlansJson?: Array<{
     Plan_name: string;
     months_after_handover: number;
-    Payments: Array<Array<{
+    Payments: Array<{
       Payment_time: string;
       Percent_of_payment: string;
-    }>>;
+    }>;
   }> | null;
   
   units?: Array<{
@@ -327,16 +332,23 @@ export interface InvestmentRequest {
 export interface PropertyFinderFilters {
   category?: 'residential' | 'commercial';
   status?: 'off-plan' | 'secondary' | 'completed' | 'off_plan';
-  developer?: string;
-  search?: string;
-  areaId?: string;
-  priceMin?: number;
-  priceMax?: number;
-  bedrooms?: string | number;
-  sortBy?: string;
-  sortOrder?: 'ASC' | 'DESC';
-  page?: number;
-  limit?: number;
+  developer?: string | string[];
+  developerId?: string | string[];
+  search?: string | string[];
+  areaId?: string | string[];
+  location?: string | string[];
+  priceMin?: number | string | string[];
+  priceMax?: number | string | string[];
+  bedrooms?: string | number | string[] | number[];
+  sizeMin?: number | string | string[];
+  sizeMax?: number | string | string[];
+  furnishingType?: 'furnished' | 'unfurnished' | 'partly-furnished' | string | string[];
+  sortBy?: string | string[];
+  sortOrder?: 'ASC' | 'DESC' | string | string[];
+  listingType?: 'sale' | 'rent' | string;
+  page?: number | string | string[];
+  limit?: number | string | string[];
+  locale?: string;
 }
 
 export interface PropertyFinderProject {
@@ -348,9 +360,29 @@ export interface PropertyFinderProject {
   location: string;
   price?: number | string;
   priceAED?: number;
+  minPrice?: string | number;
+  maxPrice?: string | number;
+  minPriceAed?: string | number;
+  maxPriceAed?: string | number;
+  readiness?: string;
+  type?: string;
+  saleStatus?: string;
+  completionDatetime?: string;
+  views?: string[];
+  listingType?: 'sale' | 'rent';
   images: string[];
-  fullData?: any;
+  fullData: any;
   createdAt?: string;
+  // Technical details
+  parkingSlots?: number;
+  availableFrom?: string;
+  finishingType?: string;
+  furnishingType?: string;
+  bedrooms?: number | string;
+  bathrooms?: number | string;
+  size?: number | string;
+  yearBuilt?: string | number;
+  projectStatus?: string;
 }
 
 // Investment API continues
@@ -478,6 +510,7 @@ export async function getProperties(filters?: PropertyFilters, useCache: boolean
 
     if (filters?.isForYouChoice !== undefined) params.append('isForYouChoice', filters.isForYouChoice.toString());
     if (filters?.summary) params.append('summary', 'true');
+    if (filters?.seed) params.append('seed', filters.seed.toString());
 
     const url = `/public/properties?${params.toString()}`;
 
@@ -517,8 +550,9 @@ export async function getProperties(filters?: PropertyFilters, useCache: boolean
       const normalizedData = (Array.isArray(data) ? data : []).map(p => normalizeProperty(p));
 
       // ONLY sort if data is small (sanity check)
+      // Skip if random sorting is requested (backend handles it)
       let finalData = normalizedData;
-      if (normalizedData.length < 500) {
+      if (normalizedData.length < 500 && sortBy !== 'random') {
         finalData = [...normalizedData].sort((a, b) => {
           let aVal: any, bVal: any;
           switch (sortBy) {
@@ -544,9 +578,11 @@ export async function getProperties(filters?: PropertyFilters, useCache: boolean
           return sortOrder === 'ASC' ? aVal - bVal : bVal - aVal;
         });
       } else {
-        console.warn(`[API] getProperties returned too many results (${normalizedData.length}), skipping client-side sort`);
-        // Limit to 100 for safety if somehow we got 24k
-        finalData = normalizedData.slice(0, 100);
+        if (sortBy !== 'random') {
+          console.warn(`[API] getProperties returned too many results (${normalizedData.length}), skipping client-side sort`);
+          // Limit to 100 for safety if somehow we got 24k
+          finalData = normalizedData.slice(0, 100);
+        }
       }
 
       const result = { properties: finalData, total: totalCount || normalizedData.length };
@@ -638,105 +674,288 @@ export async function getPropertySummary(id: string): Promise<Property> {
 }
 
 
+// Helper: extract absolute URL and handle S3 bucket links
+export const ensureAbsoluteUrl = (url: any) => {
+  if (typeof url !== 'string' || !url) return '';
+  if (url.startsWith('http')) return url;
+
+  const MEDIA_BASE_URL = 'https://admin.foryou-realestate.com';
+  let cleanUrl = url.trim();
+  if (cleanUrl.startsWith('./')) cleanUrl = cleanUrl.substring(2);
+  if (cleanUrl.startsWith('/')) return `${MEDIA_BASE_URL}${cleanUrl}`;
+
+  return `${MEDIA_BASE_URL}/${cleanUrl}`;
+};
+
+/**
+ * Robust normalization for Property Finder projects.
+ * Handles parsing fullData, extracting localized names, and finding images in various structures.
+ */
+function normalizePFProject(p: any, locale: string = 'en'): PropertyFinderProject {
+  if (!p) return {} as PropertyFinderProject;
+
+  // 1. Parse fullData if it's a string
+  let fdRaw = p.fullData;
+  if (typeof fdRaw === 'string') {
+    try { fdRaw = JSON.parse(fdRaw); } catch (e) { fdRaw = {}; }
+  } else if (!fdRaw) {
+    fdRaw = {};
+  }
+
+  // 2. Merge root level fields into a unified fullData object for components
+  const fullData = { 
+    ...p, 
+    ...fdRaw,
+    ...p.specifications,
+    ...p.status,
+    compliance: p.legal_compliance || fdRaw.compliance || fdRaw.legal_compliance
+  };
+
+  // 3. Helper for localized names/titles
+  const getName = (val: any): string => {
+    if (!val) return '';
+    if (typeof val === 'string') return val;
+    if (typeof val === 'object') {
+      // Priority list for localized fields
+      return val.en || val.ru || val.nameEn || val.nameRu || val.name || val.id || '';
+    }
+    return '';
+  };
+
+  // 4. Helper for extracting all possible images
+  const extractImages = (item: any, fd: any): string[] => {
+    const raw: any[] = [];
+    
+    // Helper to process media objects (common in PF data)
+    const processMedia = (media: any) => {
+      if (!media) return;
+      const images = media.images || media.gallery || [];
+      if (Array.isArray(images)) {
+        images.forEach((img: any) => {
+          if (typeof img === 'string') raw.push(img);
+          else if (img?.original?.url) raw.push(img.original.url);
+          else if (img?.url) raw.push(img.url);
+          else if (img?.link) raw.push(img.link);
+        });
+      }
+    };
+
+    // Try various possible locations for media/images
+    processMedia(item.media);
+    processMedia(fd.media);
+    processMedia(item.fullData?.media);
+
+    if (item.coverImage) raw.push(item.coverImage);
+    if (fd.coverImage) raw.push(fd.coverImage);
+
+    // Root level arrays
+    if (Array.isArray(item.images)) item.images.forEach((img: any) => raw.push(typeof img === 'string' ? img : (img.url || img.link)));
+    if (Array.isArray(fd.images)) fd.images.forEach((img: any) => raw.push(typeof img === 'string' ? img : (img.url || img.link)));
+    
+    // Photos fallback
+    if (item.photos) {
+      if (Array.isArray(item.photos)) raw.push(...item.photos);
+      else raw.push(item.photos);
+    }
+    
+    // Check common field names directly
+    const commonFields = ['coverImage', 'cover_image', 'mainImage', 'main_image', 'thumbnail', 'photo', 'image'];
+    commonFields.forEach(f => {
+      if (item[f]) raw.push(item[f]);
+      if (fd[f]) raw.push(fd[f]);
+    });
+
+    // Deep search inside fullData
+    const deepSearch = (obj: any) => {
+      if (!obj || typeof obj !== 'object') return;
+      Object.keys(obj).forEach(key => {
+        const lowerKey = key.toLowerCase();
+        if (lowerKey === 'url' || lowerKey === 'link' || lowerKey === 'original' || lowerKey === 'original_url') {
+           if (typeof obj[key] === 'string' && obj[key].startsWith('http')) raw.push(obj[key]);
+           else if (obj[key]?.url) raw.push(obj[key].url);
+        }
+        if (lowerKey.includes('image') || lowerKey.includes('photo') || lowerKey.includes('media')) {
+           if (typeof obj[key] === 'string' && obj[key].startsWith('http')) raw.push(obj[key]);
+           else if (Array.isArray(obj[key])) {
+             obj[key].forEach((v: any) => {
+               if (typeof v === 'string') raw.push(v);
+               else if (v?.url || v?.link || v?.original?.url) raw.push(v.url || v.link || v.original?.url);
+             });
+           } else if (typeof obj[key] === 'object' && obj[key] !== null) {
+              if (obj[key].url) raw.push(obj[key].url);
+              if (obj[key].link) raw.push(obj[key].link);
+              if (obj[key].original?.url) raw.push(obj[key].original.url);
+           }
+        }
+      });
+    };
+    deepSearch(fd);
+
+    // Deduplicate and ensure absolute URLs
+    return [...new Set(raw)].map(ensureAbsoluteUrl).filter(Boolean);
+  };
+
+  const images = extractImages(p, fullData);
+  const finalName = getName(p.title || p.name || fullData.title || fullData.name || `Project ${p.pfId || p.id}`);
+  
+  if (process.env.NODE_ENV === 'development' && Math.random() < 0.2) {
+     console.log(`[API] PF Mapping ${p.id}:`, { name: finalName, imagesCount: images.length, firstImage: images[0] || 'NONE' });
+  }
+
+  // Prioritize our own Hetzner storage URLs over external PF CDN (which blocks hotlinking)
+  const sortedImages = [
+    ...images.filter((u: string) => u.includes('objectstorage.com') || u.includes('foryou')),
+    ...images.filter((u: string) => !u.includes('objectstorage.com') && !u.includes('foryou')),
+  ];
+
+  return {
+    id: p.id,
+    name: finalName,
+    category: p.category || fullData.category || 'residential',
+    status: (typeof p.status === 'object' && p.status?.projectStatus) || p.projectStatus || p.completion_status || (typeof p.status === 'string' ? p.status : '') || fullData.projectStatus || fullData.completion_status || 'off_plan',
+    listingType: p.offeringType || p.offering_type || ((p.price?.type === 'rent' || p.price?.type === 'yearly' || (p.price?.amounts?.yearly > 0 && !(p.price?.amounts?.sale > 0))) ? 'rent' : 'sale'),
+    developer: getName(p.developer?.name || p.developer || p.developer_name || fullData.developer?.name || fullData.developer || fullData.developer_name),
+    location: (() => {
+      const tree = p.location?.tree || fdRaw?.location?.tree || [];
+      const districtItem = tree.find((t: any) => t.type === 'COMMUNITY' || t.type === 'DISTRICT' || t.type === 'AREA');
+      const district = districtItem ? districtItem.name : '';
+      
+      const building = p.location?.name || fdRaw?.location?.name || (typeof p.location === 'string' ? p.location : '');
+      const pathName = p.location?.path_name || fdRaw?.location?.path_name || "";
+
+      if (district && building && district !== building && typeof building === 'string') {
+        return `${building}, ${district}`;
+      }
+      
+      return district || building || pathName || (locale === 'ru' ? 'Дубай' : 'Dubai');
+    })(),
+    price: (p.price?.type === 'rent' || p.price?.type === 'yearly') 
+      ? (p.price?.amounts?.yearly || p.startingPrice || p.min_price || 0)
+      : (p.price?.amounts?.sale || p.startingPrice || p.min_price || 0),
+    minPriceAed: (p.price?.type === 'rent' || p.price?.type === 'yearly')
+      ? (p.price?.amounts?.yearly || p.minPriceAed || p.priceAED || 0)
+      : (p.price?.amounts?.sale || p.minPriceAed || p.priceAED || 0),
+    maxPriceAed: p.maxPriceAed || p.price?.amounts?.sale || p.price?.amounts?.yearly || fullData.maxPriceAed || 0,
+    images: sortedImages,
+    fullData: fullData,
+    createdAt: p.createdAt || p.lastSyncAt || fullData.lastSyncAt,
+    // Technical details - pulled from root-level or fullData (supporting new structure)
+    parkingSlots: p.parkingSlots ?? fullData.parkingSlots ?? p.specifications?.parkingSlots,
+    availableFrom: p.availableFrom || fullData.availableFrom || p.status?.availableFrom,
+    finishingType: p.finishingType || fullData.finishingType || p.specifications?.finishingType,
+    furnishingType: p.furnishingType || fullData.furnishingType || p.specifications?.furnishingType,
+    bedrooms: p.bedrooms || p.specifications?.bedrooms || fullData.bedrooms,
+    bathrooms: p.bathrooms || p.specifications?.bathrooms || fullData.bathrooms,
+    size: p.size || p.specifications?.size || fullData.size,
+    yearBuilt: p.status?.age || p.status?.yearBuilt || p.age || fullData.age,
+    projectStatus: p.status?.projectStatus || p.projectStatus || fullData.projectStatus,
+  };
+}
+
 export async function getPropertyFinderProjects(filters?: PropertyFinderFilters): Promise<{ projects: PropertyFinderProject[], total: number }> {
   try {
     const params = new URLSearchParams();
     if (filters?.category) params.append('category', filters.category);
     
-    // Map status from frontend ('off-plan', 'secondary') to backend ('off_plan', 'completed')
     if (filters?.status) {
       let mappedStatus = filters.status;
       if (mappedStatus === 'off-plan') mappedStatus = 'off_plan';
       if (mappedStatus === 'secondary') mappedStatus = 'completed';
       params.append('status', mappedStatus);
     }
-    if (filters?.developer) params.append('developer', filters.developer);
-    if (filters?.search) params.append('search', filters.search);
-    if (filters?.areaId) params.append('areaId', filters.areaId);
-    if (filters?.priceMin) params.append('priceMin', filters.priceMin.toString());
-    if (filters?.priceMax) params.append('priceMax', filters.priceMax.toString());
-    if (filters?.bedrooms) params.append('bedrooms', filters.bedrooms.toString());
-    if (filters?.sortBy) params.append('sortBy', filters.sortBy);
-    if (filters?.sortOrder) params.append('sortOrder', filters.sortOrder);
-    params.append('page', (filters?.page || 1).toString());
-    const limit = filters?.limit || 24;
-    params.append('limit', limit.toString());
-    params.append('perPage', limit.toString()); // Backend uses perPage
-
-    // NEW ENDPOINT: Removed 'public' prefix as per user request for authenticated routes
-    const response = await apiClient.get<ApiResponse<any>>(`/property-finder/projects?${params.toString()}`);
+    if (filters?.developer) {
+      const devs = Array.isArray(filters.developer) ? filters.developer : [filters.developer];
+      params.append('developer', devs.join(','));
+    }
+    if (filters?.developerId) {
+      const devIds = Array.isArray(filters.developerId) ? filters.developerId : [filters.developerId];
+      params.append('developerId', devIds.join(','));
+    }
+    if (filters?.search) {
+      const searches = Array.isArray(filters.search) ? filters.search : [filters.search];
+      params.append('search', searches.join(','));
+    }
+    if (filters?.areaId) {
+      const areaIds = Array.isArray(filters.areaId) ? filters.areaId : [filters.areaId];
+      areaIds.forEach(id => params.append('areaId', id));
+    }
     
-    if (process.env.NODE_ENV === 'development') {
-      console.log('[API] Property Finder Listing Response:', response.data);
+    if (filters?.location) {
+      const locations = typeof filters.location === 'string' ? filters.location.split(',') : (Array.isArray(filters.location) ? filters.location : [filters.location]);
+      params.append('location', locations.join(','));
     }
 
+    if (filters?.priceMin) params.append('priceMin', filters.priceMin.toString());
+    if (filters?.priceMax) params.append('priceMax', filters.priceMax.toString());
+    if (filters?.sizeMin) params.append('sizeMin', filters.sizeMin.toString());
+    if (filters?.sizeMax) params.append('sizeMax', filters.sizeMax.toString());
+    
+    // Multiple bedrooms support
+    if (filters?.bedrooms) {
+      const bds = typeof filters.bedrooms === 'string' ? filters.bedrooms.split(',') : (Array.isArray(filters.bedrooms) ? filters.bedrooms : [filters.bedrooms]);
+      params.append('bedrooms', bds.join(','));
+    }
+
+    if (filters?.furnishingType) {
+      const types = Array.isArray(filters.furnishingType) ? filters.furnishingType : [filters.furnishingType];
+      types.forEach(t => params.append('furnishingType', t));
+    }
+    if (filters?.listingType) {
+      params.append('type', filters.listingType.toString());
+    }
+    if (filters?.sortBy) {
+      if (filters.sortBy === 'price-desc') {
+        params.append('sortBy', 'price');
+        params.append('sortOrder', 'DESC');
+      } else if (filters.sortBy === 'price-asc') {
+        params.append('sortBy', 'price');
+        params.append('sortOrder', 'ASC');
+      } else if (filters.sortBy === 'newest') {
+        params.append('sortBy', 'createdAt');
+        params.append('sortOrder', 'DESC');
+      } else if (filters.sortBy === 'size-desc') {
+        params.append('sortBy', 'size');
+        params.append('sortOrder', 'DESC');
+      } else if (filters.sortBy === 'size-asc') {
+        params.append('sortBy', 'size');
+        params.append('sortOrder', 'ASC');
+      } else {
+        const sb = Array.isArray(filters.sortBy) ? filters.sortBy[0] : filters.sortBy;
+        params.append('sortBy', sb);
+        
+        if (filters.sortOrder) {
+          const so = Array.isArray(filters.sortOrder) ? filters.sortOrder[0] : filters.sortOrder;
+          params.append('sortOrder', so);
+        }
+      }
+    }
+    
+    const pageValue = Array.isArray(filters?.page) ? filters.page[0] : filters?.page;
+    params.append('page', (parseInt(pageValue?.toString() || '1', 10)).toString());
+    
+    const limitValue = Array.isArray(filters?.limit) ? filters.limit[0] : filters?.limit;
+    const limit = parseInt(limitValue?.toString() || '24', 10);
+    params.append('limit', limit.toString());
+    params.append('perPage', limit.toString());
+
+    const apiUrl = `/property-finder/projects?${params.toString()}`;
+    const response = await apiClient.get<ApiResponse<any>>(apiUrl);
     if (response.data && response.data.success) {
       const payload = response.data.data;
       let rawProjects: any[] = [];
       let totalCount = 0;
 
-      // Robust check for different response structures
       if (Array.isArray(payload)) {
         rawProjects = payload;
-        totalCount = payload.length;
+        totalCount = (response.data as any).total || (response.data as any).totalCount || payload.length;
       } else if (payload && typeof payload === 'object') {
-        // Check for nested .data or .projects or .items
         rawProjects = payload.projects || payload.data || payload.items || [];
-        
-        // Handle pagination
         const pagination = payload.pagination || payload.meta;
-        totalCount = pagination?.total || pagination?.totalCount || payload.total || payload.totalCount || rawProjects.length;
+        totalCount = pagination?.total || pagination?.totalCount || payload.total || payload.totalCount || (response.data as any).total || (response.data as any).totalCount || rawProjects.length;
       }
 
-      // Helper: extract a string from a value that may be a localized object
-      const getName = (val: any): string => {
-        if (!val) return '';
-        if (typeof val === 'string') return val;
-        if (typeof val === 'object') {
-          // Check for title.en structure or name property
-          return val.en || val.ru || val.nameEn || val.nameRu || val.name || val.id || '';
-        }
-        return '';
-      };
-
-      // Helper: collect all images from every possible field (supporting media.images structure)
-      const extractImages = (p: any): string[] => {
-        const raw: any[] = [];
-        // Priority 1: media.images (new structure)
-        const mediaImages = p.media?.images || p.fullData?.media?.images;
-        if (Array.isArray(mediaImages)) {
-          mediaImages.forEach((img: any) => {
-            if (img.original?.url) raw.push(img.original.url);
-            else if (img.url) raw.push(img.url);
-          });
-        }
-        // Priority 2: coverImage
-        if (p.coverImage) raw.push(p.coverImage);
-        // Priority 3: root images array
-        if (Array.isArray(p.images)) {
-          p.images.forEach((img: any) => {
-            if (typeof img === 'string') raw.push(img);
-            else if (img.url) raw.push(img.url);
-          });
-        }
-        // Deduplicate, convert all to absolute URLs, filter empty
-        return [...new Set(raw)].map(ensureAbsoluteUrl).filter(Boolean);
-      };
-
       return {
-        projects: (rawProjects || []).map((p: any) => ({
-          id: p.id,
-          name: getName(p.title || p.name),
-          category: p.category || p.fullData?.category,
-          status: p.projectStatus || p.completion_status || p.status || p.fullData?.projectStatus || 'off_plan',
-          developer: getName(p.developer) || getName(p.developer_name),
-          location: getName(p.location),
-          price: p.startingPrice || p.min_price || p.price,
-          priceAED: p.startingPrice || p.min_price_aed || p.priceAED,
-          images: extractImages(p),
-          fullData: p.fullData,
-          createdAt: p.createdAt || p.lastSyncAt
-        })),
+        projects: (rawProjects || []).map(p => normalizePFProject(p, (filters?.locale as string) || 'en')),
         total: totalCount
       };
     }
@@ -747,59 +966,12 @@ export async function getPropertyFinderProjects(filters?: PropertyFinderFilters)
   }
 }
 
-export async function getPropertyFinderProject(id: string): Promise<PropertyFinderProject | null> {
+export async function getPropertyFinderProject(id: string, locale: string = 'en'): Promise<PropertyFinderProject | null> {
   try {
-    // NEW ENDPOINT: Removed 'public' prefix
     const response = await apiClient.get<ApiResponse<any>>(`/property-finder/projects/${id}`);
     
-    if (process.env.NODE_ENV === 'development') {
-      console.log('[API] Property Finder Detail Response:', response.data);
-    }
-
     if (response.data && response.data.success && response.data.data) {
-      const p = response.data.data;
-
-      const getName = (val: any): string => {
-        if (!val) return '';
-        if (typeof val === 'string') return val;
-        if (typeof val === 'object') {
-          return val.en || val.ru || val.nameEn || val.nameRu || val.name || val.id || '';
-        }
-        return '';
-      };
-
-      const extractImages = (p: any): string[] => {
-        const raw: any[] = [];
-        const mediaImages = p.media?.images || p.fullData?.media?.images;
-        if (Array.isArray(mediaImages)) {
-          mediaImages.forEach((img: any) => {
-            if (img.original?.url) raw.push(img.original.url);
-            else if (img.url) raw.push(img.url);
-          });
-        }
-        if (p.coverImage) raw.push(p.coverImage);
-        if (Array.isArray(p.images)) {
-          p.images.forEach((img: any) => {
-            if (typeof img === 'string') raw.push(img);
-            else if (img.url) raw.push(img.url);
-          });
-        }
-        return [...new Set(raw)].map(ensureAbsoluteUrl).filter(Boolean);
-      };
-
-      return {
-        id: p.id,
-        name: getName(p.title || p.name),
-        category: p.category || p.fullData?.category,
-        status: p.projectStatus || p.completion_status || p.status || p.fullData?.projectStatus || 'off_plan',
-        developer: getName(p.developer) || getName(p.developer_name),
-        location: getName(p.location),
-        price: p.startingPrice || p.min_price || p.price,
-        priceAED: p.startingPrice || p.min_price_aed || p.priceAED,
-        images: extractImages(p),
-        fullData: p.fullData,
-        createdAt: p.createdAt || p.lastSyncAt
-      };
+      return normalizePFProject(response.data.data, locale);
     }
     return null;
   } catch (error) {
@@ -808,20 +980,111 @@ export async function getPropertyFinderProject(id: string): Promise<PropertyFind
   }
 }
 
-const MEDIA_BASE_URL = 'https://admin.foryou-realestate.com';
-const ensureAbsoluteUrl = (url: any) => {
-  if (typeof url !== 'string' || !url) return '';
-  if (url.startsWith('http')) return url;
+/**
+ * Get unique locations present in Property Finder projects
+ */
+export async function getPropertyFinderLocations(): Promise<any[]> {
+  try {
+    const response = await apiClient.get<any>('/property-finder/locations');
+    const result = response.data;
+    
+    if (!result) return [];
+    
+    // Check various possible response formats
+    if (result.success && Array.isArray(result.data)) {
+      return result.data;
+    }
+    if (result.success && typeof result.data === 'object' && Array.isArray(result.data.locations)) {
+      return result.data.locations;
+    }
+    if (Array.isArray(result)) {
+      return result;
+    }
+    
+    return [];
+  } catch (error) {
+    console.error('Failed to get Property Finder locations', error);
+    return [];
+  }
+}
 
-  let cleanUrl = url.trim();
-  if (cleanUrl.startsWith('./')) cleanUrl = cleanUrl.substring(2);
-  if (cleanUrl.startsWith('/')) return `${MEDIA_BASE_URL}${cleanUrl}`;
+/**
+ * Get map markers for Property Finder projects (optimized endpoint)
+ */
+export async function getPropertyFinderMapMarkers(status?: string): Promise<any[]> {
+  try {
+    console.log('[API] Fetching PF map markers...', status ? `with status: ${status}` : '');
+    const params = new URLSearchParams();
+    if (status) params.append('status', status);
+    
+    const url = `/property-finder/map${status ? `?${params.toString()}` : ''}`;
+    const response = await apiClient.get<any>(url);
+    const result = response.data;
+    
+    if (result.success && Array.isArray(result.data)) {
+      console.log(`[API] Received ${result.data.length} markers`);
+      return result.data;
+    }
+    
+    if (Array.isArray(result)) {
+      console.log(`[API] Received ${result.length} markers (direct array)`);
+      return result;
+    }
 
-  return `${MEDIA_BASE_URL}/${cleanUrl}`;
-};
+    console.error('[API] PF Map response failed or data not array:', result);
+    return [];
+  } catch (error) {
+    console.error('[API] Failed to get Property Finder map markers', error);
+    return [];
+  }
+}
 
-// Helper function to normalize unit data
+/**
+ * Helper function to format price for Property Finder projects.
+ * @param project The PropertyFinderProject object.
+ * @param locale The current locale ('en' or 'ru').
+ * @returns Formatted price string.
+ */
+export function getPriceDisplay(project: PropertyFinderProject, locale: string): string {
+  const formatNum = (num: number) => {
+    return Math.round(num).toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+  };
+
+  const minPrice = typeof project.minPriceAed === 'string' ? parseFloat(project.minPriceAed) : (project.minPriceAed || 0);
+  const maxPrice = typeof project.maxPriceAed === 'string' ? parseFloat(project.maxPriceAed) : (project.maxPriceAed || 0);
+
+  const suffix = project.listingType === 'rent' ? (locale === 'ru' ? ' / год' : ' / year') : '';
+
+  if (minPrice === 0 && maxPrice === 0) return locale === 'ru' ? 'Цена по запросу' : 'Price on request';
+  if (minPrice === 0 && maxPrice > 0) return `${formatNum(maxPrice)} AED${suffix}`;
+
+  if (maxPrice > minPrice) {
+    return `${formatNum(minPrice)} - ${formatNum(maxPrice)} AED${suffix}`;
+  }
+
+  return `${formatNum(minPrice)} AED${suffix}`;
+}
+
+/**
+ * Helper function to get a single price value for Property Finder projects.
+ * @param project The PropertyFinderProject object.
+ * @param locale The current locale ('en' or 'ru').
+ * @returns Formatted price string or null if no price.
+ */
+export function getPrice(project: PropertyFinderProject, locale: string): string | null {
+  const formatNumber = (num: number) => new Intl.NumberFormat(locale === 'ru' ? 'ru-RU' : 'en-US').format(num);
+  const rawPrice = project.minPriceAed || project.maxPriceAed || 0;
+  const price = typeof rawPrice === 'string' ? parseFloat(rawPrice) : rawPrice;
+
+  if (!price || price === 0) return null;
+  return `${formatNumber(Math.round(price))} AED${project.listingType === 'rent' ? (locale === 'ru' ? ' / год' : ' / yr') : ''}`;
+}
+
+/**
+ * UNIT NORMALIZATION
+ */
 function normalizeUnit(unit: any): any {
+
   if (!unit) return unit;
 
   // Normalize unit price fields
@@ -2006,6 +2269,26 @@ export async function getPropertyBySlug(slug: string): Promise<Property> {
 // News API
 // ============================================
 
+export interface Author {
+  id: string;
+  name: string;
+  nameRu?: string;
+  role: string;
+  roleRu?: string;
+  specialization?: string;
+  specializationRu?: string;
+  languages?: string;
+  photo?: string;
+  bio?: string;
+  bioRu?: string;
+  socials?: {
+    whatsapp?: string;
+    telegram?: string;
+    instagram?: string;
+    linkedin?: string;
+  };
+}
+
 export interface NewsItem {
   id: string;
   slug: string;
@@ -2013,10 +2296,13 @@ export interface NewsItem {
   titleRu: string;
   description?: string;
   descriptionRu?: string;
+  seoTitle?: string;
+  seoDescription?: string;
   image: string;
   publishedAt: string; // ISO date string
   createdAt?: string;
   updatedAt?: string;
+  author?: Author;
 }
 
 export interface NewsContent {
@@ -2045,15 +2331,17 @@ export interface GetNewsResult {
  * Get list of news articles
  * @param page - Page number (starts from 1)
  * @param limit - Items per page (default: 12)
+ * @param search - Optional search query to filter news (e.g., project name or area)
  * @returns News list with pagination info
  */
-export async function getNews(page: number = 1, limit: number = 12): Promise<GetNewsResult> {
+export async function getNews(page: number = 1, limit: number = 12, search?: string): Promise<GetNewsResult> {
   try {
     const params = new URLSearchParams();
     params.append('page', page.toString());
     params.append('limit', limit.toString());
     params.append('sortBy', 'publishedAt');
     params.append('sortOrder', 'DESC');
+    if (search) params.append('search', search);
 
     const url = `/public/news?${params.toString()}`;
 

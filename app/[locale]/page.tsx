@@ -9,6 +9,11 @@ import ProjectImage from '@/components/ProjectImage';
 import AboutSections from '@/components/AboutSections';
 
 import { unstable_setRequestLocale, getTranslations } from 'next-intl/server';
+import { locales } from '@/i18n';
+
+export function generateStaticParams() {
+  return locales.map((locale) => ({ locale }));
+}
 
 export async function generateMetadata({ params: { locale } }: { params: { locale: string } }) {
   const t = await getTranslations({ locale, namespace: 'metadata' });

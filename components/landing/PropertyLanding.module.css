@@ -145,6 +145,41 @@
   line-height: 1.6;
 }
 
+.unitsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+  margin-top: 30px;
+}
+
+.unitCard {
+  background: #fff;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+  border: 1px solid #eee;
+}
+
+.unitInfo {
+  padding: 15px;
+  text-align: center;
+}
+
+.unitInfo h4 {
+  font-size: 1.2rem;
+  color: #0b1a31;
+  margin-bottom: 5px;
+}
+
+.unitPrice {
+  display: inline-block;
+  background: #d4a017;
+  color: #fff;
+  padding: 5px 12px;
+  border-radius: 4px;
+  font-weight: bold;
+}
+
 @media (max-width: 768px) {
   .h1 { font-size: 32px; }
   .landmarksGrid { grid-template-columns: 1fr; }

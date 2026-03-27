@@ -266,6 +266,22 @@ function PropertyCard({ property, currentPage = 1, index = 10, isSelected = fals
     return formatNumber(Math.round(pricePerSqm));
   };
 
+  const getUnitsText = () => {
+    if (property.unitsCount && property.unitsCount > 0) {
+      if (locale === 'ru') {
+        const count = property.unitsCount;
+        const n = Math.abs(count) % 100;
+        const n1 = n % 10;
+        if (n > 10 && n < 20) return `${count} юнітів`;
+        if (n1 > 1 && n1 < 5) return `${count} юніта`;
+        if (n1 === 1) return `${count} юніт`;
+        return `${count} юнітів`;
+      }
+      return `${property.unitsCount} ${property.unitsCount === 1 ? 'unit' : 'units'}`;
+    }
+    return locale === 'ru' ? 'Запитати наявність' : 'Ask Availability';
+  };
+
   // Limit to first 5 photos for performance - CRITICAL: only use first 5 photos
   const MAX_PHOTOS_TO_LOAD = 5;
   // Force limit to first 5 photos - don't allow more
@@ -561,6 +577,11 @@ function PropertyCard({ property, currentPage = 1, index = 10, isSelected = fals
                   <img src={property.developer.logo} alt={getDeveloper()} className={styles.developerLogo} />
                 )}
                 <span className={styles.developerName}>{getDeveloper()}</span>
+              </div>
+            )}
+            {property.propertyType === 'off-plan' && (
+              <div className={styles.unitsBadge}>
+                {getUnitsText()}
               </div>
             )}
           </div>

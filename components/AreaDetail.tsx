@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useState, useEffect, useRef } from 'react';
 import { getAreaById, Area as ApiArea, getProperties, Property, getDevelopersSimple, getDevelopers } from '@/lib/api';
 import PropertyCard from '@/components/PropertyCard';
+import ProjectImage from '@/components/ProjectImage';
 import styles from './AreaDetail.module.css';
 
 interface AreaDetailData {
@@ -59,6 +60,7 @@ export default function AreaDetail({ slug }: AreaDetailProps) {
   });
   const [developers, setDevelopers] = useState<{ id: string, name: string }[]>([]);
   const [isDeveloperOpen, setIsDeveloperOpen] = useState(false);
+  const [showAllProjects, setShowAllProjects] = useState(false);
   const developerRef = useRef<HTMLDivElement>(null);
   const [developerSearch, setDeveloperSearch] = useState('');
 
@@ -245,7 +247,6 @@ export default function AreaDetail({ slug }: AreaDetailProps) {
     return new Intl.NumberFormat('en-US').format(parseInt(numericValue, 10));
   };
 
-  // Filter properties client-side as well for accuracy and instant feedback
   const filteredProperties = properties.filter(prop => {
     // Search filter
     if (filters.search) {
@@ -281,6 +282,15 @@ export default function AreaDetail({ slug }: AreaDetailProps) {
 
     return true;
   });
+
+  // Extract unique developers for this area
+  const activeDevelopers = Array.from(
+    new Map(
+      properties
+        .filter(p => p.developer && p.developer.id && p.developer.name)
+        .map(p => [p.developer!.id, p.developer!])
+    ).values()
+  ).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
 
   const getLocalizedPath = (path: string) => {
     return locale === 'en' ? path : `/${locale}${path}`;
@@ -546,14 +556,50 @@ export default function AreaDetail({ slug }: AreaDetailProps) {
         ) : filteredProperties.length > 0 ? (
           <div className={styles.propertiesSection}>
             <div className={styles.propertiesGrid}>
-              {filteredProperties.map((property) => (
+              {(showAllProjects ? filteredProperties : filteredProperties.slice(0, 4)).map((property) => (
                 <PropertyCard key={property.id} property={property} />
               ))}
             </div>
+            
+            {filteredProperties.length > 4 && !showAllProjects && (
+              <div className={styles.showMoreRow}>
+                <button 
+                  className={styles.showMoreButton} 
+                  onClick={() => setShowAllProjects(true)}
+                >
+                  {locale === 'ru' ? 'Показать еще' : 'Show more'}
+                </button>
+              </div>
+            )}
           </div>
         ) : (
           <div className={styles.noProperties}>{locale === 'ru' ? 'Проектов не найдено' : 'No properties found'}</div>
         )}
+
+        {/* SEO Hub: Developers in this Area */}
+        {activeDevelopers.length > 0 && (
+          <div className={styles.activeDevelopersSection}>
+            <h2 className={styles.sectionTitle}>
+              {locale === 'ru' ? `Застройщики в ${getAreaName()}` : `Developers in ${getAreaName()}`}
+            </h2>
+            <div className={styles.activeDevelopersGrid}>
+              {activeDevelopers.map(dev => (
+                <Link 
+                  key={dev.id} 
+                  href={getLocalizedPath(`/developers/${dev.id}`)}
+                  className={styles.activeDeveloperLink}
+                >
+                  {dev.name}
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Форма зворотного зв'язку */}
+        <div className={styles.areaFormWrapper}>
+          <ProjectImage />
+        </div>
 
         {/* Модальне вікно для зображення */}
         {selectedImage && (

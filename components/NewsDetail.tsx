@@ -19,6 +19,7 @@ interface NewsDetailData {
   imageUrl: string;
   publishedAt: Date;
   contents: NewsContent[];
+  author?: any;
 }
 
 interface NewsDetailProps {
@@ -74,6 +75,7 @@ export default function NewsDetail({ slug }: NewsDetailProps) {
           imageUrl: apiNews.image,
           publishedAt: new Date(apiNews.publishedAt),
           contents: apiNews.contents || [],
+          author: apiNews.author,
         };
 
         setNews(newsData);
@@ -100,11 +102,6 @@ export default function NewsDetail({ slug }: NewsDetailProps) {
     return locale === 'ru' ? news.titleRu : news.title;
   };
 
-  const getDescription = () => {
-    if (!news) return null;
-    return locale === 'ru' ? news.descriptionRu : news.description;
-  };
-
   const formatDate = (date: Date) => {
     return new Intl.DateTimeFormat(locale === 'ru' ? 'ru-RU' : 'en-US', {
       year: 'numeric',
@@ -129,6 +126,27 @@ export default function NewsDetail({ slug }: NewsDetailProps) {
   const shares = getDeterministicValue(news.id, 8, 25);
 
   const sortedContents = [...news.contents].sort((a, b) => a.order - b.order);
+
+  /**
+   * Auto-linking logic to convert project names in text to links
+   */
+  const renderTextWithLinks = (text: string) => {
+    if (!text) return '';
+    let processedText = text;
+
+    recommendedProjects.forEach((proj) => {
+      const projName = proj.name;
+      if (!projName || projName.length < 5) return; // Skip short/generic names
+
+      const escapedName = projName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const regex = new RegExp(`(?<!href="[^"]*")(?<!>)${escapedName}(?!<\/a>)`, 'gi');
+      
+      const linkHtml = `<a href="/${locale}/properties/${proj.slug}" class="${styles.inlineLink}">${projName}</a>`;
+      processedText = processedText.replace(regex, linkHtml);
+    });
+
+    return processedText;
+  };
 
   return (
     <div className={styles.newsDetail}>
@@ -167,7 +185,7 @@ export default function NewsDetail({ slug }: NewsDetailProps) {
 
               <div className={styles.articleMetaActions}>
                 <div className={styles.authorDate}>
-                  <span className={styles.byAuthor}>By <span className={styles.authorNameBold}>Ruslan K.</span></span>
+                  <span className={styles.byAuthor}>By <span className={styles.authorNameBold}>{news.author?.name || "Ruslan K."}</span></span>
                   <span className={styles.publishDate}>{formatDate(news.publishedAt)}</span>
                 </div>
 
@@ -189,7 +207,7 @@ export default function NewsDetail({ slug }: NewsDetailProps) {
                       {block.title && <h2 className={styles.contentTitle}>{block.title}</h2>}
                       <div
                         className={styles.contentDescription}
-                        dangerouslySetInnerHTML={{ __html: block.description || '' }}
+                        dangerouslySetInnerHTML={{ __html: renderTextWithLinks(block.description || '') }}
                       />
                     </div>
                   )}
@@ -244,22 +262,23 @@ export default function NewsDetail({ slug }: NewsDetailProps) {
                   </div>
                 </div>
               </div>
+
               <div className={styles.authorCard}>
                 <div className={styles.authorPhotoWrapper}>
                   <Image
-                    src="https://res.cloudinary.com/dgv0rxd60/image/upload/v1765715854/photo_2025-12-14_15-36-43_jn55hm.jpg"
-                    alt="Ruslan"
+                    src={news.author?.photo || "https://res.cloudinary.com/dgv0rxd60/image/upload/v1765715854/photo_2025-12-14_15-36-43_jn55hm.jpg"}
+                    alt={news.author?.name || "Ruslan"}
                     fill
                     style={{ objectFit: 'cover', objectPosition: 'top' }}
                     unoptimized
                   />
                 </div>
                 <div className={styles.authorInfo}>
-                  <h3 className={styles.authorName}>Ruslan K.</h3>
-                  <div className={styles.authorRole}>{t('author.role')}</div>
+                  <h3 className={styles.authorName}>{news.author ? (locale === 'ru' ? news.author.nameRu : news.author.name) : "Ruslan K."}</h3>
+                  <div className={styles.authorRole}>{news.author ? (locale === 'ru' ? news.author.roleRu : news.author.role) : t('author.role')}</div>
                   <div className={styles.authorDetails}>
-                    <div>{t('author.specialization')}</div>
-                    <div>{t('author.languages')}</div>
+                    <div>{news.author ? (locale === 'ru' ? news.author.specializationRu : news.author.specialization) : t('author.specialization')}</div>
+                    <div>{news.author?.languages || t('author.languages')}</div>
                   </div>
                 </div>
                 <div className={styles.authorButtons}>
@@ -268,13 +287,13 @@ export default function NewsDetail({ slug }: NewsDetailProps) {
                       phone: '971501769699',
                       locale,
                       contextType: 'general',
-                      contextName: 'News Author: Ruslan'
+                      contextName: `News Author: ${news.author?.name || 'Ruslan'}`
                     })}
                     className={styles.whatsappButton}
                     target="_blank"
                     rel="noopener noreferrer"
                   >
-                    <span>{t('author.whatsapp', { name: 'Ruslan' })}</span>
+                    <span>{t('author.whatsapp', { name: news.author?.name || 'Ruslan' })}</span>
                   </a>
                   <button
                     className={styles.bookCallButton}

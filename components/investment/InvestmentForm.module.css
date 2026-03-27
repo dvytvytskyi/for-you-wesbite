@@ -301,7 +301,7 @@
 
 @media (max-width: 768px) {
   .formContainer {
-    padding: 0;
+    padding: 0 12px;
   }
 
   .formRow {

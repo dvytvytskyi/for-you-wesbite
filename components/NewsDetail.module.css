@@ -631,3 +631,14 @@
     gap: 24px;
   }
 }
+.inlineLink {
+  color: #003077;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  font-weight: 500;
+  transition: color 0.2s ease;
+}
+
+.inlineLink:hover {
+  color: #EBA44E;
+}

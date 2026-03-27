@@ -7,12 +7,12 @@ import MapboxDraw from '@mapbox/mapbox-gl-draw';
 import '@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import PropertyPopup from './PropertyPopup';
-import { getProperty, getPropertySummary } from '@/lib/api';
+import { getProperty, getPropertySummary, getPropertyFinderProject } from '@/lib/api';
 import { convertPropertyToMapFormat } from '@/lib/transformers';
 import { useLocale } from 'next-intl';
 import styles from './MapboxMap.module.css';
 
-interface Property {
+interface MapProperty {
   id: string;
   slug: string;
   name: string;
@@ -39,7 +39,7 @@ interface Property {
     sqft: number;
   };
   images: string[];
-  type: 'new' | 'secondary';
+  type: 'new' | 'secondary' | 'rent' | 'sale';
   coordinates: [number, number]; // [lng, lat]
   amenities?: string[];
   units?: Array<{
@@ -52,11 +52,12 @@ interface Property {
   descriptionRu?: string;
   isForYouChoice?: boolean;
   isPartial?: boolean;
+  isPropertyFinder?: boolean;
 }
 
 interface MapboxMapProps {
   accessToken?: string;
-  properties?: Property[];
+  properties? : MapProperty[];
   selectedId?: string | null;
   onMarkerClick?: (id: string | null) => void;
   onRequestCallback?: (projectName?: string) => void;
@@ -104,15 +105,15 @@ export default function MapboxMap({ accessToken, properties = [], selectedId, on
   const map = useRef<mapboxgl.Map | null>(null);
   const drawRef = useRef<MapboxDraw | null>(null);
   // Refs for data access inside event handlers/closures
-  const [filteredProperties, setFilteredProperties] = useState<Property[]>(properties);
+  const [filteredProperties, setFilteredProperties] = useState<MapProperty[]>(properties);
   const filteredPropertiesRef = useRef(filteredProperties);
   const propertiesRef = useRef(properties);
   const selectedIdRef = useRef(selectedId);
 
   const markersRef = useRef<mapboxgl.Marker[]>([]);
   const markersMapRef = useRef<Map<string, mapboxgl.Marker>>(new Map());
-  const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
-  const previousSelectedPropertyRef = useRef<Property | null>(null);
+  const [selectedProperty, setSelectedProperty] = useState<MapProperty | null>(null);
+  const previousSelectedPropertyRef = useRef<MapProperty | null>(null);
   const [mapStyle, setMapStyle] = useState<'map' | 'satellite'>('map');
   const [isDrawing, setIsDrawing] = useState(false);
   const [drawnPolygon, setDrawnPolygon] = useState<number[][] | null>(null);
@@ -286,9 +287,9 @@ export default function MapboxMap({ accessToken, properties = [], selectedId, on
           'case',
           ['==', ['get', 'id'], selectedIdRef.current || ''],
           '#E1251B', // Red for selected
-          ['boolean', ['get', 'isHighValue'], false],
-          '#EBA44E',
-          '#003077'
+          ['==', ['get', 'type'], 'rent'],
+          '#EBA44E', // Orange for Rent
+          '#003077'  // Blue for Sale
         ]
       }
     });
@@ -356,7 +357,7 @@ export default function MapboxMap({ accessToken, properties = [], selectedId, on
                     id: p.id,
                     price: priceAED,
                     priceFormatted: formatPriceForMarker(priceAED),
-                    isHighValue: priceAED >= 5000000
+                    type: p.type === 'rent' ? 'rent' : 'sale'
                   }
                 };
               })
@@ -474,22 +475,42 @@ export default function MapboxMap({ accessToken, properties = [], selectedId, on
 
         // Fetch full info if it's a partial property
         if (property.isPartial) {
-          getPropertySummary(property.id).then(fullApiProperty => {
-            if (fullApiProperty) {
-              // Ensure coordinates are preserved if summary endpoint doesn't return them
-              if (!fullApiProperty.longitude && property.coordinates) fullApiProperty.longitude = property.coordinates[0];
-              if (!fullApiProperty.latitude && property.coordinates) fullApiProperty.latitude = property.coordinates[1];
+          const fetchPromise = property.isPropertyFinder
+            ? getPropertyFinderProject(property.id, locale)
+            : getPropertySummary(property.id);
 
-              import('@/lib/transformers').then(({ convertPropertyToMapFormat }) => {
-                const fullMapProperty = convertPropertyToMapFormat(fullApiProperty, locale);
-                if (fullMapProperty) {
-                  // Keep the isPartial: false or just set the new property
-                  setSelectedProperty(fullMapProperty);
-                } else {
-                  // Fallback: if transformer fails, at least update the name/images on the existing object
-                  setSelectedProperty(prev => prev ? { ...prev, name: fullApiProperty.name, images: fullApiProperty.photos || [] } : null);
-                }
-              });
+          fetchPromise.then(fullProperty => {
+            if (fullProperty) {
+              if (property.isPropertyFinder) {
+                // If it's a PF project, we need to convert it to Map format or just use it
+                // PF units have a different structure, we should handle them carefully
+                setSelectedProperty(prev => {
+                  if (!prev) return null;
+                  return {
+                    ...prev,
+                    name: (fullProperty as any).name || prev.name,
+                    nameRu: (fullProperty as any).nameRu || prev.nameRu,
+                    images: (fullProperty as any).images || (fullProperty as any).photos || prev.images,
+                    description: (fullProperty as any).description,
+                    descriptionRu: (fullProperty as any).descriptionRu,
+                    amenities: (fullProperty as any).amenities || [],
+                    developer: (fullProperty as any).developer || prev.developer,
+                    location: {
+                      ...prev.location,
+                      area: (fullProperty as any).location || prev.location.area,
+                      areaRu: (fullProperty as any).location || prev.location.areaRu,
+                    },
+                    isPartial: false
+                  };
+                });
+              } else {
+                import('@/lib/transformers').then(({ convertPropertyToMapFormat }) => {
+                  const fullMapProperty = convertPropertyToMapFormat(fullProperty as any, locale);
+                  if (fullMapProperty) {
+                    setSelectedProperty(fullMapProperty);
+                  }
+                });
+              }
             }
           }).catch(err => {
             console.error('Failed to fetch property details for map popup:', err);
@@ -523,7 +544,7 @@ export default function MapboxMap({ accessToken, properties = [], selectedId, on
               id: p.id,
               price: priceAED,
               priceFormatted: formatPriceForMarker(priceAED),
-              isHighValue: priceAED >= 5000000
+              type: p.type === 'rent' ? 'rent' : 'sale'
             }
           };
         })

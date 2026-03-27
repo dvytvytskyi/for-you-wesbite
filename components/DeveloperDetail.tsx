@@ -281,9 +281,13 @@ export default function DeveloperDetail({ id }: DeveloperDetailProps) {
                         <h2 className={styles.sectionTitle}>{t('areasTitle')}</h2>
                         <div className={styles.areasGrid}>
                             {developer.areas.map((area: any) => (
-                                <div key={area.id} className={styles.areaChip}>
+                                <Link 
+                                    key={area.id} 
+                                    href={getLocalizedPath(`/areas/${area.slug}`)}
+                                    className={styles.areaChip}
+                                >
                                     {locale === 'ru' ? area.nameRu : area.nameEn}
-                                </div>
+                                </Link>
                             ))}
                         </div>
                     </div>

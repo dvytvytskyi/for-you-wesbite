@@ -17,13 +17,13 @@ export default async function AppProjectDetailPage({ params: { locale, id } }: P
   }
 
   return (
-    <div style={{ background: '#ffffff', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ background: '#ffffff', minHeight: '100vh', display: 'flex', flexDirection: 'column', maxWidth: '100vw', overflowX: 'hidden' }}>
       <AnonymousHeader />
       <main style={{ flex: 1 }}>
         <PropertyFinderDetail project={project} anonymous={true} />
       </main>
       <footer style={{ padding: '24px', textAlign: 'center', color: '#9ca3af', fontSize: '13px', borderTop: '1px solid #f3f4f6' }}>
-        <span>&copy; {new Date().getFullYear()} {locale === 'ru' ? 'Каталог недвижимости Дубая' : 'Dubai Properties Catalog'}</span>
+        <span suppressHydrationWarning>&copy; {new Date().getFullYear()} {locale === 'ru' ? 'Каталог недвижимости Дубая' : 'Dubai Properties Catalog'}</span>
       </footer>
     </div>
   );

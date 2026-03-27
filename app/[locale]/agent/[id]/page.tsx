@@ -18,7 +18,7 @@ export default async function AgentProjectDetailPage({ params: { locale, id } }:
   }
 
   return (
-    <div style={{ background: '#ffffff', minHeight: '100vh' }}>
+    <div style={{ background: '#ffffff', minHeight: '100vh', display: 'flex', flexDirection: 'column', maxWidth: '100vw', overflowX: 'hidden' }}>
       <AgentHeader />
       <main>
         <PropertyFinderDetail project={project} />

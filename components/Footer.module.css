@@ -12,7 +12,7 @@
 
 .mainContent {
   display: grid;
-  grid-template-columns: 2fr 1.5fr 1.5fr 1.8fr 1.5fr 2fr;
+  grid-template-columns: 2fr 1.2fr 1fr 1.8fr 1.5fr;
   gap: 40px;
   margin-bottom: 60px;
 }
@@ -41,7 +41,6 @@
 .navigationSection,
 .legalSection,
 .contactSection,
-.appSection,
 .socialSection {
   display: flex;
   flex-direction: column;
@@ -294,7 +293,7 @@
 
 @media (max-width: 1400px) {
   .mainContent {
-    grid-template-columns: 2fr 1.5fr 1.5fr 1.8fr 2fr;
+    grid-template-columns: 2fr 1.2fr 1fr 1.8fr 1.5fr;
     gap: 40px;
   }
 
@@ -309,7 +308,6 @@
     gap: 40px;
   }
 
-  .appSection,
   .socialSection,
   .contactSection {
     grid-column: span 1;
@@ -322,7 +320,7 @@
   }
 
   .container {
-    padding: 0 20px;
+    padding: 0 12px;
   }
 
   .mainContent {

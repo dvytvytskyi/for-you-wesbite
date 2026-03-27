@@ -1,308 +1,314 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
-import { getPropertyFinderProjects, PropertyFinderProject, PropertyFinderFilters } from '@/lib/api';
+import Link from 'next/link';
 import PropertyFinderCard from './PropertyFinderCard';
 import styles from './PropertyFinderList.module.css';
+import { PropertyFinderProject } from '@/lib/api';
 
 interface Props {
-  anonymous?: boolean;
-  initialData?: {
+  initialData: {
     projects: PropertyFinderProject[];
     total: number;
   };
 }
 
-import PropertyFinderFiltersBar, { Filters } from './PropertyFinderFiltersBar';
-import FilterModal from './FilterModal';
-
-const sortOptions = [
-  { value: 'price-desc', label: 'Price Higher', labelRu: 'Цена выше' },
-  { value: 'price-asc', label: 'Price Lower', labelRu: 'Цена ниже' },
-  { value: 'newest', label: 'Newest First', labelRu: 'Сначала новые' },
-];
-
-const urlParamsToFilters = (searchParams: URLSearchParams): Filters => {
-  return {
-    type: (searchParams.get('status') === 'secondary' ? 'secondary' : 'new') as 'new' | 'secondary',
-    search: searchParams.get('search') || '',
-    location: searchParams.get('location')?.split(',').filter(Boolean) || [],
-    bedrooms: searchParams.get('bedrooms')?.split(',').map(Number).filter(n => !isNaN(n)) || [],
-    sizeFrom: searchParams.get('sizeFrom') || '',
-    sizeTo: searchParams.get('sizeTo') || '',
-    priceFrom: searchParams.get('priceFrom') || '',
-    priceTo: searchParams.get('priceTo') || '',
-    sort: searchParams.get('sort') || 'newest',
-    developerId: searchParams.get('developerId') || undefined,
-  };
-};
-
-export default function PropertyFinderList({ anonymous = false, initialData }: Props) {
-  const t = useTranslations('properties');
+export default function PropertyFinderList({ initialData }: Props) {
   const locale = useLocale();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-
-  const [projects, setProjects] = useState<PropertyFinderProject[]>(initialData?.projects || []);
-  const [total, setTotal] = useState(initialData?.total || 0);
-  const [loading, setLoading] = useState(!initialData);
-  const [page, setPage] = useState(parseInt(searchParams.get('page') || '1', 10));
-  const [filters, setFilters] = useState<Filters>(() => urlParamsToFilters(new URLSearchParams(searchParams.toString())));
-  const [isSortOpen, setIsSortOpen] = useState(false);
-  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
-
-  const fetchProjects = useCallback(async () => {
-    setLoading(true);
-    
-    const currentParams = new URLSearchParams(window.location.search);
-    
-    // Map sort
-    const sort = currentParams.get('sort') || 'newest';
-    let sortBy = 'createdAt';
-    let sortOrder: 'ASC' | 'DESC' = 'DESC';
-    
-    if (sort === 'price-desc') {
-      sortBy = 'price';
-      sortOrder = 'DESC';
-    } else if (sort === 'price-asc') {
-      sortBy = 'price';
-      sortOrder = 'ASC';
-    }
-
-    const apiFilters: PropertyFinderFilters = {
-      status: (currentParams.get('status') === 'secondary' ? 'secondary' : 'off-plan') as any,
-      search: currentParams.get('search') || undefined,
-      areaId: currentParams.get('location')?.split(',')[0] || undefined, 
-      priceMin: currentParams.get('priceFrom') ? parseInt(currentParams.get('priceFrom')!, 10) : undefined,
-      priceMax: currentParams.get('priceTo') ? parseInt(currentParams.get('priceTo')!, 10) : undefined,
-      bedrooms: currentParams.get('bedrooms') || undefined,
-      developer: currentParams.get('developerId') || undefined,
-      sortBy,
-      sortOrder,
-      page: parseInt(currentParams.get('page') || '1', 10),
-      limit: 24
-    };
-
-    const result = await getPropertyFinderProjects(apiFilters);
-    setProjects(result.projects);
-    setTotal(result.total);
-    setLoading(false);
-  }, []);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  
+  const [locations, setLocations] = useState<any[]>([]);
+  const [searchTerm, setSearchTerm] = useState(searchParams.get('search') || '');
+  const [selectedLocation, setSelectedLocation] = useState(searchParams.get('areaId') || '');
+  const [priceMin, setPriceMin] = useState(searchParams.get('priceMin') || '');
+  const [priceMax, setPriceMax] = useState(searchParams.get('priceMax') || '');
+  const [selectedBedrooms, setSelectedBedrooms] = useState<string[]>(searchParams.get('bedrooms')?.split(',') || []);
+  
+  const currentListingType = searchParams.get('type') || 'sale';
+  const [isBedroomsOpen, setIsBedroomsOpen] = useState(false);
+  
+  const projects = initialData.projects;
+  const total = initialData.total;
 
   useEffect(() => {
-    fetchProjects();
-  }, [fetchProjects, searchParams]);
+    import('@/lib/api').then(mod => {
+      mod.getPropertyFinderLocations().then(setLocations);
+    });
+  }, []);
 
-  const updateUrl = useCallback((newFilters: Filters, newPage: number) => {
-    const params = new URLSearchParams();
-    if (newFilters.type !== 'new') params.set('status', 'secondary');
-    if (newFilters.search) params.set('search', newFilters.search);
-    if (newFilters.location.length > 0) params.set('location', newFilters.location.join(','));
-    if (newFilters.bedrooms.length > 0) params.set('bedrooms', newFilters.bedrooms.join(','));
-    if (newFilters.sizeFrom) params.set('sizeFrom', newFilters.sizeFrom);
-    if (newFilters.sizeTo) params.set('sizeTo', newFilters.sizeTo);
-    if (newFilters.priceFrom) params.set('priceFrom', newFilters.priceFrom);
-    if (newFilters.priceTo) params.set('priceTo', newFilters.priceTo);
-    if (newFilters.sort !== 'newest') params.set('sort', newFilters.sort);
-    if (newFilters.developerId) params.set('developerId', newFilters.developerId);
-    if (newPage > 1) params.set('page', newPage.toString());
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsBedroomsOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
-    router.push(`${pathname}?${params.toString()}`, { scroll: false });
-  }, [pathname, router]);
-
-  const handleFilterChange = (newFilters: Filters) => {
-    setFilters(newFilters);
-    updateUrl(newFilters, 1);
+  const updateFilters = (updates: Record<string, string>) => {
+    const params = new URLSearchParams(searchParams.toString());
+    Object.entries(updates).forEach(([key, value]) => {
+      if (value) params.set(key, value);
+      else params.delete(key);
+    });
+    router.push(`${pathname}?${params.toString()}`);
   };
 
-  const handleResetFilters = () => {
-    const defaultFilters: Filters = {
-      type: 'new', search: '', location: [], bedrooms: [], sizeFrom: '', sizeTo: '', priceFrom: '', priceTo: '', sort: 'newest', developerId: undefined, 
-    };
-    handleFilterChange(defaultFilters);
-    setIsFilterModalOpen(false);
+  const handleTypeChange = (type: string) => {
+    updateFilters({ type });
   };
 
-  const handlePageChange = (newPage: number) => {
-    updateUrl(filters, newPage);
-    setPage(newPage);
+  const handleSearchChange = (val: string) => {
+    setSearchTerm(val);
   };
 
-  const activeFiltersCount = [
-    filters.location.length > 0,
-    filters.bedrooms.length > 0,
-    filters.sizeFrom,
-    filters.sizeTo,
-    filters.priceFrom,
-    filters.priceTo,
-    filters.developerId
-  ].filter(Boolean).length;
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (searchTerm !== (searchParams.get('search') || '')) {
+        updateFilters({ search: searchTerm });
+      }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchTerm, searchParams]);
 
-  const totalPages = Math.ceil(total / 24);
+  const handleLocationChange = (val: string) => {
+    setSelectedLocation(val);
+    updateFilters({ areaId: val });
+  };
+
+  const handlePriceSubmit = () => {
+    updateFilters({ priceMin, priceMax });
+  };
+
+  const toggleBedroom = (val: string) => {
+    const next = selectedBedrooms.includes(val) 
+      ? selectedBedrooms.filter(b => b !== val) 
+      : [...selectedBedrooms, val];
+    
+    setSelectedBedrooms(next);
+    
+    const params = new URLSearchParams(searchParams.toString());
+    if (next.length > 0) {
+      params.set('bedrooms', next.join(','));
+    } else {
+      params.delete('bedrooms');
+    }
+    router.push(`${pathname}?${params.toString()}`);
+  };
+
+  const formatWithCommas = (val: string) => {
+    const raw = val.replace(/\D/g, '');
+    if (!raw) return '';
+    return new Intl.NumberFormat('en-US').format(parseInt(raw, 10));
+  };
+
+  const [visibleCount, setVisibleCount] = useState(12);
+  const loadMoreRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && (projects?.length || 0) > visibleCount) {
+          setVisibleCount(prev => prev + 12);
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    if (loadMoreRef.current) {
+      observer.observe(loadMoreRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, [projects?.length, visibleCount]);
+
+  const visibleProjects = projects.slice(0, visibleCount);
 
   return (
     <div className={styles.container}>
-      <FilterModal 
-        isOpen={isFilterModalOpen} 
-        onClose={() => setIsFilterModalOpen(false)} 
-        filters={filters} 
-        onApply={handleFilterChange} 
-        onReset={handleResetFilters} 
-      />
-
-      <div className={styles.filterHeader}>
-        <div className={styles.mobileFilterSection}>
-          <div className={styles.mobileTopRow}>
-            <div className={styles.mobileToggleContainer}>
-              <button 
-                className={`${styles.mobileToggleBtn} ${filters.type === 'new' ? styles.mobileToggleBtnActive : ''}`}
-                onClick={() => handleFilterChange({ ...filters, type: 'new' })}
-              >
-                {locale === 'ru' ? 'Off-Plan' : 'Off Plan'}
-              </button>
-              <button 
-                className={`${styles.mobileToggleBtn} ${filters.type === 'secondary' ? styles.mobileToggleBtnActive : ''}`}
-                onClick={() => handleFilterChange({ ...filters, type: 'secondary' })}
-              >
-                {locale === 'ru' ? 'Secondary' : 'Secondary'}
-              </button>
-            </div>
-          </div>
-          <div className={styles.mobileActionsRow}>
-            <div className={styles.mobileSearchWrapper}>
-              <input 
-                type="text" 
-                placeholder={locale === 'ru' ? 'Поиск' : 'Find by project'}
-                value={filters.search}
-                onChange={(e) => handleFilterChange({ ...filters, search: e.target.value })}
-                className={styles.mobileSearchInput}
-              />
-            </div>
-            <button className={styles.filterButton} onClick={() => setIsFilterModalOpen(true)}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <path d="M4 6h16M7 12h10M10 18h4" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-              {locale === 'ru' ? 'Фильтры' : 'Filters'}
-              {activeFiltersCount > 0 && <span className={styles.filterBadge}>{activeFiltersCount}</span>}
+      <div className={styles.filterBar}>
+        {/* Row 1: Search, Type, Location, Map */}
+        <div className={styles.filterRow}>
+          <div className={styles.typeSelector}>
+            <button 
+              onClick={() => handleTypeChange('sale')}
+              className={`${styles.typeBtn} ${currentListingType === 'sale' ? styles.typeBtnActive : ''}`}
+            >
+              {locale === 'ru' ? 'Продажа' : 'Sale'}
+            </button>
+            <button 
+              onClick={() => handleTypeChange('rent')}
+              className={`${styles.typeBtn} ${currentListingType === 'rent' ? styles.typeBtnActive : ''}`}
+            >
+              {locale === 'ru' ? 'Аренда' : 'Rent'}
             </button>
           </div>
+
+          <div className={styles.searchWrapper}>
+            <input 
+              type="text"
+              className={styles.searchInput}
+              placeholder={locale === 'ru' ? 'Поиск проекту або локації...' : 'Search project or location...'}
+              value={searchTerm}
+              onChange={(e) => handleSearchChange(e.target.value)}
+            />
+            <svg className={styles.searchIcon} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+          </div>
+
+          <div className={styles.locationWrapper} title={locale === 'ru' ? 'Буде реалізовано незабаром' : 'To be made soon'}>
+            <select 
+              value={selectedLocation}
+              className={styles.locationSelect}
+              onChange={(e) => handleLocationChange(e.target.value)}
+            >
+              <option value="">{locale === 'ru' ? 'Все локации' : 'All locations'}</option>
+              {locations.map(loc => {
+                const name = typeof loc === 'string' ? loc : (loc.name || loc.label || '');
+                const val = typeof loc === 'string' ? loc : (loc.id || loc.name || '');
+                return <option key={val} value={val}>{name}</option>;
+              })}
+            </select>
+            <svg className={styles.selectArrow} width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M6 9l6 6 6-6" />
+            </svg>
+          </div>
+
+          <div className={styles.statusWrapper}>
+            <select 
+              value={searchParams.get('status') || ''}
+              className={styles.statusSelect}
+              onChange={(e) => updateFilters({ status: e.target.value })}
+            >
+              <option value="">{locale === 'ru' ? 'Все статусы' : 'All statuses'}</option>
+              <option value="off-plan">{locale === 'ru' ? 'Off Plan / Будується' : 'Off Plan / Under Construction'}</option>
+              <option value="completed">{locale === 'ru' ? 'Завершено' : 'Completed'}</option>
+            </select>
+            <svg className={styles.selectArrow} width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M6 9l6 6 6-6" />
+            </svg>
+          </div>
+
+          <a href="/map" className={styles.mapToggleBtn}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon>
+              <line x1="8" y1="2" x2="8" y2="18"></line>
+              <line x1="16" y1="6" x2="16" y2="22"></line>
+            </svg>
+            <span>{locale === 'ru' ? 'На карте' : 'Map'}</span>
+          </a>
         </div>
 
-        <div className={styles.newFiltersSection}>
-          <PropertyFinderFiltersBar filters={filters} onFilterChange={handleFilterChange} />
-        </div>
-
-        <div className={styles.titleSection}>
-          <div className={styles.titleRow}>
-            <div className={styles.titleGroup}>
-              <h2 className={styles.listTitle}>
-                {filters.type === 'new' 
-                  ? (locale === 'ru' ? 'Новостройки в ОАЭ' : 'New buildings in UAE')
-                  : (locale === 'ru' ? 'Вторичная недвижимость в ОАЭ' : 'Completed properties in UAE')
-                }
-              </h2>
-              <div className={styles.listCount}>
-                {total.toLocaleString()} {locale === 'ru' ? 'объектов' : 'properties'}
-              </div>
-            </div>
-
-            <div className={styles.sortContainer}>
-              <span className={styles.sortLabel}>{locale === 'en' ? 'Sort:' : 'Сортировка:'}</span>
-              <div className={styles.sortDropdownWrapper}>
-                <button
-                  className={styles.sortButton}
-                  onClick={() => setIsSortOpen(!isSortOpen)}
+        {/* Row 2: Detailed Filters */}
+        <div className={styles.filterRow}>
+          <div className={styles.bedroomsPills}>
+            <span className={styles.filterLabel}>{locale === 'ru' ? 'Спальни:' : 'Bedrooms:'}</span>
+            <div className={styles.pillContainer}>
+              {['0', '1', '2', '3', '4', '5', '6+'].map(val => (
+                <button 
+                  key={val}
+                  className={`${styles.pillBtn} ${selectedBedrooms.includes(val) ? styles.pillActive : ''}`}
+                  onClick={() => toggleBedroom(val)}
                 >
-                  <span>
-                    {sortOptions.find(o => o.value === filters.sort)?.[locale === 'en' ? 'label' : 'labelRu'] || (locale === 'en' ? 'Newest First' : 'Сначала новые')}
-                  </span>
-                  <svg
-                    width="12"
-                    height="8"
-                    viewBox="0 0 12 8"
-                    fill="none"
-                    style={{ transform: isSortOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}
-                  >
-                    <path d="M1 1.5L6 6.5L11 1.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
+                  {val === '0' ? 'Studio' : val}
                 </button>
-                {isSortOpen && (
-                  <div className={styles.sortMenu}>
-                    {sortOptions.map((option) => (
-                      <button
-                        key={option.value}
-                        className={`${styles.sortMenuItem} ${filters.sort === option.value ? styles.active : ''}`}
-                        onClick={() => {
-                          handleFilterChange({ ...filters, sort: option.value });
-                          setIsSortOpen(false);
-                        }}
-                      >
-                        {locale === 'en' ? option.label : option.labelRu}
-                      </button>
-                    ))}
-                  </div>
-                )}
+              ))}
+            </div>
+          </div>
+
+          <div className={styles.priceInputs}>
+            <div className={styles.inputGroup}>
+              <div className={styles.inputWithUnit}>
+                <input 
+                  type="text" 
+                  placeholder={locale === 'ru' ? 'От' : 'Min'}
+                  value={formatWithCommas(priceMin)}
+                  onChange={(e) => setPriceMin(e.target.value.replace(/\D/g, ''))}
+                  onBlur={handlePriceSubmit}
+                  className={styles.rangeInput}
+                />
+                <span className={styles.unit}>AED</span>
+              </div>
+              <span className={styles.separator}>—</span>
+              <div className={styles.inputWithUnit}>
+                <input 
+                  type="text" 
+                  placeholder={locale === 'ru' ? 'До' : 'Max'}
+                  value={formatWithCommas(priceMax)}
+                  onChange={(e) => setPriceMax(e.target.value.replace(/\D/g, ''))}
+                  onBlur={handlePriceSubmit}
+                  className={styles.rangeInput}
+                />
+                <span className={styles.unit}>AED</span>
               </div>
             </div>
+          </div>
+
+          <button 
+            className={styles.resetBtn}
+            onClick={() => {
+              setSearchTerm('');
+              setSelectedLocation('');
+              setPriceMin('');
+              setPriceMax('');
+              setSelectedBedrooms([]);
+              router.push(pathname);
+              setVisibleCount(12);
+            }}
+            title="Reset All"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M23 4v6h-6"></path>
+              <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <div className={styles.titleSection}>
+        <div className={styles.titleRow}>
+          <div className={styles.titleGroup}>
+            <h2 className={styles.listTitle}>
+              {pathname.includes('/app') ? 'Real Estate' : 'ForYou Real Estate'}
+            </h2>
+            <span className={styles.listCount}>{total} properties found</span>
           </div>
         </div>
       </div>
 
-      {loading ? (
-        <div className={styles.loadingGrid}>
-          {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className={styles.skeletonCard} />
-          ))}
-        </div>
-      ) : projects.length > 0 ? (
-        <>
-          <div className={styles.grid}>
-            {projects.map((project) => (
-              <PropertyFinderCard key={project.id} project={project} anonymous={anonymous} />
-            ))}
+      <div className={styles.grid}>
+        {projects.length === 0 ? (
+          <div className={styles.emptyState}>
+            <h3>No projects found matching your filters</h3>
+            <p>Try resetting filters or adjusting search term</p>
           </div>
+        ) : (
+          visibleProjects.map((project) => (
+            <PropertyFinderCard key={project.id} project={project} />
+          ))
+        )}
+      </div>
 
-          {totalPages > 1 && (
-            <div className={styles.pagination}>
-              <button 
-                onClick={() => handlePageChange(Math.max(1, page - 1))}
-                disabled={page === 1}
-                className={styles.pageBtn}
-              >
-                Prev
-              </button>
-              <div className={styles.pageNumbers}>
-                {Array.from({ length: Math.min(5, totalPages) }).map((_, i) => {
-                   const pageNum = i + 1;
-                   return (
-                     <button
-                       key={pageNum}
-                       onClick={() => handlePageChange(pageNum)}
-                       className={`${styles.pageNum} ${page === pageNum ? styles.pageActive : ''}`}
-                     >
-                       {pageNum}
-                     </button>
-                   );
-                })}
-                {totalPages > 5 && <span className={styles.dots}>...</span>}
-              </div>
-              <button 
-                onClick={() => handlePageChange(Math.min(totalPages, page + 1))}
-                disabled={page === totalPages}
-                className={styles.pageBtn}
-              >
-                Next
-              </button>
-            </div>
-          )}
-        </>
-      ) : (
-        <div className={styles.emptyState}>
-          <h3>{locale === 'ru' ? 'Нет проектов' : 'No projects found'}</h3>
-          <p>{locale === 'ru' ? 'Попробуйте изменить параметры поиска' : 'Try changing your search parameters'}</p>
+      {/* Infinite Scroll / Lazy Load Observer */}
+      {visibleCount < projects.length && (
+         <div ref={loadMoreRef} className={styles.loadMoreTrigger}>
+            <div className={styles.loader}></div>
+            <span>Loading more properties...</span>
+         </div>
+      )}
+
+      {total > 100 && visibleCount >= projects.length && (
+        <div className={styles.pagination}>
+          <span className={styles.sortLabel}>Showing first 100 results</span>
         </div>
       )}
     </div>

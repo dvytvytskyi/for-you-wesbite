@@ -41,21 +41,23 @@ const sortOptions = [
   { value: 'size-desc', label: 'Size Higher', labelRu: 'Площадь больше' },
   { value: 'size-asc', label: 'Size Lower', labelRu: 'Площадь меньше' },
   { value: 'newest', label: 'Newest First', labelRu: 'Сначала новые' },
+  { value: 'random', label: 'Random', labelRu: 'Случайно' },
 ];
 
 const mapSortToBackend = (frontendSort: string | undefined, propertyType: 'off-plan' | 'secondary'): { sortBy: ApiPropertyFilters['sortBy'], sortOrder: ApiPropertyFilters['sortOrder'] } => {
-  const sortValue = frontendSort || 'newest';
+  const sortValue = frontendSort || 'random';
   const mapping: Record<string, { sortBy: ApiPropertyFilters['sortBy'], sortOrder: ApiPropertyFilters['sortOrder'] }> = {
     'price-desc': { sortBy: propertyType === 'off-plan' ? 'priceFrom' : 'price', sortOrder: 'DESC' },
     'price-asc': { sortBy: propertyType === 'off-plan' ? 'priceFrom' : 'price', sortOrder: 'ASC' },
     'size-desc': { sortBy: propertyType === 'off-plan' ? 'sizeFrom' : 'size', sortOrder: 'DESC' },
     'size-asc': { sortBy: propertyType === 'off-plan' ? 'sizeFrom' : 'size', sortOrder: 'ASC' },
     'newest': { sortBy: 'createdAt', sortOrder: 'DESC' },
+    'random': { sortBy: 'random', sortOrder: 'DESC' },
   };
   return mapping[sortValue] || mapping['newest'];
 };
 
-const convertFiltersToApi = (filters: Filters, page: number): ApiPropertyFilters => {
+const convertFiltersToApi = (filters: Filters, page: number, seed?: number): ApiPropertyFilters => {
   const propertyType = filters.type === 'new' ? 'off-plan' : 'secondary';
   const sort = mapSortToBackend(filters.sort, propertyType);
 
@@ -66,6 +68,7 @@ const convertFiltersToApi = (filters: Filters, page: number): ApiPropertyFilters
     page: page,
     limit: ITEMS_PER_PAGE,
     summary: true,
+    seed: seed,
   };
 
   if (filters.developerId) apiFilters.developerId = filters.developerId;
@@ -126,7 +129,7 @@ const urlParamsToFilters = (searchParams: URLSearchParams): Filters => {
     sizeTo: searchParams.get('sizeTo') || '',
     priceFrom: searchParams.get('priceFrom') || '',
     priceTo: searchParams.get('priceTo') || '',
-    sort: searchParams.get('sort') || 'newest',
+    sort: searchParams.get('sort') || 'random',
     developerId: searchParams.get('developerId') || undefined,
     cityId: searchParams.get('cityId') || undefined,
   };
@@ -166,6 +169,9 @@ export default function PropertiesList() {
   const [mapMarkers, setMapMarkers] = useState<any[]>([]);
   const [loadingMap, setLoadingMap] = useState(false);
   const [selectedPropertyId, setSelectedPropertyId] = useState<string | null>(null);
+  
+  // Seed for stable random sorting
+  const [sessionSeed] = useState(() => Math.floor(Math.random() * 1000000));
 
   // Load areas for title mapping and check for mobile
   useEffect(() => {
@@ -258,7 +264,7 @@ export default function PropertiesList() {
     setLoading(true);
     setError(null);
     try {
-      const apiFilters = convertFiltersToApi(filters, currentPage);
+      const apiFilters = convertFiltersToApi(filters, currentPage, sessionSeed);
       if (debouncedSearch) apiFilters.search = debouncedSearch;
 
       const result = await getProperties(apiFilters, true);
@@ -277,7 +283,7 @@ export default function PropertiesList() {
     } finally {
       setLoading(false);
     }
-  }, [filters, currentPage, debouncedSearch, t]);
+  }, [filters, currentPage, debouncedSearch, sessionSeed, t]);
 
   useEffect(() => {
     loadProperties();
@@ -304,7 +310,7 @@ export default function PropertiesList() {
     const loadMarkers = async () => {
       try {
         setLoadingMap(true);
-        const apiFilters = convertFiltersToApi(filters, 1);
+        const apiFilters = convertFiltersToApi(filters, 1, sessionSeed);
         apiFilters.limit = 5000; // Get all markers for the map
         const markers = await getMapMarkers(apiFilters);
 

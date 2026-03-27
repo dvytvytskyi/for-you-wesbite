@@ -7,8 +7,26 @@ export const metadata = {
   description: 'Explore 200+ exclusive real estate projects in Dubai. Off-plan and completed properties with verified data.',
 };
 
-export default async function ProjectsPage() {
-  const initialData = await getPropertyFinderProjects({ page: 1, limit: 24 });
+interface Props {
+  searchParams: { [key: string]: string | string[] | undefined };
+}
+
+export default async function ProjectsPage({ searchParams }: Props) {
+  const initialData = await getPropertyFinderProjects({
+    category: searchParams.category as any,
+    status: searchParams.status as any,
+    search: searchParams.search as string,
+    bedrooms: searchParams.bedrooms as string,
+    priceMin: searchParams.priceFrom as string,
+    priceMax: searchParams.priceTo as string,
+    sizeMin: searchParams.sizeFrom as string,
+    sizeMax: searchParams.sizeTo as string,
+    developerId: searchParams.developerId as string,
+    furnishingType: searchParams.furnishingType as string,
+    sortBy: searchParams.sort as string,
+    page: parseInt(searchParams.page as string || '1', 10),
+    limit: 24
+  });
 
   return (
     <main style={{ paddingTop: '100px', minHeight: '100vh', background: '#f8f9fa' }}>

@@ -20,7 +20,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${inter.variable} ${cormorant.variable}`}>
+    <html lang="en" className={`${inter.variable} ${cormorant.variable}`} suppressHydrationWarning>
       <head>
         <link rel="preconnect" href="https://nbg1.your-objectstorage.com" />
         <link rel="icon" type="image/png" sizes="32x32" href="/favicons/icon-light.png" />
@@ -57,4 +57,12 @@ export default function RootLayout({
       </body>
     </html>
   );
+}
+
+export function NotFound() {
+    return (
+        <div style={{ padding: '20px', textAlign: 'center' }}>
+            <h1>404 - Page Not Found</h1>
+        </div>
+    );
 }

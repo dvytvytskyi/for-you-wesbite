@@ -15,6 +15,7 @@ import PropertyCard from '@/components/PropertyCard';
 import { marked } from 'marked';
 import styles from './PropertyDetail.module.css';
 import Lightbox from '@/components/Lightbox';
+import UnitAvailabilityModal from '@/components/UnitAvailabilityModal';
 
 interface PropertyDetailProps {
   propertyId: string;
@@ -38,6 +39,8 @@ export default function PropertyDetail({ propertyId, initialProperty = null }: P
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
   const [otherProperties, setOtherProperties] = useState<Property[]>([]);
   const [loadingOtherProperties, setLoadingOtherProperties] = useState(false);
+  const [relatedNews, setRelatedNews] = useState<any[]>([]);
+  const [loadingNews, setLoadingNews] = useState(false);
   const unitsScrollRef = useRef<HTMLDivElement>(null);
   const otherPropertiesScrollRef = useRef<HTMLDivElement>(null);
   const otherPropertiesCardsRef = useRef<HTMLDivElement>(null);
@@ -46,6 +49,23 @@ export default function PropertyDetail({ propertyId, initialProperty = null }: P
   const map = useRef<Map | null>(null);
   const markerRef = useRef<Marker | null>(null);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+  const [isAvailabilityModalOpen, setIsAvailabilityModalOpen] = useState(false);
+  const [selectedUnitId, setSelectedUnitId] = useState<string | undefined>();
+  const [isPlanLightboxOpen, setIsPlanLightboxOpen] = useState(false);
+  const [currentPlanImage, setCurrentPlanImage] = useState<string | null>(null);
+  const [expandedAccordions, setExpandedAccordions] = useState<Set<string>>(new Set(['1', '1.0'])); // Expand first by default
+
+  const toggleAccordion = (beds: string) => {
+    setExpandedAccordions(prev => {
+      const next = new Set(prev);
+      if (next.has(beds)) {
+        next.delete(beds);
+      } else {
+        next.add(beds);
+      }
+      return next;
+    });
+  };
 
   // Client-side benchmark log
   useEffect(() => {
@@ -125,19 +145,6 @@ export default function PropertyDetail({ propertyId, initialProperty = null }: P
     }
 
     const firstImageUrl = displayImages[0];
-    let link: HTMLLinkElement | null = null;
-
-    try {
-      link = document.createElement('link');
-      link.rel = 'preload';
-      link.as = 'image';
-      link.href = firstImageUrl;
-      link.setAttribute('fetchpriority', 'high');
-      document.head.appendChild(link);
-    } catch (e) {
-      console.error('Failed to create preload link', e);
-    }
-
     const firstImage = new window.Image();
     firstImage.onload = () => setHeroImageLoading(false);
     firstImage.onerror = () => setHeroImageLoading(false);
@@ -146,18 +153,9 @@ export default function PropertyDetail({ propertyId, initialProperty = null }: P
     // Prefetch next 2-3 images in background using Image objects
     const imagesToPrefetch = Math.min(3, displayImages.length - 1);
     for (let i = 1; i <= imagesToPrefetch; i++) {
-      const img = new window.Image();
-      img.src = displayImages[i];
+        const img = new window.Image();
+        img.src = displayImages[i];
     }
-
-    // Cleanup: remove preload link when component unmounts
-    return () => {
-      if (link && link.parentNode) {
-        try {
-          link.parentNode.removeChild(link);
-        } catch (e) { }
-      }
-    };
   }, [property, displayImages]);
 
 
@@ -228,15 +226,17 @@ export default function PropertyDetail({ propertyId, initialProperty = null }: P
           ? (property.priceFrom || 0)
           : (property.price || 0);
 
-        const filters: any = {
-          limit: 25,
-          propertyType: property.propertyType
-        };
+        // PREFER: Same Area first
+        if (property.area && typeof property.area === 'object' && property.area.id) {
+          filters.areaId = property.area.id;
+        } else if (typeof property.area === 'string') {
+          filters.search = property.area.split(',')[0].trim();
+        }
 
-        // Filter by price +/- 10% if price is available
+        // Filter by price +/- 15% if price is available (slightly wider for better variety)
         if (targetPrice > 0) {
-          filters.priceFrom = Math.round(targetPrice * 0.9);
-          filters.priceTo = Math.round(targetPrice * 1.1);
+          filters.priceFrom = Math.round(targetPrice * 0.85);
+          filters.priceTo = Math.round(targetPrice * 1.15);
         }
 
         const result = await getProperties(filters, true);
@@ -277,6 +277,28 @@ export default function PropertyDetail({ propertyId, initialProperty = null }: P
 
     loadOtherProperties();
   }, [property, shouldLoadOtherProperties]);
+
+  // Load related news
+  useEffect(() => {
+    if (!property) return;
+    
+    const loadNews = async () => {
+      try {
+        setLoadingNews(true);
+        // Search for news matching property name or area name
+        const areaName = getAreaName();
+        const searchTerms = [property.name, areaName].filter(Boolean).join(' ');
+        const result = await getNews(1, 3, searchTerms);
+        setRelatedNews(result.news || []);
+      } catch (err) {
+        setRelatedNews([]);
+      } finally {
+        setLoadingNews(false);
+      }
+    };
+
+    loadNews();
+  }, [property]);
 
   // Initialize map when property is loaded - lazy load to avoid blocking render
   useEffect(() => {
@@ -766,6 +788,19 @@ export default function PropertyDetail({ propertyId, initialProperty = null }: P
           >
             {property.propertyType === 'off-plan' ? tFilters('offPlan') : tFilters('secondary')}
           </Link>
+          {property.area && (
+            <>
+              <span className={styles.breadcrumbSeparator}>→</span>
+              <Link 
+                href={getLocalizedPath(typeof property.area === 'string' 
+                  ? `/properties?location=${encodeURIComponent(property.area.split(',')[0].trim())}`
+                  : `/areas/${property.area.slug}`)} 
+                className={styles.breadcrumbLink}
+              >
+                {getAreaName()}
+              </Link>
+            </>
+          )}
           <span className={styles.breadcrumbSeparator}>→</span>
           <span className={styles.breadcrumbCurrent}>{getName()}</span>
         </div>
@@ -894,7 +929,22 @@ export default function PropertyDetail({ propertyId, initialProperty = null }: P
               <div className={styles.priceSection}>
                 <div className={styles.price}>{getPriceDisplay()}</div>
                 {property.propertyType === 'off-plan' && property.paymentPlansJson && property.paymentPlansJson.length > 0 && (
-                  <div className={styles.paymentPlan}>{property.paymentPlansJson[0].Plan_name}</div>
+                  <div className={styles.paymentPlanLabel}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                       <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                       <line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" />
+                    </svg>
+                    {property.paymentPlansJson[0].Plan_name}
+                  </div>
+                )}
+                {property.propertyType === 'off-plan' && (!property.paymentPlansJson || property.paymentPlansJson.length === 0) && property.paymentPlan && (
+                  <div className={styles.paymentPlanLabel}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                       <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                       <line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" />
+                    </svg>
+                    {property.paymentPlan}
+                  </div>
                 )}
                 {property.propertyType === 'off-plan' && getReadiness() && (
                   <div className={styles.readinessBadge}>
@@ -1119,40 +1169,160 @@ export default function PropertyDetail({ propertyId, initialProperty = null }: P
               </div>
             )}
 
-            {/* Units */}
+            {/* Units Section */}
             {property.units && property.units.length > 0 && (
               <div className={styles.unitsSection}>
                 <div className={styles.unitsHeader}>
-                  <h2 className={styles.sectionTitle}>{t('availableUnits')}</h2>
-                  <div className={styles.unitsNavigation}>
-                    <button
-                      className={styles.unitsNavButton}
-                      onClick={() => {
-                        if (unitsScrollRef.current) {
-                          unitsScrollRef.current.scrollBy({ left: -400, behavior: 'smooth' });
-                        }
-                      }}
-                      aria-label="Scroll left"
-                    >
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M15 18L9 12L15 6" />
-                      </svg>
-                    </button>
-                    <button
-                      className={styles.unitsNavButton}
-                      onClick={() => {
-                        if (unitsScrollRef.current) {
-                          unitsScrollRef.current.scrollBy({ left: 400, behavior: 'smooth' });
-                        }
-                      }}
-                      aria-label="Scroll right"
-                    >
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M9 18L15 12L9 6" />
-                      </svg>
-                    </button>
-                  </div>
+                  <h2 className={styles.sectionTitle}>{t('availableUnits') || 'Available Units'}</h2>
+                  {property.units.length <= 4 && (
+                    <div className={styles.unitsNavigation}>
+                      <button 
+                        className={styles.unitsNavButton} 
+                        onClick={() => {
+                          if (unitsScrollRef.current) {
+                            unitsScrollRef.current.scrollBy({ left: -320, behavior: 'smooth' });
+                          }
+                        }}
+                        aria-label="Scroll left"
+                      >
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M15 18L9 12L15 6" />
+                        </svg>
+                      </button>
+                      <button 
+                        className={styles.unitsNavButton} 
+                        onClick={() => {
+                          if (unitsScrollRef.current) {
+                            unitsScrollRef.current.scrollBy({ left: 320, behavior: 'smooth' });
+                          }
+                        }}
+                        aria-label="Scroll right"
+                      >
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M9 18L15 12L9 6" />
+                        </svg>
+                      </button>
+                    </div>
+                  )}
                 </div>
+              {property.units.length > 4 ? (
+                <div className={styles.unitsTableWrapper}>
+                  {(() => {
+                    const grouped = property.units.reduce((acc: any, unit: any) => {
+                      const bedsCount = Number(unit.bedrooms);
+                      const beds = bedsCount === 0 ? 'Studio' : (unit.bedrooms || 'Studio');
+                      if (!acc[beds]) acc[beds] = [];
+                      acc[beds].push(unit);
+                      return acc;
+                    }, {});
+
+                    return Object.entries(grouped).sort((a,b) => Number(a[0]) - Number(b[0])).map(([beds, units]: [string, any]) => {
+                      const isExpanded = expandedAccordions.has(beds);
+                      const minSize = Math.min(...units.map((u: any) => u.totalSize));
+                      const maxSize = Math.max(...units.map((u: any) => u.totalSize));
+                      
+                      return (
+                        <div key={beds} className={`${styles.unitAccordion} ${isExpanded ? styles.expanded : ''}`}>
+                          <button 
+                            className={styles.accordionHeader} 
+                            onClick={() => toggleAccordion(beds)}
+                          >
+                            <div className={styles.accordionMain}>
+                              <div className={styles.accordionTitle}>
+                                {beds === 'Studio' ? beds : `${Math.round(Number(beds))} ${locale === 'ru' ? 'Сп.' : 'BR'}`}
+                              </div>
+                              <div className={styles.accordionStats}>
+                                {units.length} {locale === 'ru' ? 'Об\'єкта' : 'Units'}
+                              </div>
+                            </div>
+                            {!isExpanded && (
+                              <div className={styles.accordionHint}>
+                                {locale === 'ru' ? 'натисніть, щоб переглянути об\'єкти' : 'press to view units'}
+                              </div>
+                            )}
+                            <div className={styles.accordionAction}>
+                              <svg className={styles.chevron} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <polyline points="6 9 12 15 18 9"></polyline>
+                              </svg>
+                            </div>
+                          </button>
+                          
+                          {isExpanded && (
+                            <div className={styles.accordionContent}>
+                              <div className={styles.tableResponsive}>
+                                <table className={styles.unitsTable}>
+                                  <thead>
+                                    <tr>
+                                      <th>{locale === 'ru' ? 'План' : 'Plan'}</th>
+                                      <th>{locale === 'ru' ? 'Тип' : 'Type'}</th>
+                                      <th>{locale === 'ru' ? 'Номер' : 'Number'}</th>
+                                      <th>{locale === 'ru' ? 'Поверх' : 'Floor'}</th>
+                                      <th>{locale === 'ru' ? 'Площа' : 'Area'}</th>
+                                      <th>{locale === 'ru' ? 'Ціна' : 'Price'}</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {units.map((unit: any) => (
+                                      <tr key={unit.id || unit.unitId} onClick={() => { setSelectedUnitId(unit.unitId); setIsAvailabilityModalOpen(true); }} className={styles.clickableRow}>
+                                        <td>
+                                          <div 
+                                            className={styles.tablePlanContainer}
+                                            onClick={(e) => {
+                                              if (unit.planImage) {
+                                                e.stopPropagation();
+                                                setCurrentPlanImage(unit.planImage);
+                                                setIsPlanLightboxOpen(true);
+                                              }
+                                            }}
+                                          >
+                                            {unit.planImage ? (
+                                              <Image 
+                                                src={unit.planImage} 
+                                                alt={unit.unitId} 
+                                                width={48} 
+                                                height={48} 
+                                                className={styles.miniPlan} 
+                                                unoptimized 
+                                              />
+                                            ) : (
+                                              <div className={styles.noPlan}>-</div>
+                                            )}
+                                          </div>
+                                        </td>
+                                        <td><div className={styles.unitTypeText}>{unit.type}</div></td>
+                                        <td><div className={styles.unitIdText}>{unit.unitId}</div></td>
+                                        <td><div className={styles.floorText}>{unit.floor || '-'}</div></td>
+                                        <td>
+                                          <div className={styles.areaInfo}>
+                                            <div className={styles.primaryArea}>{Math.round(unit.totalSize)} {locale === 'ru' ? 'м²' : 'sqm'}</div>
+                                            <div className={styles.secondaryArea}>{Math.round(unit.totalSizeSqft || Number(unit.totalSize) * 10.764)} {locale === 'ru' ? 'фт²' : 'sqft'}</div>
+                                          </div>
+                                        </td>
+                                        <td>
+                                          <div className={styles.priceInfo}>
+                                            <div className={styles.primaryPrice}>
+                                              {unit.priceAED ? `${formatPrice(Math.round(unit.priceAED))} AED` : (unit.price > 0 ? `${formatPrice(Math.round(unit.price))} AED` : 'P.O.A')}
+                                            </div>
+                                            {unit.priceAED && unit.totalSize > 0 && (
+                                              <div className={styles.secondaryPrice}>
+                                                {formatPrice(Math.round(unit.primaryPriceAEDPerSqm || (unit.priceAED / unit.totalSize)))} {locale === 'ru' ? 'AED/м²' : 'AED/sqm'}
+                                              </div>
+                                            )}
+                                          </div>
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    });
+                  })()}
+                </div>
+              ) : (
                 <div className={styles.unitsList} ref={unitsScrollRef}>
                   {property.units.map((unit) => {
                     const isImageLoading = unit.planImage && unit.id && unitImagesLoading.has(unit.id);
@@ -1164,23 +1334,24 @@ export default function PropertyDetail({ propertyId, initialProperty = null }: P
                           <div className={styles.unitType}>{unit.type}</div>
                         </div>
                         {unit.planImage && (
-                          <div className={styles.unitPlanImage}>
-                            {isImageLoading && (
-                              <div className={styles.unitPlanImageSkeleton}></div>
-                            )}
+                          <div 
+                            className={styles.unitPlanImage}
+                            onClick={(e) => {
+                              if (unit.planImage) {
+                                e.stopPropagation();
+                                setCurrentPlanImage(unit.planImage);
+                                setIsPlanLightboxOpen(true);
+                              }
+                            }}
+                            style={{ cursor: 'pointer' }}
+                          >
+                            {isImageLoading && <div className={styles.unitImageSkeleton}></div>}
                             <Image
                               src={unit.planImage}
-                              alt={`Plan for ${unit.unitId}`}
+                              alt={unit.unitId}
                               fill
-                              style={{
-                                objectFit: 'cover',
-                                opacity: isImageLoading ? 0 : 1,
-                                transition: 'opacity 0.3s ease',
-                                position: 'absolute',
-                                zIndex: isImageLoading ? 0 : 2
-                              }}
-                              sizes="(max-width: 768px) 100vw, 300px"
-                              loading="lazy"
+                              className={styles.planImage}
+                              style={{ objectFit: 'cover', opacity: isImageLoading ? 0 : 1 }}
                               onLoad={() => {
                                 if (unit.id) {
                                   setUnitImagesLoading(prev => {
@@ -1190,78 +1361,127 @@ export default function PropertyDetail({ propertyId, initialProperty = null }: P
                                   });
                                 }
                               }}
-                              onError={() => {
-                                if (unit.id) {
-                                  setUnitImagesLoading(prev => {
-                                    const next = new Set(prev);
-                                    next.delete(unit.id as string);
-                                    return next;
-                                  });
-                                }
-                              }}
-                              onLoadingComplete={() => {
-                                if (unit.id) {
-                                  setUnitImagesLoading(prev => {
-                                    const next = new Set(prev);
-                                    next.delete(unit.id as string);
-                                    return next;
-                                  });
-                                }
-                              }}
+                              unoptimized
                             />
                           </div>
                         )}
-                        <div className={styles.unitDetails}>
+                        <div className={styles.unitBody}>
                           <div className={styles.unitPrice}>
-                            {unit.priceAED && unit.priceAED > 0
-                              ? `${formatPrice(unit.priceAED)} AED`
-                              : (t('priceOnRequest') || 'On request')}
+                            {unit.priceAED ? `${formatPrice(unit.priceAED)} AED` : (Number(unit.price) > 0 ? `${formatPrice(Math.round(Number(unit.price)))} AED` : (t('priceOnRequest') || 'On request'))}
                           </div>
-                          <div className={styles.unitSize}>
-                            {locale === 'ru' ? (
-                              <>
-                                {formatSize(unit.totalSize)} {t('sqm')}
-                                {unit.totalSizeSqft && ` (${formatSize(unit.totalSizeSqft)} ${t('sqft')})`}
-                              </>
-                            ) : (
-                              <>
-                                {unit.totalSizeSqft ? `${formatSize(unit.totalSizeSqft)} ${t('sqft')}` : `${formatSize(unit.totalSize * 10.764)} ${t('sqft')}`}
-                                {` (${formatSize(unit.totalSize)} ${t('sqm')})`}
-                              </>
+                          <div className={styles.unitInfo}>
+                            {(unit.bedrooms !== undefined && unit.bedrooms !== null) && (
+                              <div className={styles.unitInfoItem}>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                                  <path d="M3 7V17M17 7V17M3 13H17M3 7H17M13 7V13M7 7V13" />
+                                </svg>
+                                <span>{Math.round(Number(unit.bedrooms)) === 0 ? (locale === 'ru' ? 'Студия' : 'Studio') : `${Math.round(Number(unit.bedrooms))} ${locale === 'ru' ? 'сп.' : 'br'}`}</span>
+                              </div>
                             )}
-                            {unit.balconySize && unit.balconySize > 0 && (
-                              <span className={styles.balconySize}>
-                                {' '}+ {locale === 'ru' ? (
-                                  <>
-                                    {formatSize(unit.balconySize)} {t('sqm')}
-                                    {unit.balconySizeSqft && ` (${formatSize(unit.balconySizeSqft)} ${t('sqft')})`}
-                                  </>
-                                ) : (
-                                  <>
-                                    {unit.balconySizeSqft ? formatSize(unit.balconySizeSqft) : formatSize(unit.balconySize * 10.764)} {t('sqft')}
-                                    {` (${formatSize(unit.balconySize)} ${t('sqm')})`}
-                                  </>
-                                )} {t('balcony')}
-                              </span>
-                            )}
+                            <div className={styles.unitInfoItem}>
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                                <rect x="3" y="3" width="18" height="18" rx="2" />
+                                <path d="M9 3V21M15 3V21M3 9H21M3 15H21" />
+                              </svg>
+                              <span>{Math.round(unit.totalSizeSqft || (Number(unit.totalSize) * 10.764))} {locale === 'ru' ? 'фт²' : 'sqft'}</span>
+                            </div>
                           </div>
+                          <button 
+                            className={styles.unitAction}
+                            onClick={() => {
+                              setSelectedUnitId(unit.unitId);
+                              setIsAvailabilityModalOpen(true);
+                            }}
+                          >
+                            {locale === 'ru' ? 'Запитати наявність' : 'Check Availability'}
+                          </button>
                         </div>
                       </div>
                     );
                   })}
                 </div>
-              </div>
-            )}
-
-            {/* Map Section */}
-            <div className={styles.mapSection}>
-              <h2 className={styles.sectionTitle}>{t('location')}</h2>
-              <div className={styles.mapContainer} ref={mapContainer}></div>
+              )}
             </div>
-          </div>
+          )}
 
-          {/* Right Column - 30% - Investment Form */}
-          <div className={styles.rightColumn}>
+          {/* Detailed Payment Plan Section */}
+          {property.propertyType === 'off-plan' && property.paymentPlansJson && property.paymentPlansJson.length > 0 && (
+            <div className={styles.descriptionSection} style={{ marginTop: '48px' }}>
+              <h2 className={styles.sectionTitle}>{locale === 'ru' ? 'Схема оплати' : 'Payment Plan'}</h2>
+              <div className={styles.paymentPlanPremiumBox}>
+                {/* Segmented Progress Bar */}
+                <div className={styles.paymentBarContainer}>
+                  {property.paymentPlansJson[0].Payments && property.paymentPlansJson[0].Payments.map((payment: any, idx: number) => {
+                    const p = Array.isArray(payment) ? payment[0] : payment;
+                    if (!p) return null;
+                    const percent = parseInt(p.Percent_of_payment);
+                    return (
+                      <div 
+                        key={`bar-${idx}`} 
+                        className={styles.paymentBarSegment} 
+                        style={{ flexBasis: `${percent}%` }}
+                      />
+                    );
+                  })}
+                </div>
+                
+                {/* Percent Labels */}
+                <div className={styles.paymentPercentLabels}>
+                  {property.paymentPlansJson[0].Payments && property.paymentPlansJson[0].Payments.map((payment: any, idx: number) => {
+                    const p = Array.isArray(payment) ? payment[0] : payment;
+                    if (!p) return null;
+                    const percent = parseInt(p.Percent_of_payment);
+                    return (
+                      <div 
+                        key={`label-${idx}`} 
+                        className={styles.percentLabel}
+                        style={{ flexBasis: `${percent}%` }}
+                      >
+                        {percent}%
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className={styles.paymentDivider} />
+
+                {/* Detailed List */}
+                <div className={styles.paymentMilestonesList}>
+                   {property.paymentPlansJson[0].Payments && property.paymentPlansJson[0].Payments.map((payment: any, idx: number) => {
+                    const p = Array.isArray(payment) ? payment[0] : payment;
+                    if (!p) return null;
+                    const percent = parseInt(p.Percent_of_payment);
+                    return (
+                      <div key={`milestone-${idx}`} className={styles.milestoneRow}>
+                        <div className={styles.milestoneTitle}>{p.Payment_time}</div>
+                        <div className={styles.milestoneValue}>{percent}%</div>
+                      </div>
+                    );
+                  })}
+                </div>
+                
+                {property.paymentPlansJson[0].months_after_handover > 0 && (
+                  <div className={styles.postHandoverNote}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <circle cx="12" cy="12" r="10" />
+                      <path d="M12 16v-4" /><path d="M12 8h.01" />
+                    </svg>
+                    <span>{property.paymentPlansJson[0].months_after_handover} {locale === 'ru' ? 'місяців після здачі' : 'months post-handover'}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Map Section */}
+          <div className={styles.mapSection}>
+            <h2 className={styles.sectionTitle}>{t('location')}</h2>
+            <div className={styles.mapContainer} ref={mapContainer}></div>
+          </div>
+        </div>
+
+        {/* Right Column - 30% - Investment Form */}
+        <div className={styles.rightColumn}>
             <InvestmentForm
               propertyId={property.id}
               propertyPriceFrom={property.priceFromAED ?? undefined}
@@ -1270,6 +1490,31 @@ export default function PropertyDetail({ propertyId, initialProperty = null }: P
               propertyName={getName()}
               property={property}
             />
+            
+            {/* Related News for sidebar or bottom */}
+            {relatedNews.length > 0 && (
+              <div className={styles.sidebarNews}>
+                <h3 className={styles.sidebarNewsTitle}>
+                  {locale === 'ru' ? 'Новости и аналитика' : 'News & Insights'}
+                </h3>
+                <div className={styles.sidebarNewsList}>
+                  {relatedNews.slice(0, 3).map((item: any) => (
+                    <Link 
+                      key={item.id} 
+                      href={getLocalizedPath(`/news/${item.slug}`)}
+                      className={styles.sidebarNewsItem}
+                    >
+                      <div className={styles.sidebarNewsInfo}>
+                        <div className={styles.sidebarNewsDate}>{new Date(item.publishedAt).toLocaleDateString(locale === 'ru' ? 'ru-RU' : 'en-US')}</div>
+                        <div className={styles.sidebarNewsItemTitle}>
+                          {locale === 'ru' ? item.titleRu : item.title}
+                        </div>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -1329,7 +1574,6 @@ export default function PropertyDetail({ propertyId, initialProperty = null }: P
                 </button>
               </div>
             </div>
-
             <div className={styles.otherPropertiesScrollWrapper}>
               <div className={styles.otherPropertiesScrollContainer} ref={otherPropertiesScrollRef}>
                 <div className={styles.otherPropertiesCardsWrapper} ref={otherPropertiesCardsRef}>
@@ -1348,6 +1592,25 @@ export default function PropertyDetail({ propertyId, initialProperty = null }: P
           </>
         )}
       </div>
+
+      <UnitAvailabilityModal
+        isOpen={isAvailabilityModalOpen}
+        onClose={() => setIsAvailabilityModalOpen(false)}
+        unitId={selectedUnitId}
+        projectName={getName()}
+        propertyId={property.id}
+      />
+
+      {isPlanLightboxOpen && currentPlanImage && (
+        <Lightbox
+          images={[currentPlanImage]}
+          initialIndex={0}
+          onClose={() => {
+            setIsPlanLightboxOpen(false);
+            setCurrentPlanImage(null);
+          }}
+        />
+      )}
     </div>
   );
 }

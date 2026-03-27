@@ -85,7 +85,7 @@ export default function PropertyLanding({ project, locale }: LandingProps) {
           <h1 className={styles.h1}>
             {project.name} {locale === 'ru' ? 'в' : 'in'} {project.location}
           </h1>
-          <p className={styles.heroPrice}>{locale === 'ru' ? 'Ціни від' : 'Prices from'} {project.priceFrom} AED</p>
+          <p className={styles.heroPrice}>{locale === 'ru' ? 'Цены от' : 'Prices from'} {project.priceFrom} AED</p>
         </section>
 
         {/* KEY FACTS SECTION - Semantic dl (Description List) */}
@@ -120,7 +120,7 @@ export default function PropertyLanding({ project, locale }: LandingProps) {
         {/* DESCRIPTION - Core SEO Content */}
         <section id="overview" className={styles.section}>
           <h2 className={styles.sectionTitle}>
-             {locale === 'ru' ? `Обзор проекту ${project.name}` : `${project.name} Project Overview`}
+             {locale === 'ru' ? `Обзор объекта ${project.name}` : `${project.name} Project Overview`}
           </h2>
           <article 
             className={styles.descriptionContent}
@@ -128,10 +128,51 @@ export default function PropertyLanding({ project, locale }: LandingProps) {
           />
         </section>
 
+        {/* PHOTO GALLERY */}
+        <section id="gallery" className={styles.section}>
+          <h2 className={styles.sectionTitle}>{locale === 'ru' ? 'Галерея проекта' : 'Gallery'}</h2>
+          <div className={styles.imageGrid}>
+             {project.images.slice(0, 4).map((img, i) => {
+               const altVariations = locale === 'ru'
+                 ? [`Вид проекта ${project.name}`, `Интерьеры ${project.name} в Дубае`, `Бассейн и удобства в ${project.name}`, `Архитектура ${project.name}`]
+                 : [`Exterior of ${project.name}`, `Luxury interiors in ${project.name}`, `Pool & Amenities of ${project.name}`, `Magnificent architecture of ${project.name}`];
+               
+               return (
+                 <div key={i} className={styles.galleryItem}>
+                    <Image 
+                      src={img} 
+                      alt={altVariations[i % altVariations.length]} 
+                      fill 
+                      style={{ objectFit: 'cover' }} 
+                      sizes="(max-width: 768px) 100vw, 50vw"
+                    />
+                 </div>
+               );
+             })}
+          </div>
+          <button className={styles.loadMore}>{locale === 'ru' ? 'Смотреть все 48+ фото' : 'SEE ALL 48+ PHOTOS'}</button>
+        </section>
+
+        {/* UNITS & FLOOR PLANS */}
+        <section id="units" className={styles.section}>
+          <h2 className={styles.sectionTitle}>{locale === 'ru' ? 'Доступные планировки' : 'Available Units'}</h2>
+          <div className={styles.unitsGrid}>
+            {project.units?.map((u, i) => (
+              <div key={i} className={styles.unitCard}>
+                 <div className={styles.unitInfo}>
+                    <h4>{u.type}</h4>
+                    <p>{u.size}</p>
+                    <div className={styles.unitPrice}>{u.price} AED</div>
+                 </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
         {/* LOCATION & LANDMARKS */}
         <section id="location" className={styles.section}>
-          <h2 className={styles.sectionTitle}>{locale === 'ru' ? 'Розташування' : 'Location & Landmarks'}</h2>
-          <div className={styles.landmarksGrid}>
+           <h2 className={styles.sectionTitle}>{locale === 'ru' ? 'Расположение' : 'Location & Landmarks'}</h2>
+           <div className={styles.landmarksGrid}>
             <div>
               {/* Map Placeholder or Actual Component */}
               <div style={{ background: '#eee', height: '400px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -172,7 +213,7 @@ export default function PropertyLanding({ project, locale }: LandingProps) {
 
         {/* FAQ - SEO Friendly with schema markup above */}
         <section id="faq" className={styles.section}>
-           <h2 className={styles.sectionTitle}>{locale === 'ru' ? 'Часті питання' : 'Frequently Asked Questions'}</h2>
+           <h2 className={styles.sectionTitle}>{locale === 'ru' ? 'Частые вопросы' : 'Frequently Asked Questions'}</h2>
            {project.faqs.map((f, i) => (
              <details key={i} className={styles.faqItem}>
                 <summary className={styles.faqSummary}>{f.q}</summary>
@@ -184,7 +225,7 @@ export default function PropertyLanding({ project, locale }: LandingProps) {
         {/* LEAD GENERATION FORM */}
         <section id="contact" className={styles.section}>
            <div style={{ background: '#0b1a31', color: '#fff', padding: '60px', borderRadius: '15px', textAlign: 'center' }}>
-              <h2>{locale === 'ru' ? 'Бажаєте дізнатися більше?' : 'Interested in this Project?'}</h2>
+              <h2>{locale === 'ru' ? 'Хотите узнать больше?' : 'Interested in this Project?'}</h2>
               <p>Get exclusive floor plans and full pricing details sent to your WhatsApp</p>
               <button style={{ background: '#d4a017', color: '#fff', border: 'none', padding: '15px 30px', borderRadius: '5px', marginTop: '20px', cursor: 'pointer', fontWeight: 'bold' }}>
                  GET FULL DETAILS

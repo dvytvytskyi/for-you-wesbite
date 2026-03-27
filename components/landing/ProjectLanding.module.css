@@ -42,6 +42,60 @@
   border-radius: 20px;
   backdrop-filter: blur(5px);
 }
+.unitsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+  margin-top: 30px;
+}
+
+.unitCard {
+  background: #fff;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+  border: 1px solid #eee;
+  transition: transform 0.3s ease;
+}
+
+.unitCard:hover {
+  transform: translateY(-5px);
+}
+
+.unitImage {
+  position: relative;
+  height: 200px;
+  background: #f9f9f9;
+  border-bottom: 1px solid #eee;
+  padding: 10px;
+}
+
+.unitInfo {
+  padding: 15px;
+  text-align: center;
+}
+
+.unitInfo h4 {
+  font-size: 1.2rem;
+  color: #0b1a31;
+  margin-bottom: 5px;
+}
+
+.unitInfo p {
+  color: #666;
+  font-size: 0.9rem;
+  margin-bottom: 15px;
+}
+
+.unitPrice {
+  display: inline-block;
+  background: #0b1a31;
+  color: #fff;
+  padding: 8px 15px;
+  border-radius: 6px;
+  font-weight: bold;
+  font-size: 1rem;
+}
 .heroTitle { font-size: 48px; margin: 10px 0; font-weight: 800; }
 .heroPrice { margin-top: 20px; font-size: 24px; }
 .badge { background: #d4a017; padding: 4px 12px; border-radius: 4px; font-size: 12px; }

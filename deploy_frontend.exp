@@ -1,6 +1,6 @@
 #!/usr/bin/expect -f
 set timeout 1200
-set password "xTVvPEwrpaF4"
+set password "FNrtVkfCRwgW"
 set server "root@135.181.201.185"
 
 puts "--- Syncing Frontend Code ---"

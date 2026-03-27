@@ -6,29 +6,32 @@ import { getPropertyFinderProjects } from '@/lib/api';
 
 interface Props {
   params: { locale: string };
-  searchParams: { [key: string]: string | undefined };
+  searchParams: { [key: string]: string | string[] | undefined };
 }
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export default async function AgentHomePage({ params: { locale }, searchParams }: Props) {
   unstable_setRequestLocale(locale);
 
-  // Prefetch projects on server to avoid CORS/loading issues
+  // Default to Sale if no type is provided
+  const listingType = (searchParams.type as string) || 'sale';
+  
+  // Fetch projects based on all search params
   const initialData = await getPropertyFinderProjects({
-    category: searchParams.category as any,
-    status: searchParams.status as any,
-    search: searchParams.search,
-    page: parseInt(searchParams.page || '1', 10),
-    limit: 24
+    ...searchParams,
+    listingType: listingType as any,
+    limit: 100 
   });
 
   return (
-    <div style={{ background: '#f9fafb', minHeight: '100vh' }}>
+    <div style={{ background: '#f9fafb', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       <AgentHeader />
       <main style={{ padding: '20px 0', flex: 1 }}>
-        <div style={{ maxWidth: '1600px', margin: '0 auto', padding: '0 40px' }}>
-          <PropertyFinderList initialData={initialData} />
-        </div>
+        <PropertyFinderList key={searchParams.type?.toString() || 'all'} initialData={initialData} />
       </main>
+      <div style={{ flex: 1 }} />
       <Footer />
     </div>
   );

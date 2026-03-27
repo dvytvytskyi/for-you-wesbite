@@ -42,7 +42,7 @@ interface Property {
     sqft: number;
   };
   images: string[];
-  type: 'new' | 'secondary';
+  type: 'new' | 'secondary' | 'rent' | 'sale';
   amenities?: string[];
   units?: Array<{
     bedrooms: number;
@@ -53,6 +53,7 @@ interface Property {
   description?: string;
   descriptionRu?: string;
   isForYouChoice?: boolean;
+  isPropertyFinder?: boolean;
 }
 
 interface PropertyPopupProps {
@@ -100,6 +101,12 @@ export default function PropertyPopup({ property, onClose, onRequestCallback }: 
 
   const getPropertyPath = () => {
     const localePrefix = locale === 'en' ? '' : `/${locale}`;
+    
+    if (property.isPropertyFinder) {
+      const base = window.location.pathname.includes('/agent') ? 'agent' : 'app';
+      return `${localePrefix}/${base}/${property.id}`;
+    }
+    
     return `${localePrefix}/properties/${property.slug}`;
   };
 
@@ -116,7 +123,10 @@ export default function PropertyPopup({ property, onClose, onRequestCallback }: 
     const city = locale === 'ru' ? property.location.cityRu : property.location.city;
     return `${area}, ${city}`;
   };
-  const getDeveloper = () => locale === 'ru' ? property.developer.nameRu : property.developer.name;
+  const getDeveloper = () => {
+    if (!property.developer) return '';
+    return locale === 'ru' ? property.developer.nameRu : property.developer.name;
+  };
   const getDescription = () => locale === 'ru' ? property.descriptionRu : property.description;
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('en-US').format(price);
@@ -235,20 +245,18 @@ export default function PropertyPopup({ property, onClose, onRequestCallback }: 
                 </svg>
                 <span>{getLocation()}</span>
               </div>
-              <div className={styles.developer}>
-                {property.developer.logo && (
-                  <div className={styles.developerLogo}>
-                    <Image
-                      src={property.developer.logo}
-                      alt={getDeveloper()}
-                      fill
-                      style={{ objectFit: 'contain' }}
-                      unoptimized
-                    />
-                  </div>
-                )}
-                <span>{getDeveloper()}</span>
-              </div>
+              {property.developer?.logo && (
+                <div className={styles.developerLogo}>
+                  <Image
+                    src={property.developer.logo}
+                    alt={getDeveloper()}
+                    fill
+                    style={{ objectFit: 'contain' }}
+                    unoptimized
+                  />
+                </div>
+              )}
+              {property.developer && <span>{getDeveloper()}</span>}
             </div>
 
             {/* Amenities */}
@@ -349,17 +357,6 @@ export default function PropertyPopup({ property, onClose, onRequestCallback }: 
             </svg>
           </Link>
 
-          <button
-            className={`${styles.iconButton} ${isFavorite ? styles.favoriteActive : ''}`}
-            onClick={() => {
-              if (property) toggleFavorite(property as any as ApiProperty);
-            }}
-            title={isFavorite ? (locale === 'ru' ? 'В избранном' : 'Liked') : (locale === 'ru' ? 'В избранное' : 'Add to likes')}
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" fill={isFavorite ? 'currentColor' : 'none'} />
-            </svg>
-          </button>
         </div>
       </div>
     </div>

@@ -12,7 +12,8 @@
       "aboutUs": "About Us",
       "projects": "Projects",
       "news": "News",
-      "careers": "Careers"
+      "careers": "Careers",
+      "catalog": "Catalog"
     }
   },
   "hero": {
@@ -229,6 +230,8 @@
     "language": "Language",
     "tagline": "Discover Homes That Inspire the Modern World in Dubai",
     "contactUs": "Contact Us",
+    "popularAreas": "Popular Areas",
+    "topDevelopers": "Top Developers",
     "navigation": {
       "title": "Quick Search",
       "home": "Home",

@@ -6,7 +6,7 @@ import { getAreasSimple, getDevelopersSimple } from '@/lib/api';
 import styles from './PropertyFinderFiltersBar.module.css';
 
 export interface Filters {
-  type: 'new' | 'secondary';
+  type: 'all' | 'new' | 'secondary';
   search: string;
   location: string[]; // areaId[]
   bedrooms: number[];
@@ -14,6 +14,8 @@ export interface Filters {
   sizeTo: string;
   priceFrom: string;
   priceTo: string;
+  furnishingType?: string;
+  listingType?: 'sale' | 'rent';
   sort: string;
   developerId?: string;
   cityId?: string;
@@ -61,6 +63,7 @@ export default function PropertyFinderFiltersBar({ filters, onFilterChange, isMo
   const [isSizeOpen, setIsSizeOpen] = useState(false);
   const [isPriceOpen, setIsPriceOpen] = useState(false);
   const [isDeveloperOpen, setIsDeveloperOpen] = useState(false);
+  const [isFurnishingOpen, setIsFurnishingOpen] = useState(false);
   const [areas, setAreas] = useState<Area[]>([]);
   const [developers, setDevelopers] = useState<Developer[]>([]);
   const [loadingData, setLoadingData] = useState(true);
@@ -71,6 +74,7 @@ export default function PropertyFinderFiltersBar({ filters, onFilterChange, isMo
   const sizeRef = useRef<HTMLDivElement>(null);
   const priceRef = useRef<HTMLDivElement>(null);
   const developerRef = useRef<HTMLDivElement>(null);
+  const furnishingRef = useRef<HTMLDivElement>(null);
 
   // State for dropdown direction (openUp/openDown)
   const [dropdownDirections, setDropdownDirections] = useState<Record<string, boolean>>({});
@@ -212,6 +216,9 @@ export default function PropertyFinderFiltersBar({ filters, onFilterChange, isMo
       if (developerRef.current && !developerRef.current.contains(event.target as Node)) {
         setIsDeveloperOpen(false);
       }
+      if (furnishingRef.current && !furnishingRef.current.contains(event.target as Node)) {
+        setIsFurnishingOpen(false);
+      }
     };
 
     if (!isLocationOpen) setAreaSearch('');
@@ -219,10 +226,24 @@ export default function PropertyFinderFiltersBar({ filters, onFilterChange, isMo
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [isLocationOpen, isDeveloperOpen]);
+  }, [isLocationOpen, isDeveloperOpen, isBedroomsOpen, isSizeOpen, isPriceOpen, isFurnishingOpen]);
 
   const handleChange = (field: keyof Filters, value: any) => {
-    const newFilters = { ...localFilters, [field]: value };
+    let newFilters = { ...localFilters, [field]: value };
+    
+    // When switching listing type (Sale/Rent), reset other filters to get a clean search
+    if (field === 'listingType') {
+      newFilters = {
+        ...newFilters,
+        type: 'all' as any,
+        search: '',
+        location: [],
+        bedrooms: [],
+        priceFrom: '',
+        priceTo: '',
+      };
+    }
+
     if (field === 'type' && value === 'secondary') {
       newFilters.developerId = undefined;
     }
@@ -317,22 +338,22 @@ export default function PropertyFinderFiltersBar({ filters, onFilterChange, isMo
     <div className={`${styles.filters} ${isModal ? styles.filtersModal : ''} ${viewMode === 'map' ? styles.withMap : ''}`}>
       <div className={`${styles.filtersRow} ${isModal ? styles.filtersRowModal : ''} ${viewMode === 'map' ? styles.withMap : ''}`}>
         {/* Off Plan / Secondary Toggle */}
-        {viewMode !== 'map' && (
-          <div className={styles.typeToggle}>
-            <button
-              className={`${styles.typeButton} ${localFilters.type === 'new' ? styles.active : ''}`}
-              onClick={() => handleChange('type', 'new')}
-            >
-              {t('type.offPlan')}
-            </button>
-            <button
-              className={`${styles.typeButton} ${localFilters.type === 'secondary' ? styles.active : ''}`}
-              onClick={() => handleChange('type', 'secondary')}
-            >
-              {t('type.secondary')}
-            </button>
-          </div>
-        )}
+
+        {/* Listing Type Toggle (Sale/Rent) */}
+        <div className={styles.typeToggle}>
+           <button 
+             className={`${styles.typeButton} ${localFilters.listingType === 'sale' ? styles.active : ''}`}
+             onClick={() => handleChange('listingType', 'sale')}
+           >
+             {locale === 'ru' ? 'Продажа' : 'Sale'}
+           </button>
+           <button 
+             className={`${styles.typeButton} ${localFilters.listingType === 'rent' ? styles.active : ''}`}
+             onClick={() => handleChange('listingType', 'rent')}
+           >
+             {locale === 'ru' ? 'Аренда' : 'Rent'}
+           </button>
+        </div>
 
         {/* Search */}
         <div className={styles.searchWrapper}>
@@ -345,6 +366,8 @@ export default function PropertyFinderFiltersBar({ filters, onFilterChange, isMo
           />
         </div>
 
+
+
         {/* Location Dropdown */}
         <div
           className={`${styles.dropdownWrapper} ${styles.locationDropdown} ${isModal ? styles.dropdownWrapperModal : ''}`}
@@ -355,116 +378,43 @@ export default function PropertyFinderFiltersBar({ filters, onFilterChange, isMo
             className={styles.dropdownButton}
             onClick={() => handleDropdownToggle('location', locationRef, isLocationOpen, setIsLocationOpen)}
           >
-            <span>{getLocationLabel()}</span>
+            <span className={styles.buttonLabel}>{getLocationLabel()}</span>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" className={isLocationOpen ? styles.rotated : ''}>
               <path d="M6 9L12 15L18 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </button>
           {isLocationOpen && (
             <div className={`${styles.dropdownMenu} ${dropdownDirections.location ? styles.dropdownMenuUp : styles.dropdownMenuDown} ${isModal ? styles.dropdownMenuModal : ''}`}>
-              <div className={styles.stickySearch}>
+              <div className={styles.searchBox}>
                 <input
                   type="text"
-                  placeholder={locale === 'ru' ? 'Поиск района...' : 'Search location...'}
+                  placeholder={t('location.search') || 'Search area...'}
                   value={areaSearch}
                   onChange={(e) => setAreaSearch(e.target.value)}
+                  className={styles.dropdownSearch}
+                  autoFocus
                   onClick={(e) => e.stopPropagation()}
-                  className={styles.dropdownSearchInput}
                 />
               </div>
-              {loadingData ? (
-                <div className={styles.dropdownItem}>Loading...</div>
-              ) : filteredAreas.length === 0 ? (
-                <div className={styles.dropdownItem}>No areas found</div>
-              ) : (
-                filteredAreas.map((area) => (
-                  <div
-                    key={area.id}
-                    className={styles.dropdownItem}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      // Support both ID and slug for selection logic
-                      const locId = area.slug || area.id;
-                      handleLocationToggle(locId);
-                    }}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={localFilters.location.includes(area.id) || localFilters.location.includes(area.slug)}
-                      onChange={() => { }}
-                      className={styles.checkbox}
-                    />
-                    <span className={styles.checkboxLabel}>
-                      {locale === 'ru' ? area.nameRu : area.nameEn}
-                    </span>
-                  </div>
-                ))
-              )}
+              <div className={styles.dropdownList}>
+                {filteredAreas.length > 0 ? (
+                  filteredAreas.map((area) => (
+                    <label key={area.id} className={styles.checkboxItem} onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        checked={localFilters.location.includes(area.id) || localFilters.location.includes(area.slug)}
+                        onChange={() => handleLocationToggle(area.id)}
+                      />
+                      <span>{locale === 'ru' ? area.nameRu || area.nameEn : area.nameEn}</span>
+                    </label>
+                  ))
+                ) : (
+                  <div className={styles.noResults}>{t('location.noResults') || 'No areas found'}</div>
+                )}
+              </div>
             </div>
           )}
         </div>
-
-        {/* Developer Dropdown */}
-        {localFilters.type === 'new' && (
-          <div
-            className={`${styles.dropdownWrapper} ${styles.locationDropdown} ${isModal ? styles.dropdownWrapperModal : ''}`}
-            ref={developerRef}
-            data-dropdown-open={isDeveloperOpen ? 'true' : 'false'}
-          >
-            <button
-              className={styles.dropdownButton}
-              onClick={() => handleDropdownToggle('developer', developerRef, isDeveloperOpen, setIsDeveloperOpen)}
-            >
-              <span>{getDeveloperLabel()}</span>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" className={isDeveloperOpen ? styles.rotated : ''}>
-                <path d="M6 9L12 15L18 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </button>
-            {isDeveloperOpen && (
-              <div className={`${styles.dropdownMenu} ${dropdownDirections.developer ? styles.dropdownMenuUp : styles.dropdownMenuDown} ${isModal ? styles.dropdownMenuModal : ''}`}>
-                <div className={styles.stickySearch}>
-                  <input
-                    type="text"
-                    placeholder={locale === 'ru' ? 'Поиск девелопера...' : 'Search developer...'}
-                    value={developerSearch}
-                    onChange={(e) => setDeveloperSearch(e.target.value)}
-                    onClick={(e) => e.stopPropagation()}
-                    className={styles.dropdownSearchInput}
-                  />
-                </div>
-                {loadingData ? (
-                  <div className={styles.dropdownItem}>Loading...</div>
-                ) : filteredDevelopers.length === 0 ? (
-                  <div className={styles.dropdownItem}>No developers found</div>
-                ) : (
-                  <>
-                    <button
-                      className={`${styles.dropdownItem} ${!localFilters.developerId ? styles.active : ''}`}
-                      onClick={() => {
-                        handleDeveloperToggle('');
-                        setIsDeveloperOpen(false);
-                      }}
-                    >
-                      {t('developer.all') || 'All Developers'}
-                    </button>
-                    {filteredDevelopers.map((developer) => (
-                      <button
-                        key={developer.id}
-                        className={`${styles.dropdownItem} ${localFilters.developerId === developer.id ? styles.active : ''}`}
-                        onClick={() => {
-                          handleDeveloperToggle(developer.id);
-                          setIsDeveloperOpen(false);
-                        }}
-                      >
-                        {developer.name}
-                      </button>
-                    ))}
-                  </>
-                )}
-              </div>
-            )}
-          </div>
-        )}
 
         {/* Bedrooms Dropdown */}
         <div
@@ -575,6 +525,56 @@ export default function PropertyFinderFiltersBar({ filters, onFilterChange, isMo
                 />
                 <span className={styles.rangeUnit}>AED</span>
               </div>
+            </div>
+          )}
+        </div>
+        {/* Furnishing Dropdown */}
+        <div
+          className={`${styles.dropdownWrapper} ${isModal ? styles.dropdownWrapperModal : ''}`}
+          ref={furnishingRef}
+          data-dropdown-open={isFurnishingOpen ? 'true' : 'false'}
+        >
+          <button
+            className={styles.dropdownButton}
+            onClick={() => handleDropdownToggle('furnishing', furnishingRef, isFurnishingOpen, setIsFurnishingOpen)}
+          >
+            <span>
+              {!localFilters.furnishingType 
+                ? (locale === 'ru' ? 'Меблировка' : 'Furnishing') 
+                : localFilters.furnishingType.charAt(0).toUpperCase() + localFilters.furnishingType.slice(1).replace('-', ' ')}
+            </span>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" className={isFurnishingOpen ? styles.rotated : ''}>
+              <path d="M6 9L12 15L18 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+          {isFurnishingOpen && (
+            <div className={`${styles.dropdownMenu} ${dropdownDirections.furnishing ? styles.dropdownMenuUp : styles.dropdownMenuDown} ${isModal ? styles.dropdownMenuModal : ''}`}>
+              {[
+                { value: '', labelEn: 'Any', labelRu: 'Любая' },
+                { value: 'furnished', labelEn: 'Furnished', labelRu: 'Меблирована' },
+                { value: 'unfurnished', labelEn: 'Unfurnished', labelRu: 'Без мебели' },
+                { value: 'partly-furnished', labelEn: 'Partly Furnished', labelRu: 'Частично' }
+              ].map((opt) => (
+                <div
+                  key={opt.value}
+                  className={`${styles.dropdownItem} ${localFilters.furnishingType === opt.value ? styles.active : ''}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleChange('furnishingType', opt.value || undefined);
+                    setIsFurnishingOpen(false);
+                  }}
+                >
+                  <input
+                    type="radio"
+                    checked={localFilters.furnishingType === opt.value || (!localFilters.furnishingType && opt.value === '')}
+                    onChange={() => { }}
+                    className={styles.checkbox}
+                  />
+                  <span className={styles.checkboxLabel}>
+                    {locale === 'ru' ? opt.labelRu : opt.labelEn}
+                  </span>
+                </div>
+              ))}
             </div>
           )}
         </div>

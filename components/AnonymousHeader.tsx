@@ -19,10 +19,15 @@ export default function AnonymousHeader() {
     router.push(`/${newLocale}${path}`);
   };
 
-  // Added getLocalizedPath function
-  const getLocalizedPath = (path: string) => {
-    return `/${locale}${path}`;
+  const getLocalizedPath = (path: string) => locale === 'en' ? path : `/${locale}${path}`;
+
+  /*
+  const getModuleHome = () => {
+    if (pathname.includes('/agent')) return getLocalizedPath('/agent');
+    if (pathname.includes('/app')) return getLocalizedPath('/app');
+    return getLocalizedPath('/');
   };
+  */
 
   return (
     <header className={styles.header}>
@@ -30,12 +35,6 @@ export default function AnonymousHeader() {
         <Link href={getLocalizedPath('/')} className={styles.appTitle}>
           {locale === 'ru' ? 'Каталог Проектів' : 'Project Catalog'}
         </Link>
-
-        <nav className={styles.nav}>
-          <Link href="https://foryou-realestate.com" className={styles.navLink}>
-             {locale === 'ru' ? 'Головна' : 'Home'}
-          </Link>
-        </nav>
 
         <div className={styles.right}>
           <div className={styles.languageSwitcher}>

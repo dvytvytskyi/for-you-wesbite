@@ -40,7 +40,7 @@
 .content {
   display: grid;
   grid-template-columns: 1.2fr 1fr;
-  gap: 80px;
+  gap: 32px;
 }
 
 .mainInfo {
@@ -244,12 +244,171 @@
 }
 
 @media (max-width: 768px) {
+  .container {
+    padding: 20px 12px;
+  }
+  
   .gallery {
     grid-template-columns: 1fr;
     gap: 12px;
   }
   
   .amenitiesList {
+    grid-template-columns: 1fr;
+  }
+}
+
+.technicalGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 16px;
+  margin-top: 24px;
+}
+
+.techItem {
+  background: #ffffff;
+  border: 1px solid rgba(0, 48, 119, 0.08);
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  transition: all 0.2s ease;
+}
+
+.techItem:hover {
+  border-color: rgba(0, 48, 119, 0.2);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 48, 119, 0.05);
+}
+
+.techIcon {
+  width: 44px;
+  height: 44px;
+  background: #f8faff;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #003077;
+  flex-shrink: 0;
+}
+
+.techContent {
+  display: flex;
+  flex-direction: column;
+}
+
+.techLabel {
+  font-size: 11px;
+  font-weight: 600;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 2px;
+}
+
+.techValue {
+  font-size: 15px;
+  font-weight: 700;
+  color: #003077;
+}
+
+.facilityItem {
+  background: #f8faff;
+  color: #003077;
+  padding: 8px 16px;
+  border-radius: 20px;
+  border: 1px solid rgba(0, 48, 119, 0.08);
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.facilitiesSection {
+  margin-top: 32px;
+}
+
+.facilitiesList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.reraCertificate {
+  background: #f8faff;
+  border: 1px solid rgba(0, 48, 119, 0.05);
+  border-radius: 16px;
+  padding: 24px;
+  margin-top: 32px;
+}
+
+.reraHeader {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 20px;
+  align-items: flex-start;
+}
+
+.reraIcon {
+  width: 48px;
+  height: 48px;
+  background: #eff6ff;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.reraTitle h3 {
+  font-size: 16px;
+  font-weight: 700;
+  color: #003077;
+  margin: 0 0 4px 0;
+}
+
+.reraTitle p {
+  font-size: 12px;
+  color: #64748b;
+  margin: 0;
+}
+
+.reraBody {
+  border-top: 1px solid rgba(0, 48, 119, 0.05);
+  padding-top: 20px;
+}
+
+.reraLabelRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+.reraField {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.reraField span {
+  font-size: 10px;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.reraField strong {
+  font-size: 14px;
+  color: #003077;
+  font-weight: 700;
+}
+
+@media (max-width: 600px) {
+  .technicalGrid {
     grid-template-columns: 1fr;
   }
 }
