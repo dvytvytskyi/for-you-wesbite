@@ -16,6 +16,7 @@ export default function CareersPageContent() {
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle');
+    const [showGoTop, setShowGoTop] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
 
     // Form state
@@ -26,6 +27,26 @@ export default function CareersPageContent() {
         message: '',
         cvUrl: '',
     });
+
+    useEffect(() => {
+        const handleScroll = () => {
+            if (window.scrollY > 300) {
+                setShowGoTop(true);
+            } else {
+                setShowGoTop(false);
+            }
+        };
+
+        window.addEventListener('scroll', handleScroll);
+        return () => window.removeEventListener('scroll', handleScroll);
+    }, []);
+
+    const scrollToTop = () => {
+        window.scrollTo({
+            top: 0,
+            behavior: 'smooth'
+        });
+    };
 
     useEffect(() => {
         async function fetchVacancies() {
@@ -344,6 +365,19 @@ export default function CareersPageContent() {
                     )}
                 </div>
             </div>
+
+            {/* Go to Top Button - only for Careers Page on mobile/tablet */}
+            {showGoTop && (
+                <button 
+                  className={styles.goTopButton} 
+                  onClick={scrollToTop}
+                  aria-label="Go to Top"
+                >
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M18 15l-6-6-6 6" />
+                    </svg>
+                </button>
+            )}
         </>
     );
 }

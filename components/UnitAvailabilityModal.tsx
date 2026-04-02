@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useLocale } from "next-intl";
 import { submitCallback } from "@/lib/api";
+import { isValidPhoneNumber, AsYouType } from "libphonenumber-js";
 import styles from "./UnitAvailabilityModal.module.css";
 
 interface UnitAvailabilityModalProps {
@@ -28,6 +29,8 @@ export default function UnitAvailabilityModal({
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [phoneError, setPhoneError] = useState<string | null>(null);
+  const [nameError, setNameError] = useState<string | null>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -35,6 +38,8 @@ export default function UnitAvailabilityModal({
       setIsSuccess(false);
       setName("");
       setPhone("");
+      setNameError(null);
+      setPhoneError(null);
       setContactMethod("whatsapp");
     } else {
       document.body.style.overflow = "unset";
@@ -46,6 +51,26 @@ export default function UnitAvailabilityModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validation
+    setNameError(null);
+    setPhoneError(null);
+
+    if (!name.trim()) {
+      setNameError(locale === "ru" ? "Ім'я обов'язкове" : "Name is required");
+      return;
+    }
+
+    try {
+      if (!isValidPhoneNumber(phone)) {
+        setPhoneError(locale === "ru" ? "Невірний номер телефону" : "Invalid phone number (e.g. +971...)");
+        return;
+      }
+    } catch {
+      setPhoneError(locale === "ru" ? "Невірний номер телефону" : "Invalid phone number");
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -127,7 +152,7 @@ export default function UnitAvailabilityModal({
             <p className={styles.description}>{c.description}</p>
 
             <div className={styles.inputGroup}>
-              <label>{c.nameLabel}</label>
+              <label>{c.nameLabel}*</label>
               <input
                 type="text"
                 value={name}
@@ -138,14 +163,23 @@ export default function UnitAvailabilityModal({
             </div>
 
             <div className={styles.inputGroup}>
-              <label>{c.phoneLabel}</label>
+              <label>{c.phoneLabel}*</label>
               <input
                 type="tel"
                 value={phone}
-                onChange={(e) => setPhone(e.target.value)}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  const asYouType = new AsYouType();
+                  setPhone(asYouType.input(val));
+                }}
+                onFocus={(e) => {
+                  if (!phone) setPhone("+");
+                }}
                 placeholder="+971"
+                className={phoneError ? styles.inputError : ""}
                 required
               />
+              {phoneError && <span className={styles.errorMessage}>{phoneError}</span>}
             </div>
 
             <div className={styles.contactMethodGroup}>

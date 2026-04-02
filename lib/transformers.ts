@@ -29,6 +29,7 @@ export interface MapProperty {
     };
     images: string[];
     type: 'new' | 'secondary';
+    propertyType: 'off-plan' | 'secondary';
     coordinates: [number, number]; // [lng, lat]
     amenities?: string[];
     units?: Array<{
@@ -195,6 +196,7 @@ export function convertPropertyToMapFormat(property: ApiProperty, locale: string
         size: getSize(),
         images: (property.images && property.images.length > 0) ? property.images.map(img => img.small) : (property.photos || []),
         type: property.propertyType === 'off-plan' ? 'new' : 'secondary',
+        propertyType: property.propertyType,
         coordinates: [lng, lat] as [number, number], // [lng, lat]
         amenities,
         units: getUnits(),

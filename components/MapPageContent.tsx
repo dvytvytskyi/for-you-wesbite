@@ -64,11 +64,10 @@ export default function MapPageContent() {
 
             // Format filters for the API
             const apiFilters: any = {
-                propertyType: currentFilters.type === 'new' ? 'off-plan' : 'secondary',
+                propertyType: 'off-plan',
                 search: currentFilters.search || undefined,
                 priceFrom: currentFilters.priceFrom || undefined,
                 priceTo: currentFilters.priceTo || undefined,
-                // If the backend expects comma-separated strings for multiple values:
                 bedrooms: currentFilters.bedrooms.length > 0 ? currentFilters.bedrooms.join(',') : undefined,
                 areaIds: currentFilters.location.length > 0 ? currentFilters.location.join(',') : undefined,
                 developerId: currentFilters.developerId || undefined,
@@ -76,8 +75,8 @@ export default function MapPageContent() {
 
             // Fetch both in parallel
             // Determine property type and status for API
-            const propertyType = currentFilters.type === 'new' ? 'off-plan' : 'secondary';
-            const pfStatus = currentFilters.type === 'new' ? 'off-plan' : 'completed';
+            const propertyType = 'off-plan';
+            const pfStatus = 'off-plan';
 
             // Fetch both in parallel
             const [offPlanMarkers, pfMarkers] = await Promise.all([
@@ -85,55 +84,79 @@ export default function MapPageContent() {
                 getPropertyFinderMapMarkers(pfStatus)
             ]);
 
-            // Convert off-plan markers
-            const mappedOffPlan = offPlanMarkers.map(m => ({
+            // Convert off-plan markers with strict filtering
+            const mappedOffPlan = offPlanMarkers
+                .filter(m => m.propertyType === 'off-plan')
+                .map(m => ({
                 id: m.id,
-                slug: '',
-                name: '',
-                nameRu: '',
-                location: { area: '', areaRu: '', city: '', cityRu: '' },
+                slug: (m as any).slug || '',
+                name: (m as any).nameEn || (m as any).name || (m as any).title || '',
+                nameRu: (m as any).nameRu || (m as any).name || (m as any).title || '',
+                location: { 
+                    area: (m as any).area || (m as any).district || '', 
+                    areaRu: (m as any).areaRu || (m as any).area || (m as any).district || '', 
+                    city: (m as any).city || 'Dubai', 
+                    cityRu: (m as any).cityRu || (m as any).city || 'Дубай' 
+                },
                 price: {
                     usd: 0,
                     aed: typeof m.priceAED === 'string' ? parseFloat(m.priceAED) : Number(m.priceAED),
                     eur: 0
                 },
-                developer: { name: '', nameRu: '' },
-                bedrooms: 0,
-                bathrooms: 0,
-                size: { sqm: 0, sqft: 0 },
-                images: [],
-                type: 'sale' as const, // Off-plan is always sale
-                coordinates: [
-                    typeof m.lng === 'string' ? parseFloat(m.lng) : Number(m.lng),
-                    typeof m.lat === 'string' ? parseFloat(m.lat) : Number(m.lat)
-                ] as [number, number],
-                isPartial: true
-            }));
-
-            // Convert PF markers
-            const mappedPF = (pfMarkers || []).map(m => ({
-                id: m.id,
-                slug: '',
-                name: m.name || '',
-                nameRu: m.name || '',
-                location: { area: m.area || '', areaRu: m.area || '', city: '', cityRu: '' },
-                price: {
-                    usd: 0,
-                    aed: typeof m.price === 'string' ? parseFloat(m.price) : Number(m.price || 0),
-                    eur: 0
+                developer: { 
+                    name: (m as any).developerName || (m as any).developer || '', 
+                    nameRu: (m as any).developerNameRu || (m as any).developerName || (m as any).developer || '' 
                 },
-                developer: { name: '', nameRu: '' },
-                bedrooms: 0,
-                bathrooms: 0,
-                size: { sqm: 0, sqft: 0 },
-                images: [],
-                type: m.type === 'rent' ? 'rent' as const : 'sale' as const,
+                bedrooms: (m as any).bedrooms || 0,
+                bathrooms: (m as any).bathrooms || 0,
+                size: { sqm: (m as any).size || 0, sqft: ((m as any).size || 0) * 10.764 },
+                images: (m as any).mainImage ? [(m as any).mainImage] : ((m as any).image ? [(m as any).image] : ((m as any).images || [])),
+                type: 'sale' as const, 
+                propertyType: 'off-plan',
                 coordinates: [
                     typeof m.lng === 'string' ? parseFloat(m.lng) : Number(m.lng),
                     typeof m.lat === 'string' ? parseFloat(m.lat) : Number(m.lat)
                 ] as [number, number],
                 isPartial: true,
-                isPropertyFinder: true
+                priceAED: typeof m.priceAED === 'string' ? parseFloat(m.priceAED) : Number(m.priceAED),
+                priceFromAED: typeof m.priceAED === 'string' ? parseFloat(m.priceAED) : Number(m.priceAED)
+            }));
+
+            // Convert PF markers
+            const mappedPF = (pfMarkers || []).map(m => ({
+                id: m.id,
+                slug: m.slug || m.id,
+                name: m.name || m.title || '',
+                nameRu: m.nameRu || m.name || m.title || '',
+                location: { 
+                    area: m.area || m.district || m.location || '', 
+                    areaRu: m.areaRu || m.area || m.district || m.location || '', 
+                    city: m.city || 'Dubai', 
+                    cityRu: m.cityRu || m.city || 'Дубай' 
+                },
+                price: {
+                    usd: 0,
+                    aed: typeof m.price === 'string' ? parseFloat(m.price) : Number(m.price || 0),
+                    eur: 0
+                },
+                developer: { 
+                    name: m.developer || '', 
+                    nameRu: m.developer || '' 
+                },
+                bedrooms: m.bedrooms || 0,
+                bathrooms: m.bathrooms || 0,
+                size: { sqm: m.size || 0, sqft: (m.size || 0) * 10.764 },
+                images: (m as any).mainImage ? [(m as any).mainImage] : (m.image ? [m.image] : (m.images || [])),
+                type: m.type === 'rent' ? 'rent' as const : 'sale' as const,
+                propertyType: pfStatus === 'off-plan' ? 'off-plan' : 'secondary',
+                coordinates: [
+                    typeof m.lng === 'string' ? parseFloat(m.lng) : Number(m.lng),
+                    typeof m.lat === 'string' ? parseFloat(m.lat) : Number(m.lat)
+                ] as [number, number],
+                isPartial: true,
+                isPropertyFinder: true,
+                priceAED: typeof m.price === 'string' ? parseFloat(m.price) : Number(m.price || 0),
+                priceFromAED: typeof m.price === 'string' ? parseFloat(m.price) : Number(m.price || 0)
             }));
 
             const mapProperties = [...mappedOffPlan, ...mappedPF];

@@ -207,6 +207,243 @@
   font-weight: 600;
 }
 
+/* Status Dropdown */
+.statusContainer {
+  display: flex;
+  align-items: center;
+}
+
+.statusDropdownWrapper {
+  position: relative;
+  min-width: 140px;
+}
+
+.statusButton {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 16px;
+  background: #ffffff;
+  border: 1px solid rgba(0, 48, 119, 0.1);
+  border-radius: 8px;
+  color: #003077;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.statusButton:hover {
+  border-color: rgba(0, 48, 119, 0.3);
+}
+
+.statusDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.statusButton svg {
+  margin-left: auto;
+  transition: transform 0.2s ease;
+}
+
+.statusButton svg.rotated {
+  transform: rotate(180deg);
+}
+
+.statusMenu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  width: 180px;
+  background: #ffffff;
+  border: 1px solid rgba(0, 48, 119, 0.1);
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  z-index: 100;
+  padding: 6px;
+  overflow: hidden;
+}
+
+.statusMenuItem {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: #003077;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.statusMenuItem:hover {
+  background: rgba(0, 48, 119, 0.05);
+}
+
+.statusMenuItem.active {
+  background: rgba(0, 48, 119, 0.08);
+  font-weight: 600;
+}
+
+/* Amenities Dropdown */
+.amenitiesContainer {
+  display: flex;
+  align-items: center;
+}
+
+.amenitiesDropdownWrapper {
+  position: relative;
+  min-width: 160px;
+}
+
+.amenitiesButton {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 16px;
+  background: #ffffff;
+  border: 1px solid rgba(0, 48, 119, 0.1);
+  border-radius: 8px;
+  color: #003077;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.amenitiesButton:hover {
+  border-color: rgba(0, 48, 119, 0.3);
+}
+
+.amenitiesButton svg {
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+
+.amenitiesButton svg:last-child {
+  margin-left: auto;
+  transition: transform 0.2s ease;
+}
+
+.rotated {
+  transform: rotate(180deg);
+}
+
+.amenitiesMenu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  width: 240px;
+  background: #ffffff;
+  border: 1px solid rgba(0, 48, 119, 0.1);
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  z-index: 100;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.amenitiesMenuList {
+  max-height: 300px;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+/* Scrollbar styling */
+.amenitiesMenuList::-webkit-scrollbar {
+  width: 4px;
+}
+
+.amenitiesMenuList::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.amenitiesMenuList::-webkit-scrollbar-thumb {
+  background: rgba(0, 48, 119, 0.1);
+  border-radius: 4px;
+}
+
+.amenitiesMenuItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.amenitiesMenuItem:hover {
+  background: rgba(0, 48, 119, 0.05);
+}
+
+.amenitiesMenuItem input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  accent-color: #003077;
+  cursor: pointer;
+}
+
+.amenitiesMenuItem span {
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  color: #003077;
+  user-select: none;
+}
+
+.amenityLabel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+}
+
+.amenityCount {
+  font-size: 12px;
+  opacity: 0.6;
+  font-weight: 400;
+}
+
+.amenitiesMenuFooter {
+  padding: 10px;
+  border-top: 1px solid rgba(0, 48, 119, 0.05);
+  display: flex;
+  justify-content: flex-end;
+  background: #fbfdff;
+}
+
+.amenitiesClearBtn {
+  background: transparent;
+  border: none;
+  color: #c9a050;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: background 0.2s ease;
+}
+
+.amenitiesClearBtn:hover {
+  background: rgba(201, 160, 80, 0.1);
+}
+
 .developerScroll {
   display: flex;
   gap: 12px;

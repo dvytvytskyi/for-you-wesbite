@@ -69,6 +69,10 @@ const nextConfig = {
         protocol: 'https',
         hostname: 'nbg1.your-objectstorage.com',
       },
+      {
+        protocol: 'https',
+        hostname: 'reelly-backend.s3.amazonaws.com',
+      },
     ],
   },
   async redirects() {
@@ -77,6 +81,14 @@ const nextConfig = {
         source: '/eng',
         destination: '/',
         permanent: true,
+      },
+    ];
+  },
+  async rewrites() {
+    return [
+      {
+        source: '/api/:path*',
+        destination: 'https://admin.foryou-realestate.com/api/:path*',
       },
     ];
   },

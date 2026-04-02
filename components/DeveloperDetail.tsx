@@ -1,6 +1,7 @@
 'use client';
 
 import { useTranslations, useLocale } from 'next-intl';
+import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useState, useEffect, useRef } from 'react';
@@ -49,6 +50,10 @@ export default function DeveloperDetail({ id }: DeveloperDetailProps) {
     const t = useTranslations('developerDetail');
     const locale = useLocale();
     const sectionRef = useRef<HTMLElement>(null);
+    const router = useRouter();
+    const getLocalizedPath = (path: string) => {
+        return locale === 'en' ? path : `/${locale}${path}`;
+    };
     const [isVisible, setIsVisible] = useState(false);
     const [developer, setDeveloper] = useState<DeveloperDetailData | null>(null);
     const [loading, setLoading] = useState(true);
@@ -190,7 +195,7 @@ export default function DeveloperDetail({ id }: DeveloperDetailProps) {
             <section className={styles.developerDetail}>
                 <div className={styles.container}>
                     <div className={styles.notFound}>
-                        <h1>{error || (locale === 'ru' ? 'Забудовника не знайдено' : 'Developer not found')}</h1>
+                        <h1>{error || (locale === 'ru' ? 'Застройщик не найден' : 'Developer not found')}</h1>
                     </div>
                 </div>
             </section>
@@ -307,7 +312,7 @@ export default function DeveloperDetail({ id }: DeveloperDetailProps) {
                                     )}
                                     <div className={styles.communityInfo}>
                                         <h3 className={styles.communityTitle}>{community.title}</h3>
-                                        <div className={styles.communityArea}>{community.area?.nameEn}</div>
+                                        <div className={styles.communityArea}>{locale === 'ru' ? (community.area?.nameRu || community.area?.nameEn) : community.area?.nameEn}</div>
                                         {community.priceRange && (
                                             <div className={styles.communityPrice}>
                                                 {community.priceRange.from?.toLocaleString()} - {community.priceRange.to?.toLocaleString()} AED
@@ -355,104 +360,109 @@ export default function DeveloperDetail({ id }: DeveloperDetailProps) {
                     </div>
                 )}
 
-                {/* Filters */}
-                <div className={styles.localFilters}>
-                    <div className={styles.filterColumn}>
-                        <div className={styles.filterRow}>
-                            <div className={styles.typeToggle}>
-                                <button
-                                    className={`${styles.typeButton} ${filters.type === 'new' ? styles.active : ''}`}
-                                    onClick={() => handleFilterChange('type', 'new')}
-                                >
-                                    {t('offPlan')}
-                                </button>
-                                <button
-                                    className={`${styles.typeButton} ${filters.type === 'secondary' ? styles.active : ''}`}
-                                    onClick={() => handleFilterChange('type', 'secondary')}
-                                >
-                                    {t('secondary')}
-                                </button>
-                            </div>
-
-                            <div className={styles.searchBox}>
-                                <input
-                                    type="text"
-                                    placeholder={locale === 'ru' ? 'Поиск проекта...' : 'Search project...'}
-                                    value={filters.search}
-                                    onChange={(e) => handleFilterChange('search', e.target.value)}
-                                    className={styles.filterInput}
-                                />
-                            </div>
-                        </div>
-
-                        <div className={styles.filterRow}>
-                            <div className={styles.priceSizeBox}>
-                                <div className={styles.rangeGroup}>
-                                    <div className={styles.inputWrapper}>
-                                        <span className={styles.inputLabel}>AED</span>
-                                        <input
-                                            type="text"
-                                            placeholder={locale === 'ru' ? 'від' : 'from'}
-                                            value={formatNumberWithCommas(filters.priceFrom)}
-                                            onChange={(e) => handleFilterChange('priceFrom', e.target.value.replace(/\D/g, ''))}
-                                            className={styles.filterInputWithLabel}
-                                        />
+                {/* Filters and Projects - only show if there are properties or if filtered */}
+                {(!loadingProperties && (totalProperties > 0 || filters.search || filters.priceFrom || filters.priceTo || filters.sizeFrom || filters.sizeTo)) && (
+                    <>
+                        {/* Filters */}
+                        <div className={styles.localFilters}>
+                            <div className={styles.filterColumn}>
+                                <div className={styles.filterRow}>
+                                    <div className={styles.typeToggle}>
+                                        <button
+                                            className={`${styles.typeButton} ${filters.type === 'new' ? styles.active : ''}`}
+                                            onClick={() => handleFilterChange('type', 'new')}
+                                        >
+                                            {t('offPlan')}
+                                        </button>
+                                        <button
+                                            className={`${styles.typeButton} ${filters.type === 'secondary' ? styles.active : ''}`}
+                                            onClick={() => handleFilterChange('type', 'secondary')}
+                                        >
+                                            {t('secondary')}
+                                        </button>
                                     </div>
-                                    <div className={styles.inputWrapper}>
-                                        <span className={styles.inputLabel}>AED</span>
+
+                                    <div className={styles.searchBox}>
                                         <input
                                             type="text"
-                                            placeholder={locale === 'ru' ? 'до' : 'to'}
-                                            value={formatNumberWithCommas(filters.priceTo)}
-                                            onChange={(e) => handleFilterChange('priceTo', e.target.value.replace(/\D/g, ''))}
-                                            className={styles.filterInputWithLabel}
+                                            placeholder={locale === 'ru' ? 'Поиск проекта...' : 'Search project...'}
+                                            value={filters.search}
+                                            onChange={(e) => handleFilterChange('search', e.target.value)}
+                                            className={styles.filterInput}
                                         />
                                     </div>
                                 </div>
-                            </div>
 
-                            <div className={styles.priceSizeBox}>
-                                <div className={styles.rangeGroup}>
-                                    <div className={styles.inputWrapper}>
-                                        <span className={styles.inputLabel}>sqft</span>
-                                        <input
-                                            type="text"
-                                            placeholder={locale === 'ru' ? 'від' : 'from'}
-                                            value={formatNumberWithCommas(filters.sizeFrom)}
-                                            onChange={(e) => handleFilterChange('sizeFrom', e.target.value.replace(/\D/g, ''))}
-                                            className={styles.filterInputWithLabel}
-                                        />
+                                <div className={styles.filterRow}>
+                                    <div className={styles.priceSizeBox}>
+                                        <div className={styles.rangeGroup}>
+                                            <div className={styles.inputWrapper}>
+                                                <span className={styles.inputLabel}>AED</span>
+                                                <input
+                                                    type="text"
+                                                    placeholder={locale === 'ru' ? 'от' : 'from'}
+                                                    value={formatNumberWithCommas(filters.priceFrom)}
+                                                    onChange={(e) => handleFilterChange('priceFrom', e.target.value.replace(/\D/g, ''))}
+                                                    className={styles.filterInputWithLabel}
+                                                />
+                                            </div>
+                                            <div className={styles.inputWrapper}>
+                                                <span className={styles.inputLabel}>AED</span>
+                                                <input
+                                                    type="text"
+                                                    placeholder={locale === 'ru' ? 'до' : 'to'}
+                                                    value={formatNumberWithCommas(filters.priceTo)}
+                                                    onChange={(e) => handleFilterChange('priceTo', e.target.value.replace(/\D/g, ''))}
+                                                    className={styles.filterInputWithLabel}
+                                                />
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div className={styles.inputWrapper}>
-                                        <span className={styles.inputLabel}>sqft</span>
-                                        <input
-                                            type="text"
-                                            placeholder={locale === 'ru' ? 'до' : 'to'}
-                                            value={formatNumberWithCommas(filters.sizeTo)}
-                                            onChange={(e) => handleFilterChange('sizeTo', e.target.value.replace(/\D/g, ''))}
-                                            className={styles.filterInputWithLabel}
-                                        />
+
+                                    <div className={styles.priceSizeBox}>
+                                        <div className={styles.rangeGroup}>
+                                            <div className={styles.inputWrapper}>
+                                                <span className={styles.inputLabel}>sqft</span>
+                                                <input
+                                                    type="text"
+                                                    placeholder={locale === 'ru' ? 'от' : 'from'}
+                                                    value={formatNumberWithCommas(filters.sizeFrom)}
+                                                    onChange={(e) => handleFilterChange('sizeFrom', e.target.value.replace(/\D/g, ''))}
+                                                    className={styles.filterInputWithLabel}
+                                                />
+                                            </div>
+                                            <div className={styles.inputWrapper}>
+                                                <span className={styles.inputLabel}>sqft</span>
+                                                <input
+                                                    type="text"
+                                                    placeholder={locale === 'ru' ? 'до' : 'to'}
+                                                    value={formatNumberWithCommas(filters.sizeTo)}
+                                                    onChange={(e) => handleFilterChange('sizeTo', e.target.value.replace(/\D/g, ''))}
+                                                    className={styles.filterInputWithLabel}
+                                                />
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                </div>
 
-                {/* Projects Grid */}
-                {loadingProperties ? (
-                    <div className={styles.propertiesLoading}>{locale === 'ru' ? 'Загрузка...' : 'Loading...'}</div>
-                ) : filteredProperties.length > 0 ? (
-                    <div className={styles.propertiesSection}>
-                        <h2 className={styles.sectionTitle}>{t('projectsTitle')}</h2>
-                        <div className={styles.propertiesGrid}>
-                            {filteredProperties.map((property) => (
-                                <PropertyCard key={property.id} property={property} />
-                            ))}
-                        </div>
-                    </div>
-                ) : (
-                    <div className={styles.noProperties}>{locale === 'ru' ? 'Проектов не найдено' : 'No properties found'}</div>
+                        {/* Projects Grid */}
+                        {loadingProperties ? (
+                            <div className={styles.propertiesLoading}>{locale === 'ru' ? 'Загрузка...' : 'Loading...'}</div>
+                        ) : filteredProperties.length > 0 ? (
+                            <div className={styles.propertiesSection}>
+                                <h2 className={styles.sectionTitle}>{t('projectsTitle')}</h2>
+                                <div className={styles.propertiesGrid}>
+                                    {filteredProperties.map((property) => (
+                                        <PropertyCard key={property.id} property={property} />
+                                    ))}
+                                </div>
+                            </div>
+                        ) : (
+                            <div className={styles.noProperties}>{locale === 'ru' ? 'Проектов не найдено' : 'No properties found'}</div>
+                        )}
+                    </>
                 )}
 
                 {/* Image Modal */}

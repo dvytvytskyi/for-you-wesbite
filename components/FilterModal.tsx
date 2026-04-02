@@ -2,10 +2,10 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
-import { getAreasSimple, getDevelopersSimple } from '@/lib/api';
+import { getPublicLocations, getDevelopersSimple, getPublicAmenities } from '@/lib/api';
 import styles from './FilterModal.module.css';
 
-interface Filters {
+export interface Filters {
   type: 'all' | 'new' | 'secondary';
   search: string;
   location: string[];
@@ -19,6 +19,8 @@ interface Filters {
   sort: string;
   developerId?: string;
   cityId?: string;
+  projectStatus?: string;
+  amenities: string[];
 }
 
 interface FilterModalProps {
@@ -40,12 +42,33 @@ interface Developer {
   name: string;
 }
 
+interface Location {
+  id: string;
+  nameEn: string;
+  nameRu: string;
+  type: 'city' | 'area';
+  parentId?: string;
+  projectsCount?: {
+    total: number;
+    offPlan: number;
+    secondary: number;
+  };
+  count?: number;
+}
+
+interface Amenity {
+  id: string;
+  nameEn: string;
+  nameRu: string;
+}
+
 export default function FilterModal({ isOpen, onClose, filters, onApply, onReset }: FilterModalProps) {
   const t = useTranslations('filters');
   const locale = useLocale();
   const [tempFilters, setTempFilters] = useState<Filters>(filters);
-  const [areas, setAreas] = useState<Area[]>([]);
+  const [locations, setLocations] = useState<Location[]>([]);
   const [developers, setDevelopers] = useState<Developer[]>([]);
+  const [amenities, setAmenities] = useState<Amenity[]>([]);
   const [loadingData, setLoadingData] = useState(false);
 
   const [isLocationOpen, setIsLocationOpen] = useState(false);
@@ -61,12 +84,14 @@ export default function FilterModal({ isOpen, onClose, filters, onApply, onReset
   const loadSelectionData = async () => {
     try {
       setLoadingData(true);
-      const [areasData, developersData] = await Promise.all([
-        getAreasSimple(),
-        getDevelopersSimple()
+      const [locationsData, developersData, amenitiesData] = await Promise.all([
+        getPublicLocations(),
+        getDevelopersSimple(),
+        getPublicAmenities()
       ]);
-      setAreas(areasData);
+      setLocations(locationsData as any);
       setDevelopers(developersData.sort((a, b) => a.name.localeCompare(b.name)));
+      setAmenities(amenitiesData as any);
     } catch (e) {
       console.error('Failed to load filter data', e);
     } finally {
@@ -164,17 +189,39 @@ export default function FilterModal({ isOpen, onClose, filters, onApply, onReset
           </div>
           {isLocationOpen && (
             <div className={styles.dropList}>
-              {areas.map(area => (
-                <label key={area.id} className={styles.checkItem}>
+              {locations
+                .filter(loc => {
+                  // 1. HARD-FILTER: Show ONLY 'city' or 'area'. Skip specific projects/buildings.
+                  if (loc.type && loc.type !== 'city' && loc.type !== 'area') return false;
+                  
+                  // Hide names with >1 comma (e.g. "Dubai, Creek, Aeon")
+                  if ((loc.nameEn || '').split(',').length > 2) return false;
+
+                  // 2. Filter by projectsCount if available
+                  const offPlanCount = loc.projectsCount?.offPlan || 0;
+                  const secondaryCount = loc.projectsCount?.secondary || 0;
+                  const globalCount = loc.count !== undefined ? loc.count : (loc.projectsCount?.total || 0);
+
+                  // If no count data at all, hide it to keep the list clean
+                  if (!loc.projectsCount && loc.count === undefined) return false;
+
+                  if (tempFilters.type === 'new' && offPlanCount === 0 && globalCount === 0) return false;
+                  if (tempFilters.type === 'secondary' && secondaryCount === 0 && globalCount === 0) return false;
+                  if (globalCount === 0) return false;
+                  
+                  return true;
+                })
+                .map(loc => (
+                  <label key={loc.id} className={styles.checkItem}>
                   <input
                     type="checkbox"
-                    checked={tempFilters.location.includes(area.id)}
+                    checked={tempFilters.location.includes(loc.id)}
                     onChange={() => {
                       const locs = tempFilters.location;
-                      updateFilter('location', locs.includes(area.id) ? locs.filter(id => id !== area.id) : [...locs, area.id]);
+                      updateFilter('location', locs.includes(loc.id) ? locs.filter(id => id !== loc.id) : [...locs, loc.id]);
                     }}
                   />
-                  <span>{locale === 'ru' ? area.nameRu : area.nameEn}</span>
+                  <span>{locale === 'ru' ? loc.nameRu : loc.nameEn}</span>
                 </label>
               ))}
             </div>
@@ -246,6 +293,50 @@ export default function FilterModal({ isOpen, onClose, filters, onApply, onReset
               />
               <span className={styles.inputUnit}>sq.ft</span>
             </div>
+          </div>
+        </div>
+
+        {/* Project Status */}
+        <div className={styles.section}>
+          <h3 className={styles.sectionTitle}>{t('status.placeholder') || 'Status'}</h3>
+          <div className={styles.btnScroll}>
+            {[
+              { value: 'under-construction', label: locale === 'ru' ? 'В процессе' : 'Under Construction' },
+              { value: 'completed', label: locale === 'ru' ? 'Завершен' : 'Completed' },
+              { value: 'ready', label: locale === 'ru' ? 'Готов' : 'Ready' },
+              { value: 'on-sale', label: locale === 'ru' ? 'В продаже' : 'On Sale' },
+              { value: 'sold-out', label: locale === 'ru' ? 'Продано' : 'Sold Out' },
+              { value: 'newly-launched', label: locale === 'ru' ? 'Новый' : 'Newly Launched' },
+              { value: 'presale', label: locale === 'ru' ? 'Предпродажа' : 'Presale' }
+            ].map(status => (
+              <button
+                key={status.value}
+                className={`${styles.pillBtn} ${tempFilters.projectStatus === status.value ? styles.pillActive : ''}`}
+                onClick={() => updateFilter('projectStatus', tempFilters.projectStatus === status.value ? undefined : status.value)}
+              >
+                {status.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Amenities Selection */}
+        <div className={styles.section}>
+          <h3 className={styles.sectionTitle}>{t('amenities.placeholder') || 'Amenities'}</h3>
+          <div className={styles.dropList} style={{ maxHeight: '200px', overflowY: 'auto', border: '1px solid #eee', padding: '10px', borderRadius: '8px' }}>
+            {amenities.map(amenity => (
+              <label key={amenity.id} className={styles.checkItem}>
+                <input
+                  type="checkbox"
+                  checked={tempFilters.amenities.includes(amenity.id)}
+                  onChange={() => {
+                    const current = tempFilters.amenities;
+                    updateFilter('amenities', current.includes(amenity.id) ? current.filter(id => id !== amenity.id) : [...current, amenity.id]);
+                  }}
+                />
+                <span>{locale === 'ru' ? amenity.nameRu : amenity.nameEn}</span>
+              </label>
+            ))}
           </div>
         </div>
 

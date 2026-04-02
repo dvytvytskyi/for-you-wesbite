@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, memo } from 'react';
+import { useState, useEffect, memo, useRef } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -26,13 +26,10 @@ function PropertyCard({ property, currentPage = 1, index = 10, isSelected = fals
   const locale = useLocale();
   const { isFavorite, toggleFavorite } = useFavorites();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const [prevImageIndex, setPrevImageIndex] = useState(0);
-  const [direction, setDirection] = useState<'left' | 'right' | null>(null);
-  const [isTransitioning, setIsTransitioning] = useState(false);
-  // const [isFavorite, setIsFavorite] = useState(false); // Removed local state
   const isFav = isFavorite(property.id);
   const [imageLoading, setImageLoading] = useState(true);
   const [isInteracted, setIsInteracted] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   const getLocalizedPath = (path: string) => {
     return locale === 'en' ? path : `/${locale}${path}`;
@@ -44,15 +41,11 @@ function PropertyCard({ property, currentPage = 1, index = 10, isSelected = fals
         return property.name;
       }
       
-      // Fallback: extract name from slug if name is missing or "Property"
       if (property.slug) {
-        // Check if slug is just a UUID (contains 4 hyphens and matches UUID pattern)
         const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(property.slug);
-        
         if (!isUuid) {
           const parts = property.slug.split('-');
           if (parts.length > 2) {
-            // Slug format: new-{name}-{id}
             const namePart = parts.slice(1, -1).join(' ');
             return namePart.charAt(0).toUpperCase() + namePart.slice(1);
           }
@@ -67,23 +60,17 @@ function PropertyCard({ property, currentPage = 1, index = 10, isSelected = fals
       
       return property.developer?.name || (locale === 'ru' ? 'Новостройка' : 'New Project');
     } else {
-      // Secondary: "Property type in Area"
-      const type = locale === 'ru' ? 'Апартаменти' : 'Apartment'; // Default type since it's missing in list API
+      const type = locale === 'ru' ? 'Апартаменти' : 'Apartment';
       const areaName = getLocation();
-      
       if (areaName) {
         return locale === 'ru' ? `${type} в ${areaName}` : `${type} in ${areaName}`;
       }
-      
       return type;
     }
   };
 
   const getLocation = () => {
-    // For off-plan properties: area is a string "areaName, cityName" or null
-    // For secondary properties: area is an object
     if (property.area === null || property.area === undefined) {
-      // If area is null, try to use city if available
       if (property.city) {
         return locale === 'ru' ? property.city.nameRu : property.city.nameEn;
       }
@@ -91,20 +78,16 @@ function PropertyCard({ property, currentPage = 1, index = 10, isSelected = fals
     }
 
     if (typeof property.area === 'string') {
-      // Off-plan: area already contains "areaName, cityName"
       return property.area;
     }
 
-    // Secondary: area is an object, need to combine with city
     if (!property.city) {
-      // If no city, just return area name
       return locale === 'ru' ? property.area.nameRu : property.area.nameEn;
     }
 
     const areaName = locale === 'ru' ? property.area.nameRu : property.area.nameEn;
     const cityName = locale === 'ru' ? property.city.nameRu : property.city.nameEn;
 
-    // Format: "area name, city name"
     const parts = [];
     if (areaName) parts.push(areaName);
     if (cityName) parts.push(cityName);
@@ -126,7 +109,6 @@ function PropertyCard({ property, currentPage = 1, index = 10, isSelected = fals
 
   const getBedrooms = () => {
     if (property.propertyType === 'off-plan') {
-      // For off-plan: use bedroomsFrom/bedroomsTo
       if (property.bedroomsFrom !== null && property.bedroomsFrom !== undefined) {
         if (property.bedroomsTo !== null && property.bedroomsTo !== undefined && property.bedroomsTo !== property.bedroomsFrom) {
           return `${property.bedroomsFrom}-${property.bedroomsTo}`;
@@ -136,7 +118,6 @@ function PropertyCard({ property, currentPage = 1, index = 10, isSelected = fals
       }
       return '';
     } else {
-      // For secondary: use bedrooms
       if (property.bedrooms !== null && property.bedrooms !== undefined && property.bedrooms > 0) {
         return `${property.bedrooms}`;
       }
@@ -153,7 +134,6 @@ function PropertyCard({ property, currentPage = 1, index = 10, isSelected = fals
           return `${property.bathroomsFrom}`;
         }
       }
-      // Fallback for off-plan if bathroomsFrom is missing but bathrooms is present
       if (property.bathrooms && property.bathrooms > 0) {
         return `${property.bathrooms}`;
       }
@@ -165,16 +145,13 @@ function PropertyCard({ property, currentPage = 1, index = 10, isSelected = fals
 
   const getSize = () => {
     if (property.propertyType === 'off-plan') {
-      // For off-plan: prefer sizeFrom/sizeTo, fallback to size/sizeSqft
       const sizeFrom = property.sizeFrom;
       const sizeTo = property.sizeTo;
       const sizeFromSqft = property.sizeFromSqft;
       const sizeToSqft = property.sizeToSqft;
-      
       const propSize = property.size;
       const propSizeSqft = property.sizeSqft;
 
-      // Check if we have valid size data (either Sqm or Sqft)
       const hasSizeFrom = (sizeFrom !== null && sizeFrom !== undefined && sizeFrom > 0) || 
                           (sizeFromSqft !== null && sizeFromSqft !== undefined && sizeFromSqft > 0) ||
                           (propSize !== null && propSize !== undefined && propSize > 0) ||
@@ -185,7 +162,6 @@ function PropertyCard({ property, currentPage = 1, index = 10, isSelected = fals
                           (sizeToSqft !== null && sizeToSqft !== undefined && sizeToSqft > 0 && sizeToSqft !== sizeFromSqft);
 
         if (hasSizeTo) {
-          // Range: from - to
           let from: number;
           let to: number;
           if (locale === 'ru') {
@@ -198,7 +174,6 @@ function PropertyCard({ property, currentPage = 1, index = 10, isSelected = fals
           const unit = locale === 'ru' ? 'м²' : 'sq.ft';
           return `${formatNumber(from)} - ${formatNumber(to)} ${unit}`;
         } else {
-          // Single value: from or fallback size
           let sizeVal: number;
           if (locale === 'ru') {
             sizeVal = sizeFrom || propSize || Math.round((sizeFromSqft || propSizeSqft || 0) / 10.764);
@@ -209,13 +184,10 @@ function PropertyCard({ property, currentPage = 1, index = 10, isSelected = fals
           return `${formatNumber(sizeVal)} ${unit}`;
         }
       }
-      // No valid size data
       return '';
     } else {
-      // For secondary: use size/sizeSqft
       const size = property.size;
       const sizeSqft = property.sizeSqft;
-
       if (size !== null && size !== undefined && size > 0) {
         let displaySize: number;
         if (locale === 'ru') {
@@ -228,23 +200,18 @@ function PropertyCard({ property, currentPage = 1, index = 10, isSelected = fals
         const unit = locale === 'ru' ? 'м²' : 'sq.ft';
         return `${formatNumber(displaySize)} ${unit}`;
       }
-      // No valid size data
       return '';
     }
   };
 
   const getPricePerSqm = () => {
-    // Get price directly from property, not from getPrice() which returns null
     let price: number | null = null;
     if (property.propertyType === 'off-plan') {
       price = (property.priceFromAED && property.priceFromAED > 0) ? property.priceFromAED : null;
     } else {
       price = (property.priceAED && property.priceAED > 0) ? property.priceAED : null;
     }
-
-    if (!price || price === 0) {
-      return 'N/A';
-    }
+    if (!price || price === 0) return 'N/A';
 
     let size: number;
     if (property.propertyType === 'off-plan') {
@@ -252,17 +219,10 @@ function PropertyCard({ property, currentPage = 1, index = 10, isSelected = fals
     } else {
       size = property.size || 0;
     }
+    if (!size || size === 0) return 'N/A';
 
-    if (!size || size === 0) {
-      return 'N/A';
-    }
-
-    // Calculate price per sqm in AED (price is already in AED)
     const pricePerSqm = price / size;
-    if (isNaN(pricePerSqm) || !isFinite(pricePerSqm)) {
-      return 'N/A';
-    }
-
+    if (isNaN(pricePerSqm) || !isFinite(pricePerSqm)) return 'N/A';
     return formatNumber(Math.round(pricePerSqm));
   };
 
@@ -282,107 +242,43 @@ function PropertyCard({ property, currentPage = 1, index = 10, isSelected = fals
     return locale === 'ru' ? 'Запитати наявність' : 'Ask Availability';
   };
 
-  // Limit to first 5 photos for performance - CRITICAL: only use first 5 photos
   const MAX_PHOTOS_TO_LOAD = 5;
-  // Force limit to first 5 photos - don't allow more
-  // Prefer property.images (small) for optimized loading, fallback to photos
   const allPhotos = (property.images && property.images.length > 0)
     ? property.images.map(img => img.small)
     : (Array.isArray(property.photos) ? property.photos : []);
   const visiblePhotos = allPhotos.slice(0, MAX_PHOTOS_TO_LOAD);
   const hasMorePhotos = allPhotos.length > MAX_PHOTOS_TO_LOAD;
-  const totalPhotos = allPhotos.length;
+  const totalPhotos = hasMorePhotos ? visiblePhotos.length + 1 : visiblePhotos.length;
 
   const handleImageChange = (dir: 'prev' | 'next') => {
-    // Calculate max index based on available photos
-    const maxVisibleIndex = visiblePhotos.length - 1;
-    const totalAvailable = hasMorePhotos ? MAX_PHOTOS_TO_LOAD + 1 : visiblePhotos.length; // 5 photos + 1 blur = 6 total
-
-    if (totalAvailable <= 1 || isTransitioning) return;
-
-    setIsTransitioning(true);
-    setPrevImageIndex(currentImageIndex);
-    setDirection(dir === 'next' ? 'right' : 'left');
-
-    let newIndex: number;
-    if (dir === 'next') {
-      // If at last visible photo (index 4) and has more, go to blur placeholder (index 5)
-      if (currentImageIndex === maxVisibleIndex && hasMorePhotos) {
-        newIndex = MAX_PHOTOS_TO_LOAD; // Index 5 = blur placeholder
-      } else if (currentImageIndex === MAX_PHOTOS_TO_LOAD) {
-        // If at blur placeholder, wrap to first photo
-        newIndex = 0;
-      } else {
-        newIndex = currentImageIndex + 1;
-      }
-    } else {
-      // If at blur placeholder (index 5), go to last visible photo (index 4)
-      if (currentImageIndex === MAX_PHOTOS_TO_LOAD) {
-        newIndex = maxVisibleIndex;
-      } else if (currentImageIndex === 0) {
-        // If at first photo, wrap to blur placeholder if exists, otherwise to last
-        newIndex = hasMorePhotos ? MAX_PHOTOS_TO_LOAD : maxVisibleIndex;
-      } else {
-        newIndex = currentImageIndex - 1;
-      }
-    }
-
-    setCurrentImageIndex(newIndex);
-
-    setTimeout(() => {
-      setIsTransitioning(false);
-      setDirection(null);
-    }, 500);
+    if (!scrollRef.current) return;
+    const container = scrollRef.current;
+    const width = container.offsetWidth;
+    let newIndex = currentImageIndex + (dir === 'next' ? 1 : -1);
+    
+    if (newIndex < 0) newIndex = totalPhotos - 1;
+    if (newIndex >= totalPhotos) newIndex = 0;
+    
+    container.scrollTo({
+      left: newIndex * width,
+      behavior: 'smooth'
+    });
   };
 
-  // Reset image loading when property changes
   useEffect(() => {
     setImageLoading(true);
     setCurrentImageIndex(0);
-
-    // Ensure we don't load more than 5 photos
-    // Limit property.photos to first 5 for performance
-    if (property.photos && property.photos.length > MAX_PHOTOS_TO_LOAD) {
-      // This is just for reference - actual limiting happens in visiblePhotos
+    if (scrollRef.current) {
+      scrollRef.current.scrollLeft = 0;
     }
-  }, [property.id, property.photos, property.images, property.name]);
-
-  // Manual prefetching removed in favor of hidden pre-rendering
+  }, [property.id, property.name]);
 
   const handleMouseEnter = () => {
     setIsInteracted(true);
   };
 
   const handleClick = () => {
-    // Save scroll position and page before navigating
     saveScrollState(currentPage);
-  };
-
-  const [touchStart, setTouchStart] = useState<number | null>(null);
-  const [touchEnd, setTouchEnd] = useState<number | null>(null);
-
-  const handleTouchStart = (e: React.TouchEvent) => {
-    setTouchStart(e.targetTouches[0].clientX);
-  };
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    setTouchEnd(e.targetTouches[0].clientX);
-  };
-
-  const handleTouchEnd = () => {
-    if (!touchStart || !touchEnd) return;
-    const distance = touchStart - touchEnd;
-    const isLeftSwipe = distance > 50;
-    const isRightSwipe = distance < -50;
-
-    if (isLeftSwipe) {
-      handleImageChange('next');
-    } else if (isRightSwipe) {
-      handleImageChange('prev');
-    }
-
-    setTouchStart(null);
-    setTouchEnd(null);
   };
 
   return (
@@ -390,11 +286,9 @@ function PropertyCard({ property, currentPage = 1, index = 10, isSelected = fals
       className={`${styles.card} ${isSelected ? styles.cardSelected : ''}`}
       onClick={(e) => {
         if (!isMapView) {
-          // Direct navigation in list mode
           handleClick();
           return;
         }
-
         if (onSelect) {
           e.preventDefault();
           onSelect();
@@ -409,15 +303,10 @@ function PropertyCard({ property, currentPage = 1, index = 10, isSelected = fals
           onClick={handleClick}
         />
       )}
-      <div
-        className={styles.imageContainer}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
-      >
+      <div className={styles.imageContainer}>
         <div className={styles.imageGradientTop}></div>
         <div className={styles.imageGradientBottom}></div>
-        {/* Image skeleton while loading */}
+        
         {imageLoading && (
           <div className={styles.imageSkeleton}>
             <svg viewBox="0 0 24 24" fill="none" className={styles.skeletonLogo} xmlns="http://www.w3.org/2000/svg">
@@ -427,24 +316,57 @@ function PropertyCard({ property, currentPage = 1, index = 10, isSelected = fals
             </svg>
           </div>
         )}
-        {/* Ensure photos is an array and has at least one valid URL - ONLY use first 5 photos */}
-        {visiblePhotos.length > 0 && visiblePhotos[0] && (
-          <div className={styles.imageWrapper} style={{ opacity: imageLoading ? 0 : 1, transition: 'opacity 0.3s ease' }}>
-            {/* Show blur placeholder for 6th photo and beyond */}
-            {currentImageIndex >= MAX_PHOTOS_TO_LOAD ? (
+
+        <div 
+          className={styles.imageWrapper}
+          ref={scrollRef}
+          onScroll={(e) => {
+            const container = e.currentTarget;
+            const scrollLeft = container.scrollLeft;
+            const width = container.offsetWidth;
+            if (width > 0) {
+              const index = Math.round(scrollLeft / width);
+              if (index !== currentImageIndex && index >= 0 && index < totalPhotos) {
+                setCurrentImageIndex(index);
+              }
+            }
+          }}
+        >
+          {visiblePhotos.map((src, idx) => (
+            <div key={`${src}-${idx}`} className={styles.imageSlide}>
+              <Image
+                src={getOptimizedImageUrl(src, 800)}
+                alt={`${getName()} photo ${idx + 1}`}
+                fill
+                style={{ objectFit: 'cover' }}
+                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                className={styles.cardImage}
+                loading={idx === 0 && index < 2 ? 'eager' : 'lazy'}
+                priority={idx === 0 && index < 2}
+                unoptimized={!src.includes('res.cloudinary.com')}
+                onLoad={() => {
+                  if (idx === 0) setImageLoading(false);
+                }}
+                onError={() => {
+                  if (idx === 0) setImageLoading(false);
+                }}
+              />
+            </div>
+          ))}
+
+          {hasMorePhotos && (
+            <div className={styles.imageSlide}>
               <div className={styles.blurredPlaceholder}>
                 <div className={styles.blurredImage}>
-                  {visiblePhotos[0] && (
-                    <Image
-                      src={visiblePhotos[0]}
-                      alt={getName()}
-                      fill
-                      style={{ objectFit: 'cover', filter: 'blur(10px)', transform: 'scale(1.1)' }}
-                      sizes="(max-width: 1200px) 50vw, (max-width: 900px) 100vw, 33vw"
-                      loading="lazy"
-                      unoptimized
-                    />
-                  )}
+                  <Image
+                    src={visiblePhotos[0]}
+                    alt={getName()}
+                    fill
+                    style={{ objectFit: 'cover', filter: 'blur(10px)', transform: 'scale(1.1)' }}
+                    sizes="(max-width: 1200px) 50vw, (max-width: 900px) 100vw, 33vw"
+                    loading="lazy"
+                    unoptimized
+                  />
                 </div>
                 <div className={styles.viewAllOverlay}>
                   <button
@@ -452,7 +374,6 @@ function PropertyCard({ property, currentPage = 1, index = 10, isSelected = fals
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
-                      // Navigate to property detail page
                       window.location.href = getLocalizedPath(`/properties/${property.slug}`);
                     }}
                   >
@@ -460,56 +381,10 @@ function PropertyCard({ property, currentPage = 1, index = 10, isSelected = fals
                   </button>
                 </div>
               </div>
-            ) : (
-              <>
-                {/* Previous image - sliding out */}
-                {/* Render ALL visible photos for instant browsing */}
-                {visiblePhotos.slice(0, MAX_PHOTOS_TO_LOAD).map((src, idx) => {
-                  let imageClass = styles.preloadImage;
-                  const isCurrent = idx === currentImageIndex;
-                  const isPrev = idx === prevImageIndex;
+            </div>
+          )}
+        </div>
 
-                  if (isCurrent) {
-                    imageClass = `${styles.cardImage} ${styles.currentImage}`;
-                    if (isTransitioning) {
-                      imageClass += direction === 'right' ? ` ${styles.slideInRight}` : ` ${styles.slideInLeft}`;
-                    }
-                  } else if (isPrev && isTransitioning) {
-                    imageClass = `${styles.cardImage} ${styles.prevImage}`;
-                    if (isTransitioning) {
-                      imageClass += direction === 'right' ? ` ${styles.slideOutLeft}` : ` ${styles.slideOutRight}`;
-                    }
-                  }
-
-                  // Render up to 5 photos with lazy loading for smooth slider experience
-
-                  return (
-                    <Image
-                      key={`photo-${idx}`}
-                      src={getOptimizedImageUrl(src, 800)}
-                      alt={getName()}
-                      fill
-                      style={{ objectFit: 'cover' }}
-                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                      className={imageClass}
-                      // First image of top 2 cards is eager. Others lazy.
-                      loading={idx === 0 && index < 2 ? 'eager' : 'lazy'}
-                      priority={idx === 0 && index < 2}
-                      unoptimized={!src.includes('res.cloudinary.com')}
-                      onLoad={() => {
-                        if (idx === 0) setImageLoading(false);
-                      }}
-                      onError={() => {
-                        if (idx === 0) setImageLoading(false);
-                      }}
-                    />
-                  );
-                })}
-              </>
-            )}
-          </div>
-        )}
-        {/* Placeholder when no photos */}
         {visiblePhotos.length === 0 && (
           <div className={styles.imageWrapper}>
             <div className={styles.placeholderImage}>
@@ -519,12 +394,14 @@ function PropertyCard({ property, currentPage = 1, index = 10, isSelected = fals
             </div>
           </div>
         )}
+
         {(visiblePhotos.length > 1 || hasMorePhotos) && (
           <>
             <button
               className={`${styles.imageNav} ${styles.prev}`}
               onClick={(e) => {
                 e.preventDefault();
+                e.stopPropagation();
                 handleImageChange('prev');
               }}
               aria-label="Previous image"
@@ -537,6 +414,7 @@ function PropertyCard({ property, currentPage = 1, index = 10, isSelected = fals
               className={`${styles.imageNav} ${styles.next}`}
               onClick={(e) => {
                 e.preventDefault();
+                e.stopPropagation();
                 handleImageChange('next');
               }}
               aria-label="Next image"
@@ -546,9 +424,8 @@ function PropertyCard({ property, currentPage = 1, index = 10, isSelected = fals
               </svg>
             </button>
 
-            {/* Pagination Dots */}
             <div className={styles.paginationDots}>
-              {Array.from({ length: Math.min(totalPhotos, 6) }).map((_, idx) => (
+              {Array.from({ length: totalPhotos }).map((_, idx) => (
                 <div
                   key={`dot-${idx}`}
                   className={`${styles.dot} ${idx === currentImageIndex ? styles.dotActive : ''}`}
@@ -561,6 +438,7 @@ function PropertyCard({ property, currentPage = 1, index = 10, isSelected = fals
             </div>
           </>
         )}
+        
         <div className={styles.badgesContainer}>
           <div className={styles.badgesGroup}>
             {property.isForYouChoice && (
@@ -635,26 +513,15 @@ function PropertyCard({ property, currentPage = 1, index = 10, isSelected = fals
                     const count = parseInt(bedsText.split('-').pop() || '0', 10);
                     return count === 1 ? `${bedsText} bed` : `${bedsText} beds`;
                   }
-
-                  // Extract the relevant number for pluralization (last number in range)
                   const nums = bedsText.match(/\d+/g);
                   if (!nums || nums.length === 0) return `${bedsText} спален`;
-
                   const count = parseInt(nums[nums.length - 1], 10);
-
-                  // Pluralization rules for Russian
                   let suffix = 'спален';
                   const n = Math.abs(count) % 100;
                   const n1 = n % 10;
-
-                  if (n > 10 && n < 20) {
-                    suffix = 'спален';
-                  } else if (n1 > 1 && n1 < 5) {
-                    suffix = 'спальни';
-                  } else if (n1 === 1) {
-                    suffix = 'спальня';
-                  }
-
+                  if (n > 10 && n < 20) suffix = 'спален';
+                  else if (n1 > 1 && n1 < 5) suffix = 'спальни';
+                  else if (n1 === 1) suffix = 'спальня';
                   return `${bedsText} ${suffix}`;
                 })()}
               </span>
@@ -688,25 +555,15 @@ function PropertyCard({ property, currentPage = 1, index = 10, isSelected = fals
             <span className={styles.priceAmount}>
               {(() => {
                 const price = getPrice();
-                if (!price || price === 0) {
-                  return t('priceOnRequest');
-                }
-                if (property.propertyType === 'off-plan') {
-                  return `From ${formatNumber(price)} AED`;
-                }
+                if (!price || price === 0) return t('priceOnRequest');
+                if (property.propertyType === 'off-plan') return `From ${formatNumber(price)} AED`;
                 return `${formatNumber(price)} AED`;
               })()}
             </span>
           </div>
           {(() => {
             const pricePerSqm = getPricePerSqm();
-            if (pricePerSqm !== 'N/A') {
-              return (
-                <div className={styles.pricePerSqm}>
-                  {pricePerSqm} AED/sq.m
-                </div>
-              );
-            }
+            if (pricePerSqm !== 'N/A') return <div className={styles.pricePerSqm}>{pricePerSqm} AED/sq.m</div>;
             return null;
           })()}
         </div>
@@ -742,9 +599,7 @@ function PropertyCard({ property, currentPage = 1, index = 10, isSelected = fals
   );
 }
 
-// Memoize component to prevent unnecessary re-renders
 export default memo(PropertyCard, (prevProps, nextProps) => {
-  // Only re-render if property ID or key properties change
   return (
     prevProps.property.id === nextProps.property.id &&
     prevProps.isSelected === nextProps.isSelected &&
@@ -755,4 +610,3 @@ export default memo(PropertyCard, (prevProps, nextProps) => {
     prevProps.property.priceFromAED === nextProps.property.priceFromAED
   );
 });
-

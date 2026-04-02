@@ -8,26 +8,13 @@ import { restoreScrollState } from '@/lib/scrollRestoration';
 import styles from './PropertiesList.module.css';
 import PropertyCard from './PropertyCard';
 import PropertyCardSkeleton from './PropertyCardSkeleton';
+import { Filters } from './FilterModal';
 import FilterModal from './FilterModal';
 import PropertyFilters from './PropertyFilters';
 import MapboxMap from './MapboxMap';
 import CallbackModal from './CallbackModal';
 import { convertPropertyToMapFormat } from '@/lib/transformers';
-import { getProperties, Property, PropertyFilters as ApiPropertyFilters, getDevelopersSimple, getMapMarkers, MapMarker, getAreasSimple } from '@/lib/api';
-
-interface Filters {
-  type: 'new' | 'secondary';
-  search: string;
-  location: string[];
-  bedrooms: number[];
-  sizeFrom: string;
-  sizeTo: string;
-  priceFrom: string;
-  priceTo: string;
-  sort: string;
-  developerId?: string;
-  cityId?: string;
-}
+import { getProperties, Property, PropertyFilters as ApiPropertyFilters, getDevelopersSimple, getMapMarkers, MapMarker, getAreasSimple, getPublicAmenities } from '@/lib/api';
 
 const ITEMS_PER_PAGE = 36;
 
@@ -58,11 +45,11 @@ const mapSortToBackend = (frontendSort: string | undefined, propertyType: 'off-p
 };
 
 const convertFiltersToApi = (filters: Filters, page: number, seed?: number): ApiPropertyFilters => {
-  const propertyType = filters.type === 'new' ? 'off-plan' : 'secondary';
-  const sort = mapSortToBackend(filters.sort, propertyType);
+  const propertyType = filters.type === 'all' ? undefined : (filters.type === 'new' ? 'off-plan' : 'secondary');
+  const sort = mapSortToBackend(filters.sort, propertyType === 'off-plan' ? 'off-plan' : 'secondary');
 
   const apiFilters: ApiPropertyFilters = {
-    propertyType,
+    propertyType: propertyType as any,
     sortBy: sort.sortBy,
     sortOrder: sort.sortOrder,
     page: page,
@@ -73,28 +60,34 @@ const convertFiltersToApi = (filters: Filters, page: number, seed?: number): Api
 
   if (filters.developerId) apiFilters.developerId = filters.developerId;
   if (filters.cityId) apiFilters.cityId = filters.cityId;
-  if (filters.location.length > 0) {
-    const loc = filters.location[0];
-    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(loc);
-
-    if (isUuid) {
-      apiFilters.areaId = loc;
-      apiFilters.areaIds = filters.location;
-    } else {
-      apiFilters.areaSlug = loc;
-    }
-  }
+  
+  // Status mapping
+  if (filters.projectStatus) apiFilters.status = filters.projectStatus;
+  
+  // Amenities & Locations (Backend supports comma-separated string)
+  if (filters.amenities && filters.amenities.length > 0) apiFilters.amenityIds = filters.amenities;
+  if (filters.location && filters.location.length > 0) apiFilters.locationIds = filters.location;
+  
   if (filters.bedrooms.length > 0) apiFilters.bedrooms = filters.bedrooms.join(',');
-  if (filters.sizeFrom) apiFilters.sizeFrom = parseFloat(filters.sizeFrom) || undefined;
-  if (filters.sizeTo) apiFilters.sizeTo = parseFloat(filters.sizeTo) || undefined;
+  
+  // Size filtering (Backend stores in SQM, so convert SQFT inputs from UI)
+  if (filters.sizeFrom) {
+    const sqft = parseFloat(filters.sizeFrom.replace(/,/g, '')) || 0;
+    apiFilters.sizeFrom = Math.round(sqft / 10.76);
+  }
+  if (filters.sizeTo) {
+    const sqft = parseFloat(filters.sizeTo.replace(/,/g, '')) || 0;
+    apiFilters.sizeTo = Math.round(sqft / 10.76);
+  }
+  
+  // Price filtering (Backend expects AED and handles conversion)
   if (filters.priceFrom) {
-    const aedPrice = parseFloat(filters.priceFrom.replace(/,/g, '')) || 0;
-    apiFilters.priceFrom = Math.round(aedPrice / 3.67);
+    apiFilters.priceFrom = parseFloat(filters.priceFrom.replace(/,/g, '')) || undefined;
   }
   if (filters.priceTo) {
-    const aedPrice = parseFloat(filters.priceTo.replace(/,/g, '')) || 0;
-    apiFilters.priceTo = Math.round(aedPrice / 3.67);
+    apiFilters.priceTo = parseFloat(filters.priceTo.replace(/,/g, '')) || undefined;
   }
+  
   if (filters.search) apiFilters.search = filters.search;
 
   return apiFilters;
@@ -113,13 +106,15 @@ const filtersToUrlParams = (filters: Filters, page?: number): URLSearchParams =>
   if (filters.sort !== 'newest') params.set('sort', filters.sort);
   if (filters.developerId) params.set('developerId', filters.developerId);
   if (filters.cityId) params.set('cityId', filters.cityId);
+  if (filters.projectStatus) params.set('status', filters.projectStatus);
+  if (filters.amenities && filters.amenities.length > 0) params.set('amenities', filters.amenities.join(','));
   if (page && page > 1) params.set('page', page.toString());
   return params;
 };
 
 const urlParamsToFilters = (searchParams: URLSearchParams): Filters => {
   const typeParam = searchParams.get('type');
-  const type: 'new' | 'secondary' = typeParam === 'secondary' ? 'secondary' : 'new';
+  const type: 'all' | 'new' | 'secondary' = typeParam === 'secondary' ? 'secondary' : (typeParam === 'all' ? 'all' : 'new');
   return {
     type,
     search: searchParams.get('search') || '',
@@ -132,6 +127,8 @@ const urlParamsToFilters = (searchParams: URLSearchParams): Filters => {
     sort: searchParams.get('sort') || 'random',
     developerId: searchParams.get('developerId') || undefined,
     cityId: searchParams.get('cityId') || undefined,
+    projectStatus: searchParams.get('status') || undefined,
+    amenities: searchParams.get('amenities')?.split(',').filter(Boolean) || [],
   };
 };
 
@@ -165,7 +162,54 @@ export default function PropertiesList() {
 
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
   const [isSortOpen, setIsSortOpen] = useState(false);
+  const [isStatusOpen, setIsStatusOpen] = useState(false);
+  const [isAmenitiesOpen, setIsAmenitiesOpen] = useState(false);
   const sortRef = useRef<HTMLDivElement>(null);
+  const statusRef = useRef<HTMLDivElement>(null);
+  const amenitiesRef = useRef<HTMLDivElement>(null);
+
+  const [amenitiesOptions, setAmenitiesOptions] = useState<any[]>([]);
+  const [loadingAmenities, setLoadingAmenities] = useState(false);
+
+  const statusOptions = [
+    { value: '', label: 'All Statuses', labelRu: 'Все статусы' },
+    { value: 'under-construction', label: 'Under Construction', labelRu: 'Строится' },
+    { value: 'ready', label: 'Ready', labelRu: 'Готов' },
+    { value: 'on-sale', label: 'On Sale', labelRu: 'В продаже' },
+    { value: 'sold-out', label: 'Sold Out', labelRu: 'Продано' },
+    { value: 'presale', label: 'Presale', labelRu: 'Предпродажа' }
+  ];
+
+  useEffect(() => {
+    const fetchAmenities = async () => {
+      try {
+        setLoadingAmenities(true);
+        const mappedType = filters.type === 'new' ? 'off-plan' : 'secondary';
+        
+        // Try to fetch specific amenities
+        let data = await getPublicAmenities(mappedType);
+        
+        // If empty, try to fetch all (fallback)
+        if (!data || data.length === 0) {
+          data = await getPublicAmenities();
+        }
+
+        if (data && Array.isArray(data)) {
+          setAmenitiesOptions(data.map((a: any) => ({
+            value: a.id || a.uuid || a.value,
+            label: a.nameEn || a.name || a.label,
+            labelRu: a.nameRu || a.name_ru || (a.translations?.ru?.name) || a.nameEn || a.name || a.labelRu,
+            count: a.projectsCount || a.count || 0
+          })));
+        }
+      } catch (e) {
+        console.error('Failed to load amenities', e);
+      } finally {
+        setLoadingAmenities(false);
+      }
+    };
+    fetchAmenities();
+  }, [filters.type]);
   const [mapMarkers, setMapMarkers] = useState<any[]>([]);
   const [loadingMap, setLoadingMap] = useState(false);
   const [selectedPropertyId, setSelectedPropertyId] = useState<string | null>(null);
@@ -219,11 +263,17 @@ export default function PropertiesList() {
     return () => window.removeEventListener('open-filter-modal', handleOpenFilters);
   }, []);
 
-  // Handle click outside for sort dropdown
+  // Handle click outside for dropdowns
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (sortRef.current && !sortRef.current.contains(event.target as Node)) {
         setIsSortOpen(false);
+      }
+      if (statusRef.current && !statusRef.current.contains(event.target as Node)) {
+        setIsStatusOpen(false);
+      }
+      if (amenitiesRef.current && !amenitiesRef.current.contains(event.target as Node)) {
+        setIsAmenitiesOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -260,6 +310,39 @@ export default function PropertiesList() {
 
   const debouncedSearch = useDebounce(filters.search, 500);
 
+  const balanceByArea = useCallback((properties: Property[]) => {
+    if (properties.length <= 2) return properties;
+
+    const getAreaId = (p: Property) => {
+      if (!p.area) return 'none';
+      return (typeof p.area === 'object') ? p.area.id || p.area.nameEn : p.area;
+    };
+
+    const result: Property[] = [];
+    const pool = [...properties];
+    
+    // Greedy approach: try to find an item that doesn't break the rule (max 2 same areas)
+    while (pool.length > 0) {
+      let foundIndex = -1;
+      const last1 = result.length > 0 ? getAreaId(result[result.length - 1]) : null;
+      const last2 = result.length > 1 && getAreaId(result[result.length - 1]) === getAreaId(result[result.length - 2]) ? getAreaId(result[result.length - 1]) : null;
+
+      if (last2) {
+        // Must find a different area if the previous two are the same
+        foundIndex = pool.findIndex(p => getAreaId(p) !== last2);
+      }
+
+      if (foundIndex === -1) {
+        // Take the first available
+        result.push(pool.shift()!);
+      } else {
+        result.push(pool.splice(foundIndex, 1)[0]);
+      }
+    }
+
+    return result;
+  }, []);
+
   const loadProperties = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -268,14 +351,26 @@ export default function PropertiesList() {
       if (debouncedSearch) apiFilters.search = debouncedSearch;
 
       const result = await getProperties(apiFilters, true);
-      const loadedProperties = Array.isArray(result.properties) ? result.properties : [];
-      let total = result.total || 0;
-
-      // Handle potential API limits returning fewer items than total
-      if (total <= loadedProperties.length && loadedProperties.length >= ITEMS_PER_PAGE) {
-        if (total < ITEMS_PER_PAGE * 1.5) total = apiFilters.propertyType === 'secondary' ? 26000 : 1314;
+      let loadedProperties = Array.isArray(result.properties) ? result.properties : [];
+      
+      // STRICT TYPE FILTERING (FALLBACK)
+      // Guaranteed separation even if backend sends mixed results
+      if (filters.type === 'new') {
+        loadedProperties = loadedProperties.filter(p => 
+          !p.type || p.type === 'new' || p.propertyType === 'off-plan'
+        );
+      } else if (filters.type === 'secondary') {
+        loadedProperties = loadedProperties.filter(p => 
+          p.type === 'secondary' || p.propertyType === 'secondary'
+        );
+      }
+      
+      // Balance by area if we're in random mode to avoid large clusters of the same area
+      if (filters.sort === 'random' && loadedProperties.length > 2) {
+        loadedProperties = balanceByArea(loadedProperties);
       }
 
+      const total = result.total || 0;
       setTotalProperties(total);
       setProperties(loadedProperties);
     } catch (err: any) {
@@ -283,7 +378,7 @@ export default function PropertiesList() {
     } finally {
       setLoading(false);
     }
-  }, [filters, currentPage, debouncedSearch, sessionSeed, t]);
+  }, [filters, currentPage, debouncedSearch, sessionSeed, t, balanceByArea]);
 
   useEffect(() => {
     loadProperties();
@@ -315,29 +410,32 @@ export default function PropertiesList() {
         const markers = await getMapMarkers(apiFilters);
 
         // Convert to partial map format
-        const mapProperties = markers.map(m => ({
-          id: m.id,
-          slug: '',
-          name: '',
-          nameRu: '',
-          location: { area: '', areaRu: '', city: '', cityRu: '' },
-          price: {
-            usd: 0,
-            aed: typeof m.priceAED === 'string' ? parseFloat(m.priceAED) : Number(m.priceAED),
-            eur: 0
-          },
-          developer: { name: '', nameRu: '' },
-          bedrooms: 0,
-          bathrooms: 0,
-          size: { sqm: 0, sqft: 0 },
-          images: [],
-          type: m.propertyType === 'off-plan' ? 'new' as const : 'secondary' as const,
-          coordinates: [
-            typeof m.lng === 'string' ? parseFloat(m.lng) : Number(m.lng),
-            typeof m.lat === 'string' ? parseFloat(m.lat) : Number(m.lat)
-          ] as [number, number],
-          isPartial: true
-        }));
+        const mapProperties = markers.map(m => {
+          const previewImg = m.mainImage || m.previewImage || m.image || m.photo || m.thumbnail;
+          return {
+            id: m.id,
+            slug: '',
+            name: m.nameEn || (m as any).name || (m as any).title || '',
+            nameRu: m.nameRu || (m as any).nameRu || (m as any).name || (m as any).title || '',
+            location: { area: '', areaRu: '', city: '', cityRu: '' },
+            price: {
+              usd: 0,
+              aed: typeof m.priceAED === 'string' ? parseFloat(m.priceAED) : Number(m.priceAED),
+              eur: 0
+            },
+            developer: { name: '', nameRu: '' },
+            bedrooms: 0,
+            bathrooms: 0,
+            size: { sqm: 0, sqft: 0 },
+            images: previewImg ? [previewImg] : [],
+            type: m.propertyType === 'off-plan' ? 'new' as const : 'secondary' as const,
+            coordinates: [
+              typeof m.lng === 'string' ? parseFloat(m.lng) : Number(m.lng),
+              typeof m.lat === 'string' ? parseFloat(m.lat) : Number(m.lat)
+            ] as [number, number],
+            isPartial: true
+          };
+        });
 
         setMapMarkers(mapProperties);
       } catch (e) {
@@ -365,20 +463,34 @@ export default function PropertiesList() {
   }, [pathname, router]);
 
   const handleFilterChange = useCallback((newFilters: Filters) => {
-    setFilters(newFilters);
+    // Clear projectStatus if not 'new' type
+    const updatedFilters = { ...newFilters };
+    if (updatedFilters.type !== 'new') {
+      updatedFilters.projectStatus = undefined;
+      updatedFilters.amenities = [];
+    }
+    
+    setFilters(updatedFilters);
     setCurrentPage(1);
-    updateUrl(newFilters, 1);
+    updateUrl(updatedFilters, 1);
   }, [updateUrl]);
 
   const handleApplyFilters = useCallback((newFilters: Filters) => {
-    setFilters(newFilters);
+    // Clear projectStatus if not 'new' type
+    const updatedFilters = { ...newFilters };
+    if (updatedFilters.type !== 'new') {
+      updatedFilters.projectStatus = undefined;
+      updatedFilters.amenities = [];
+    }
+    
+    setFilters(updatedFilters);
     setCurrentPage(1);
-    updateUrl(newFilters, 1);
+    updateUrl(updatedFilters, 1);
   }, [updateUrl]);
 
   const handleResetFilters = () => {
     const defaultFilters: Filters = {
-      type: 'new', search: '', location: [], bedrooms: [], sizeFrom: '', sizeTo: '', priceFrom: '', priceTo: '', sort: 'newest', developerId: undefined, cityId: undefined,
+      type: 'new', search: '', location: [], bedrooms: [], sizeFrom: '', sizeTo: '', priceFrom: '', priceTo: '', sort: 'newest', developerId: undefined, cityId: undefined, projectStatus: undefined, amenities: [],
     };
     handleApplyFilters(defaultFilters);
   };
@@ -441,22 +553,150 @@ export default function PropertiesList() {
 
                   <div className={styles.actionsGroup}>
                     {filters.type === 'new' && (
-                      <div className={styles.viewToggle}>
-                        <button
-                          className={`${styles.toggleButton} ${viewMode === 'map' ? styles.active : ''}`}
-                          onClick={() => {
-                            if (isMobile) {
-                              const params = filtersToUrlParams(filters);
-                              router.push(`${locale === 'en' ? '' : '/' + locale}/map?${params.toString()}`);
-                            } else {
-                              setViewMode(viewMode === 'map' ? 'list' : 'map');
-                            }
-                          }}
-                        >
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
-                          <span>{locale === 'en' ? 'Map' : 'Карта'}</span>
-                        </button>
-                      </div>
+                      <>
+                        {!isMobile && (
+                          <>
+                            <div className={styles.statusContainer}>
+                              <div className={styles.statusDropdownWrapper} ref={statusRef}>
+                                <button
+                                  className={styles.statusButton}
+                                  onClick={() => setIsStatusOpen(!isStatusOpen)}
+                                >
+                                  <span className={styles.statusDot} style={{ 
+                                    backgroundColor: filters.projectStatus === 'completed' || filters.projectStatus === 'ready' ? '#4CAF50' : 
+                                                    filters.projectStatus === 'under-construction' ? '#FF9800' : 
+                                                    filters.projectStatus === 'sold-out' ? '#F44336' : 
+                                                    filters.projectStatus === 'presale' ? '#9C27B0' :
+                                                    '#9E9E9E' 
+                                  }}></span>
+                                  <span>
+                                    {statusOptions.find(o => o.value === filters.projectStatus)?.[locale === 'en' ? 'label' : 'labelRu'] || (locale === 'en' ? 'All Statuses' : 'Все статусы')}
+                                  </span>
+                                  <svg
+                                    width="12"
+                                    height="8"
+                                    viewBox="0 0 12 8"
+                                    fill="none"
+                                    className={isStatusOpen ? styles.rotated : ''}
+                                  >
+                                    <path d="M1 1.5L6 6.5L11 1.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                                  </svg>
+                                </button>
+                                {isStatusOpen && (
+                                  <div className={styles.statusMenu}>
+                                    {statusOptions.map((option) => (
+                                      <button
+                                        key={option.value}
+                                        className={`${styles.statusMenuItem} ${filters.projectStatus === option.value || (!filters.projectStatus && option.value === '') ? styles.active : ''}`}
+                                        onClick={() => {
+                                          handleFilterChange({ ...filters, projectStatus: option.value || undefined });
+                                          setIsStatusOpen(false);
+                                        }}
+                                      >
+                                        {option.value && (
+                                          <span className={styles.statusDot} style={{ 
+                                            backgroundColor: option.value === 'completed' || option.value === 'ready' ? '#4CAF50' : 
+                                                            option.value === 'under-construction' ? '#FF9800' : 
+                                                            option.value === 'sold-out' ? '#F44336' : 
+                                                            option.value === 'presale' ? '#9C27B0' :
+                                                            '#9E9E9E' 
+                                          }}></span>
+                                        )}
+                                        <span className={styles.statusLabel}>
+                                          {option[locale === 'en' ? 'label' : 'labelRu']}
+                                        </span>
+                                      </button>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className={styles.amenitiesContainer}>
+                              <div className={styles.amenitiesDropdownWrapper} ref={amenitiesRef}>
+                                <button
+                                  className={styles.amenitiesButton}
+                                  onClick={() => setIsAmenitiesOpen(!isAmenitiesOpen)}
+                                >
+                                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-palmtree"><path d="M13 8c0-2.76-2.46-5-5.5-5S2 5.24 2 8h2l1-1 1 1h4"/><path d="M13 7.14A5.82 5.82 0 0 1 16.5 6c3.04 0 5.5 2.24 5.5 5h-3l-1-1-1 1h-3"/><path d="M5.89 9.71c-2.15 2.15-2.3 5.47-.35 7.43l4.24-4.25.7-.7.71-.71 2.12-2.12c-1.95-1.96-5.27-1.8-7.42.35z"/><path d="M11 15.5c.5 2.5-.17 4.5-1 6.5"/><path d="M13 10.5c.5 2.5-.17 4.5-1 6.5"/><path d="M15 5.5c.5 2.5-.17 4.5-1 6.5"/></svg>
+                                  <span>
+                                    {filters.amenities.length > 0 
+                                      ? (locale === 'en' ? `${filters.amenities.length} Selected` : `${filters.amenities.length} Вибрано`)
+                                      : (locale === 'en' ? 'Amenities' : 'Зручності')}
+                                  </span>
+                                  <svg
+                                    width="12"
+                                    height="8"
+                                    viewBox="0 0 12 8"
+                                    fill="none"
+                                    className={isAmenitiesOpen ? styles.rotated : ''}
+                                  >
+                                    <path d="M1 1.5L6 6.5L11 1.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                                  </svg>
+                                </button>
+                                {isAmenitiesOpen && (
+                                  <div className={styles.amenitiesMenu}>
+                                    <div className={styles.amenitiesMenuList}>
+                                      {loadingAmenities ? (
+                                        <div className={styles.amenitiesLoading}>{locale === 'en' ? 'Loading...' : 'Загрузка...'}</div>
+                                      ) : amenitiesOptions.length === 0 ? (
+                                        <div className={styles.amenitiesEmpty}>{locale === 'en' ? 'No amenities' : 'Нет удобств'}</div>
+                                      ) : (
+                                        amenitiesOptions.map((option) => (
+                                          <label key={option.value} className={styles.amenitiesMenuItem}>
+                                            <input
+                                              type="checkbox"
+                                              checked={filters.amenities.includes(option.value)}
+                                              onChange={() => {
+                                                const newAmenities = filters.amenities.includes(option.value)
+                                                  ? filters.amenities.filter(item => item !== option.value)
+                                                  : [...filters.amenities, option.value];
+                                                handleFilterChange({ ...filters, amenities: newAmenities });
+                                              }}
+                                            />
+                                            <span className={styles.amenityLabel}>
+                                              {locale === 'en' ? option.label : option.labelRu}
+                                              {option.count > 0 && <span className={styles.amenityCount}>({option.count})</span>}
+                                            </span>
+                                          </label>
+                                        ))
+                                      )}
+                                    </div>
+                                    {filters.amenities.length > 0 && (
+                                      <div className={styles.amenitiesMenuFooter}>
+                                        <button 
+                                          className={styles.amenitiesClearBtn}
+                                          onClick={() => handleFilterChange({ ...filters, amenities: [] })}
+                                        >
+                                          {locale === 'en' ? 'Clear' : 'Очистити'}
+                                        </button>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                            <div className={styles.separator}></div>
+                          </>
+                        )}
+
+                        <div className={styles.viewToggle}>
+                          <button
+                            className={`${styles.toggleButton} ${viewMode === 'map' ? styles.active : ''}`}
+                            onClick={() => {
+                              if (isMobile) {
+                                const params = filtersToUrlParams(filters);
+                                router.push(`${locale === 'en' ? '' : '/' + locale}/map?${params.toString()}`);
+                              } else {
+                                setViewMode(viewMode === 'map' ? 'list' : 'map');
+                              }
+                            }}
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+                            <span>{locale === 'en' ? 'Map' : 'Карта'}</span>
+                          </button>
+                        </div>
+                      </>
                     )}
 
                     {!isMobile && (

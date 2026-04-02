@@ -3,6 +3,15 @@
 import React from 'react';
 import styles from './LuxuryUnitLanding.module.css';
 import Image from 'next/image';
+import LandingHeader from './common/LandingHeader';
+import LandingMap from './common/LandingMap';
+import LandingGallery from './common/LandingGallery';
+import LandingAmenities from './common/LandingAmenities';
+import LandingPaymentPlan from './common/LandingPaymentPlan';
+import LandingSimilarUnits from './common/LandingSimilarUnits';
+import LandingFAQ from './common/LandingFAQ';
+import LandingProjectReferral from './common/LandingProjectReferral';
+import LandingFooter from './common/LandingFooter';
 
 interface LuxuryUnitProps {
   unit: {
@@ -22,88 +31,149 @@ interface LuxuryUnitProps {
 export default function LuxuryUnitLanding({ unit, locale }: LuxuryUnitProps) {
   const isRu = locale === 'ru';
   
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@type": "RealEstateListing",
+    "name": `Apartment ${unit.projectName} - ${unit.type}`,
+    "description": `Luxury ${unit.type} for sale in ${unit.projectName}. Size: ${unit.totalSize}, View: ${unit.view}.`,
+    "url": typeof window !== 'undefined' ? window.location.href : '',
+    "image": [
+       "https://reelly-backend.s3.amazonaws.com/projects/3310/images/d62fe4e00e2747e384ad03b7a8c5af10.webp"
+    ],
+    "item": {
+      "@type": "Accommodation",
+      "address": {
+        "@type": "PostalAddress",
+        "addressLocality": "Abu Dhabi",
+        "addressRegion": "Reem Island",
+        "addressCountry": "AE"
+      },
+      "floorSize": {
+        "@type": "QuantitativeValue",
+        "value": unit.totalSize.split(' ')[0],
+        "unitCode": "MTK"
+      },
+      "numberOfRooms": "1"
+    },
+    "offers": {
+      "@type": "Offer",
+      "price": unit.price.replace(/,/g, ''),
+      "priceCurrency": "AED",
+      "availability": "https://schema.org/InStock"
+    }
+  };
+
   return (
     <div className={styles.luxuryBody}>
+      {/* 0. SCHEMA.ORG JSON-LD */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+      />
       
-      {/* 1. FLOATING NAV - Premium Bar */}
-      <nav className={styles.floatingNav}>
-         <div className={styles.navBrand}>{unit.projectName}</div>
-         <div className={styles.navMetrics}>
-            <div className={styles.metItem}><span>{isRu ? 'ОТ' : 'FROM'}</span> <strong>{unit.price} AED</strong></div>
-            <div className={styles.metItem}><span>{isRu ? 'ПЛОЩАДЬ' : 'AREA'}</span> <strong>{unit.totalSize}</strong></div>
-         </div>
-         <button className={styles.reserveBtn}>{isRu ? 'ЗАБРОНИРОВАТЬ' : 'SECURE UNIT'}</button>
-      </nav>
+      {/* Reusable Landing Header */}
+      <LandingHeader isRu={isRu} projectName={unit.projectName} />
 
-      {/* 2. THE CANVAS - Centered Floor Plan */}
-      <section className={styles.canvasSection}>
-         <div className={styles.canvasHeader}>
-            <h1>{unit.type}</h1>
-            <p className={styles.subtitle}>{isRu ? 'Архитектурное совершенство в каждой детали' : 'Architectural Excellence in Every Detail'}</p>
-         </div>
-         
-         <div className={styles.mainCanvas}>
-            <div className={styles.planHolder}>
-               {unit.planImage ? (
-                 <Image src={unit.planImage} alt="Luxury floor plan" fill style={{ objectFit: 'contain' }} />
-               ) : (
-                 <div className={styles.placeholder}>Plan Illustration TBA</div>
-               )}
+      <section id="info" className={styles.heroSection}>
+        {/* Living Background Elements */}
+        <div className={styles.meshGrid}></div>
+        <div className={`${styles.glassLine} ${styles.glassLineH}`} style={{ animationDelay: '0s' }}></div>
+        <div className={`${styles.glassLine} ${styles.glassLineH}`} style={{ animationDelay: '4s' }}></div>
+        <div className={`${styles.glassLine} ${styles.glassLineV}`} style={{ animationDelay: '2s' }}></div>
+        <div className={`${styles.glassLine} ${styles.glassLineV}`} style={{ animationDelay: '7s' }}></div>
+        
+        {/* Background Animated Blobs for Glass Effect */}
+        <div className={`${styles.bgOrb} ${styles.orbBlue}`}></div>
+        <div className={`${styles.bgOrb} ${styles.orbGreen}`}></div>
+
+        <div className={styles.heroContent}>
+          <div className={styles.heroText}>
+            <h1 className={styles.heroTitle}>
+              {unit.projectName}
+              <span className={styles.highlightText}>{isRu ? 'Апартаменти' : 'Apartment'} A1-405</span>
+            </h1>
+            <p className={styles.heroSubtitle}>
+              {isRu 
+                ? `Відчуйте сучасне життя в просторих апартаментах площею ${unit.totalSize}. Преміальна обробка та неймовірні краєвиди.`
+                : `Experience modern living in this spacious ${unit.totalSize} apartment. Premium finishing and stunning views.`
+              }
+            </p>
+            <button className={styles.mainCtaBtn}>
+              {isRu ? 'ОТРИМАТИ ПРЕЗЕНТАЦІЮ' : 'GET PRESENTATION'}
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+            </button>
+
+            <div className={styles.projectGallery}>
+              {[
+                "https://reelly-backend.s3.amazonaws.com/projects/3310/images/d62fe4e00e2747e384ad03b7a8c5af10.webp",
+                "https://reelly-backend.s3.amazonaws.com/projects/3310/images/c8b959a8ebcc4ed897a28e7418e763f9.webp",
+                "https://reelly-backend.s3.amazonaws.com/projects/3310/images/c8b959a8ebcc4ed897a28e7418e763f9.webp",
+                "https://reelly-backend.s3.amazonaws.com/projects/3310/images/3e045be6afa94be781e17a764a961ecb.webp"
+              ].map((url, idx) => (
+                <div key={idx} className={styles.galleryItem}>
+                  <Image src={url} alt={`${unit.projectName} Interior ${idx + 1}`} fill className={styles.galleryImg} />
+                </div>
+              ))}
             </div>
-            
-            {/* Overlay Specs */}
-            <div className={`${styles.specTag} ${styles.topRight}`}>
-               <h5>{isRu ? 'ОРИЕНТАЦИЯ' : 'EXPOSURE'}</h5>
-               <p>{unit.exposure}</p>
-            </div>
-            <div className={`${styles.specTag} ${styles.bottomLeft}`}>
-               <h5>{isRu ? 'ВИД' : 'ORIENTATION'}</h5>
-               <p>{unit.view}</p>
-            </div>
-         </div>
+
+            <a href="#developer" className={styles.projectLink}>
+              {isRu ? 'Переглянути цей проект' : 'View this project'}
+            </a>
+          </div>
+
+          <div className={styles.heroCard}>
+             <div className={styles.dataOverlay}>
+                <div className={styles.overlayLabel}>{isRu ? 'ЦІНА' : 'PRICE'}</div>
+                <div className={styles.overlayValue}>6,038,412 AED</div>
+                <div className={styles.overlayLabel}>{isRu ? 'ПЛОЩА' : 'AREA'}</div>
+                <div className={styles.overlayValue}>82 m&sup2;</div>
+             </div>
+             <div className={styles.cardImageContainer}>
+                <Image 
+                  src="https://reelly-backend.s3.amazonaws.com/unit_layouts/47_445f696b809a4d66af940a1b9e5b220e.webp" 
+                  alt={`${unit.projectName} Apartment Layout Floor Plan`} 
+                  fill 
+                  className={styles.planImg}
+                  priority
+                />
+             </div>
+          </div>
+        </div>
       </section>
 
-      {/* 3. LIFESTYLE & VIBE - Emotional Content */}
-      <section className={styles.lifestyleSection}>
-         <div className={styles.contentWrapper}>
-            <div className={styles.textSide}>
-               <h2>{isRu ? 'Жить в стиле For You' : 'Living the For You Lifestyle'}</h2>
-               <p className={styles.description}>
-                 {isRu 
-                   ? 'Это не просто квадратные метры. Это пространство, спроектированное для тех, кто ценит тишину, свет и приватность. Панорамное остекление наполняет каждый угол естественным светом Дубая.' 
-                   : 'More than just square footage. This is a sanctuary designed for those who appreciate silence, light, and privacy. Floor-to-ceiling glass fills every corner with Dubai’s natural radiance.'}
-               </p>
-               <div className={styles.highlightGrid}>
-                  {unit.lifestyleHighlights.map((h, i) => (
-                    <div key={i} className={styles.highlightCard}>
-                       <span className={styles.icon}>✨</span>
-                       <p>{h}</p>
-                    </div>
-                  ))}
-               </div>
-            </div>
-            <div className={styles.statsSide}>
-               <div className={styles.luxuryStat}>
-                  <strong>{unit.investmentData.yield}</strong>
-                  <label>{isRu ? 'РЕНТНАЯ ДОХОДНОСТЬ' : 'RENTAL YIELD'}</label>
-               </div>
-               <div className={styles.luxuryStat}>
-                  <strong>{unit.investmentData.growth}</strong>
-                  <label>{isRu ? 'ПРОГНОЗ РОСТА' : 'GROWTH FORECAST'}</label>
-               </div>
-            </div>
-         </div>
-      </section>
+      {/* 2. PAYMENT PLAN */}
+      <div id="plans">
+        <LandingPaymentPlan isRu={isRu} />
+      </div>
 
-      {/* 4. FAST CTA */}
-      <footer className={styles.luxuryFooter}>
-         <p>{isRu ? 'Готовы узнать больше об этом предложении?' : 'Ready to explore this exclusive opportunity?'}</p>
-         <div className={styles.buttonGroup}>
-            <button className={styles.whatsappBtn}>WHATSAPP</button>
-            <button className={styles.callBtn}>{isRu ? 'ПОЗВОНИТЬ' : 'CALL AGENT'}</button>
-         </div>
-      </footer>
+      {/* 3. LOCATION & CONNECTIVITY */}
+      <LandingMap coordinates={[25.068384, 55.142001]} isRu={isRu} />
+
+      {/* 4. GALLERY MOSAIC */}
+      <LandingGallery isRu={isRu} />
+
+      {/* 5. AMENITIES SECTION */}
+      <div id="amenities">
+        <LandingAmenities isRu={isRu} />
+      </div>
+
+      {/* 6. SIMILAR UNITS */}
+      <LandingSimilarUnits isRu={isRu} />
+
+      {/* 7. PROJECT REFERRAL BRIDGE */}
+      <div id="developer">
+        <LandingProjectReferral isRu={isRu} />
+      </div>
+
+      {/* 8. FAQ SECTION */}
+      <LandingFAQ isRu={isRu} />
+
+      {/* FOOTER */}
+      <LandingFooter isRu={isRu} />
 
     </div>
   );
 }
+

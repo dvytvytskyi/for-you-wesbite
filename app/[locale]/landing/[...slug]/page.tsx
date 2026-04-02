@@ -228,14 +228,15 @@ export default async function LandingDispatchPage({
         phone: '+971 00 000 0000',
         slug: 'alex-foryou',
       },
-      similarUnits: [
-        {
-          type: isRu ? '2-спальный апартамент' : '2 Bedroom Apartment',
-          price: '3,500,000',
-          size: '1,250 sqft',
-          slug: `${areaName.toLowerCase().replace(/\s/g, '-')}/${property.slug || property.id}/2-bedroom-apartment`,
-        },
-      ],
+      view: isRu ? 'Панорамний вид на місто' : 'Panoramic City View',
+      exposure: isRu ? 'Північно-західна' : 'North-West',
+      lifestyleHighlights: isRu
+        ? ['Приватний пляж', 'Фітнес-центр світового класу', 'Консьєрж 24/7']
+        : ['Private Beach Access', 'World-class Fitness Center', '24/7 Concierge Service'],
+      investmentData: {
+        yield: '8.5%',
+        growth: '+12%'
+      },
       updatedAt: property.updatedAt,
     };
 

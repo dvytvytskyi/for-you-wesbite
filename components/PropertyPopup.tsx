@@ -121,7 +121,9 @@ export default function PropertyPopup({ property, onClose, onRequestCallback }: 
   const getLocation = () => {
     const area = locale === 'ru' ? property.location.areaRu : property.location.area;
     const city = locale === 'ru' ? property.location.cityRu : property.location.city;
-    return `${area}, ${city}`;
+    
+    if (area && city && area !== city) return `${area}, ${city}`;
+    return area || city || (locale === 'ru' ? 'Дубай' : 'Dubai');
   };
   const getDeveloper = () => {
     if (!property.developer) return '';
@@ -135,14 +137,22 @@ export default function PropertyPopup({ property, onClose, onRequestCallback }: 
   return (
     <div className={`${styles.overlay} ${isClosing ? styles.closing : ''}`} onClick={handleClose}>
       <div className={`${styles.popup} ${isClosing ? styles.closing : ''}`} onClick={(e) => e.stopPropagation()}>
+        <button 
+          className={styles.closeButton} 
+          onClick={(e) => {
+            e.stopPropagation();
+            handleClose();
+          }} 
+          aria-label="Close"
+        >
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M1 1L13 13M1 13L13 1" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+
         <div className={styles.scrollArea}>
           {/* Image with horizontal scroll */}
           <div className={styles.imageContainer}>
-            <button className={styles.closeButton} onClick={handleClose} aria-label="Close">
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M1 1L13 13M1 13L13 1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </button>
             {property.isForYouChoice && (
               <div className={styles.exclusiveBadge}>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">

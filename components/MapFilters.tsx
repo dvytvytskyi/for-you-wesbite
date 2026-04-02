@@ -219,21 +219,6 @@ export default function MapFilters({ filters, onFilterChange }: MapFiltersProps)
     return (
         <div className={styles.filtersWrapper}>
             <div className={styles.filtersRow} data-has-open-dropdown={hasOpenDropdown}>
-                {/* Off Plan / Secondary Toggle */}
-                <div className={styles.typeToggle}>
-                    <button
-                        className={`${styles.typeButton} ${localFilters.type === 'new' ? styles.active : ''}`}
-                        onClick={() => handleChange('type', 'new')}
-                    >
-                        {t('type.offPlan') || (locale === 'ru' ? 'Off-Plan' : 'Off-Plan')}
-                    </button>
-                    <button
-                        className={`${styles.typeButton} ${localFilters.type === 'secondary' ? styles.active : ''}`}
-                        onClick={() => handleChange('type', 'secondary')}
-                    >
-                        {t('type.secondary') || (locale === 'ru' ? 'Готово' : 'Completed')}
-                    </button>
-                </div>
 
                 <div className={styles.searchWrapper}>
                     <input
@@ -374,64 +359,6 @@ export default function MapFilters({ filters, onFilterChange }: MapFiltersProps)
                     )}
                 </div>
 
-                {/* Developer */}
-                <div className={styles.dropdownWrapper} ref={developerRef} data-open={isDeveloperOpen}>
-                    <button className={styles.dropdownButton} onClick={() => setIsDeveloperOpen(!isDeveloperOpen)}>
-                        <span>{getDeveloperLabel()}</span>
-                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" className={isDeveloperOpen ? styles.rotated : ''}>
-                            <path d="M6 9L12 15L18 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
-                    </button>
-                    {isDeveloperOpen && (
-                        <div className={styles.dropdownMenu}>
-                            <div className={styles.stickySearch}>
-                                <input
-                                    type="text"
-                                    placeholder={locale === 'ru' ? 'Поиск девелопера...' : 'Search developer...'}
-                                    value={developerSearch}
-                                    onChange={(e) => setDeveloperSearch(e.target.value)}
-                                    onClick={(e) => e.stopPropagation()}
-                                    className={styles.dropdownSearchInput}
-                                />
-                            </div>
-                            {loadingData ? (
-                                <div className={styles.dropdownItem}>Loading...</div>
-                            ) : (
-                                (() => {
-                                    const filtered = developers.filter(dev => {
-                                        if (!developerSearch) return true;
-                                        const search = developerSearch.toLowerCase();
-                                        return dev.name?.toLowerCase().includes(search);
-                                    });
-
-                                    return (
-                                        <>
-                                            <div
-                                                className={`${styles.dropdownItem} ${!localFilters.developerId ? styles.active : ''}`}
-                                                onClick={() => { handleChange('developerId', undefined); setIsDeveloperOpen(false); }}
-                                            >
-                                                {t('developer.all') || 'All Developers'}
-                                            </div>
-                                            {filtered.length === 0 ? (
-                                                <div className={styles.dropdownItem}>No developers found</div>
-                                            ) : (
-                                                filtered.map((dev) => (
-                                                    <div
-                                                        key={dev.id}
-                                                        className={`${styles.dropdownItem} ${localFilters.developerId === dev.id ? styles.active : ''}`}
-                                                        onClick={() => { handleChange('developerId', dev.id); setIsDeveloperOpen(false); }}
-                                                    >
-                                                        {dev.name}
-                                                    </div>
-                                                ))
-                                            )}
-                                        </>
-                                    );
-                                })()
-                            )}
-                        </div>
-                    )}
-                </div>
 
                 {/* Clear All */}
                 <button className={styles.clearButton} onClick={handleClear} title={t('reset')}>

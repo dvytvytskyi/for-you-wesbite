@@ -7,8 +7,9 @@ import Link from 'next/link';
 import Image from 'next/image';
 import type { Map, Marker } from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
-import { getProperty, Property, getProperties, getPropertyUnits } from '@/lib/api';
+import { getProperty, Property, getProperties, getPropertyUnits, getNews } from '@/lib/api';
 import { formatNumber } from '@/lib/utils';
+import { getOptimizedImageUrl } from '@/lib/images';
 import InvestmentForm from '@/components/investment/InvestmentForm';
 import PropertyDetailSkeleton from '@/components/PropertyDetailSkeleton';
 import PropertyCard from '@/components/PropertyCard';
@@ -54,6 +55,7 @@ export default function PropertyDetail({ propertyId, initialProperty = null }: P
   const [isPlanLightboxOpen, setIsPlanLightboxOpen] = useState(false);
   const [currentPlanImage, setCurrentPlanImage] = useState<string | null>(null);
   const [expandedAccordions, setExpandedAccordions] = useState<Set<string>>(new Set(['1', '1.0'])); // Expand first by default
+  const [expandedShowMore, setExpandedShowMore] = useState<Set<string>>(new Set());
 
   const toggleAccordion = (beds: string) => {
     setExpandedAccordions(prev => {
@@ -136,6 +138,37 @@ export default function PropertyDetail({ propertyId, initialProperty = null }: P
 
     fetchProperty();
   }, [propertyId, t, initialProperty]);
+
+  // Sync scroll position when currentImageIndex changes (e.g., via thumbnails)
+  useEffect(() => {
+    if (!imageScrollRef.current || displayImages.length === 0) return;
+    const container = imageScrollRef.current;
+    
+    const syncScroll = () => {
+      const width = container.offsetWidth;
+      if (width > 0) {
+        const targetScroll = currentImageIndex * width;
+        // Only trigger scrollTo if we are significantly off the target index
+        // This prevents the jitter during manual swiping (where the index updates at 50% scroll)
+        // while still allowing the thumbnails (external change) to scroll the view.
+        const currentScroll = container.scrollLeft;
+        const diff = Math.abs(currentScroll - targetScroll);
+        
+        // Use a much larger threshold (e.g., more than 10% of width or more than 100px)
+        // Or better: only scroll if the current index calculated from scroll doesn't match currentImageIndex
+        const currentIndexFromScroll = Math.round(currentScroll / width);
+        if (currentIndexFromScroll !== currentImageIndex) {
+          container.scrollTo({
+            left: targetScroll,
+            behavior: 'smooth'
+          });
+        }
+      }
+    };
+
+    const timeoutId = setTimeout(syncScroll, 50);
+    return () => clearTimeout(timeoutId);
+  }, [currentImageIndex, displayImages.length]);
 
   // Preload first image and prefetch next images
   useEffect(() => {
@@ -226,49 +259,91 @@ export default function PropertyDetail({ propertyId, initialProperty = null }: P
           ? (property.priceFrom || 0)
           : (property.price || 0);
 
-        // PREFER: Same Area first
-        if (property.area && typeof property.area === 'object' && property.area.id) {
-          filters.areaId = property.area.id;
-        } else if (typeof property.area === 'string') {
-          filters.search = property.area.split(',')[0].trim();
-        }
+        const initialFilters: any = {
+          limit: 18,
+          propertyType: property.propertyType,
+          sortBy: 'random'
+        };
 
-        // Filter by price +/- 15% if price is available (slightly wider for better variety)
+        // If price is available, use the 15% range filter immediately
         if (targetPrice > 0) {
-          filters.priceFrom = Math.round(targetPrice * 0.85);
-          filters.priceTo = Math.round(targetPrice * 1.15);
+          initialFilters.priceFrom = Math.round(targetPrice * 0.85);
+          initialFilters.priceTo = Math.round(targetPrice * 1.15);
         }
 
-        const result = await getProperties(filters, true);
-        const allProperties = result.properties || [];
+        // Try same Area first
+        if (property.area && typeof property.area === 'object' && property.area.id) {
+          initialFilters.areaId = property.area.id;
+        } else if (typeof property.area === 'string') {
+          initialFilters.search = property.area.split(',')[0].trim();
+        }
 
-        // Filter out current property and shuffle
-        const filtered = allProperties.filter(p => p.id !== property.id);
+        const result = await getProperties(initialFilters, true);
+        let filtered = (result.properties || []).filter(p => p.id !== property.id);
 
-        // If we have too few properties with price filter, try without price filter but keep type
+        // Fallback 1: If too few in same area, search same price range globally
         if (filtered.length < 4 && targetPrice > 0) {
-          const fallbackResult = await getProperties({
-            limit: 25,
-            propertyType: property.propertyType
+          const globalResult = await getProperties({
+            limit: 18,
+            propertyType: property.propertyType,
+            priceFrom: Math.round(targetPrice * 0.85),
+            priceTo: Math.round(targetPrice * 1.15),
+            sortBy: 'random'
           }, true);
-          const fallbackProperties = (fallbackResult.properties || []).filter(p => p.id !== property.id);
+          const moreProperties = (globalResult.properties || []).filter(p => p.id !== property.id);
           
-          // Merge and deduplicate
-          const combined = [...filtered];
-          fallbackProperties.forEach(p => {
-            if (!combined.some(cp => cp.id === p.id)) {
-              combined.push(p);
+          moreProperties.forEach(p => {
+            if (!filtered.some(cp => cp.id === p.id)) {
+              filtered.push(p);
             }
           });
-          
-          const shuffled = combined.sort(() => Math.random() - 0.5);
-          setOtherProperties(shuffled.slice(0, 12));
-        } else {
-          const shuffled = [...filtered].sort(() => Math.random() - 0.5);
-          setOtherProperties(shuffled.slice(0, 12));
         }
 
+        // Fallback 2: If still too few, search same area regardless of price
+        if (filtered.length < 4) {
+          const areaOnlyFilters: any = {
+            limit: 18,
+            propertyType: property.propertyType,
+            sortBy: 'random'
+          };
+          
+          if (property.area && typeof property.area === 'object' && property.area.id) {
+            areaOnlyFilters.areaId = property.area.id;
+          } else if (typeof property.area === 'string') {
+            areaOnlyFilters.search = property.area.split(',')[0].trim();
+          }
+
+          const areaResult = await getProperties(areaOnlyFilters, true);
+          const moreProperties = (areaResult.properties || []).filter(p => p.id !== property.id);
+          
+          moreProperties.forEach(p => {
+            if (!filtered.some(cp => cp.id === p.id)) {
+              filtered.push(p);
+            }
+          });
+        }
+
+        // Fallback 3: Just any properties of the same type
+        if (filtered.length < 4) {
+          const anyResult = await getProperties({
+            limit: 18,
+            propertyType: property.propertyType,
+            sortBy: 'random'
+          }, true);
+          const moreProperties = (anyResult.properties || []).filter(p => p.id !== property.id);
+          
+          moreProperties.forEach(p => {
+            if (!filtered.some(cp => cp.id === p.id)) {
+              filtered.push(p);
+            }
+          });
+        }
+
+        // Randomize the variety from the pool
+        const shuffled = [...filtered].sort(() => Math.random() - 0.5);
+        setOtherProperties(shuffled.slice(0, 18));
       } catch (err) {
+        console.error('Failed to load other properties', err);
         setOtherProperties([]);
       } finally {
         setLoadingOtherProperties(false);
@@ -775,63 +850,48 @@ export default function PropertyDetail({ propertyId, initialProperty = null }: P
 
   return (
     <div className={styles.container}>
-      {/* Breadcrumb Navigation - Hidden on mobile */}
-      {property && (
-        <div className={styles.breadcrumb}>
-          <Link href={`/${locale}/properties`} className={styles.breadcrumbLink}>
-            {tHeader('properties')}
-          </Link>
-          <span className={styles.breadcrumbSeparator}>→</span>
-          <Link
-            href={`/${locale}/properties?type=${property.propertyType === 'off-plan' ? 'offPlan' : 'secondary'}`}
-            className={styles.breadcrumbLink}
-          >
-            {property.propertyType === 'off-plan' ? tFilters('offPlan') : tFilters('secondary')}
-          </Link>
-          {property.area && (
-            <>
-              <span className={styles.breadcrumbSeparator}>→</span>
-              <Link 
-                href={getLocalizedPath(typeof property.area === 'string' 
-                  ? `/properties?location=${encodeURIComponent(property.area.split(',')[0].trim())}`
-                  : `/areas/${property.area.slug}`)} 
-                className={styles.breadcrumbLink}
-              >
-                {getAreaName()}
-              </Link>
-            </>
-          )}
-          <span className={styles.breadcrumbSeparator}>→</span>
-          <span className={styles.breadcrumbCurrent}>{getName()}</span>
-        </div>
-      )}
+
 
       {/* Hero Image Section - New Grid Layout */}
       <div className={styles.heroGrid}>
         {/* Main Image - Left Section (Desktop) / Top (Mobile) */}
         <div
           className={styles.mainImageWrapper}
-          onClick={() => setIsLightboxOpen(true)}
         >
           {displayImages.length > 0 && (
             <>
-              <Image
-                src={failedImages.has(displayImages[currentImageIndex]) ? displayImages[currentImageIndex].replace('_full.', '_small.') : displayImages[currentImageIndex]}
-                alt={getName()}
-                fill
-                priority
-                className={styles.mainImage}
-                style={{ objectFit: 'cover' }}
-                quality={100}
-                unoptimized={!displayImages[currentImageIndex].includes('res.cloudinary.com')}
-                onError={() => {
-                  setFailedImages(prev => {
-                    const next = new Set(prev);
-                    next.add(displayImages[currentImageIndex]);
-                    return next;
-                  });
-                }}
-              />
+              <div 
+                className={styles.imageWrapper}
+                style={{ minHeight: '100%' }}
+                ref={imageScrollRef}
+                onScroll={handleScroll}
+              >
+                {displayImages.map((img, idx) => (
+                  <div key={`${img}-${idx}`} className={styles.heroSlide}>
+                    <Image
+                      src={getOptimizedImageUrl(failedImages.has(img) ? img.replace('_full.', '_small.') : img, 1200)}
+                      alt={`${getName()} photo ${idx + 1}`}
+                      fill
+                      priority={idx === 0}
+                      className={styles.mainImage}
+                      style={{ objectFit: 'cover' }}
+                      quality={100}
+                      unoptimized={!img.includes('res.cloudinary.com')}
+                      onLoad={(e) => {
+                        const imgElem = e.target as HTMLImageElement;
+                        if (imgElem.src.includes('_small.')) return;
+                      }}
+                      onError={() => {
+                        setFailedImages(prev => {
+                          const next = new Set(prev);
+                          next.add(img);
+                          return next;
+                        });
+                      }}
+                    />
+                  </div>
+                ))}
+              </div>
 
               <div className={styles.mobileImageIndicator}>
                 {currentImageIndex + 1} / {displayImages.length}
@@ -863,7 +923,7 @@ export default function PropertyDetail({ propertyId, initialProperty = null }: P
               onClick={() => setCurrentImageIndex(idx)}
             >
               <Image
-                src={failedImages.has(src) ? src.replace('_full.', '_small.') : src}
+                src={getOptimizedImageUrl(failedImages.has(src) ? src.replace('_full.', '_small.') : src, 600)}
                 alt={`${getName()} thumbnail ${idx + 1}`}
                 fill
                 style={{ objectFit: 'cover' }}
@@ -1262,7 +1322,7 @@ export default function PropertyDetail({ propertyId, initialProperty = null }: P
                                     </tr>
                                   </thead>
                                   <tbody>
-                                    {units.map((unit: any) => (
+                                    {units.slice(0, expandedShowMore.has(beds) ? units.length : 8).map((unit: any) => (
                                       <tr key={unit.id || unit.unitId} onClick={() => { setSelectedUnitId(unit.unitId); setIsAvailabilityModalOpen(true); }} className={styles.clickableRow}>
                                         <td>
                                           <div 
@@ -1315,6 +1375,20 @@ export default function PropertyDetail({ propertyId, initialProperty = null }: P
                                   </tbody>
                                 </table>
                               </div>
+                              {units.length > 8 && !expandedShowMore.has(beds) && (
+                                <div className={styles.showMoreContainer}>
+                                  <button 
+                                    className={styles.showMoreButton}
+                                    onClick={() => setExpandedShowMore(prev => {
+                                      const next = new Set(prev);
+                                      next.add(beds);
+                                      return next;
+                                    })}
+                                  >
+                                    {locale === 'ru' ? 'Показати більше' : 'Show more'}
+                                  </button>
+                                </div>
+                              )}
                             </div>
                           )}
                         </div>
@@ -1525,7 +1599,7 @@ export default function PropertyDetail({ propertyId, initialProperty = null }: P
           <>
             <div className={styles.otherPropertiesHeader}>
               <h2 className={styles.otherPropertiesTitle}>
-                {locale === 'ru' ? 'Другие объекты' : 'Other Properties'}
+                {t('similarProperties') || 'Similar Properties'}
               </h2>
               <div className={styles.scrollButtons}>
                 <button
@@ -1578,9 +1652,18 @@ export default function PropertyDetail({ propertyId, initialProperty = null }: P
               <div className={styles.otherPropertiesScrollContainer} ref={otherPropertiesScrollRef}>
                 <div className={styles.otherPropertiesCardsWrapper} ref={otherPropertiesCardsRef}>
                   {loadingOtherProperties ? (
-                    <div className={styles.loadingOtherProperties}>Loading...</div>
+                    <div className={styles.otherPropertiesSkeletonGrid}>
+                      {[1, 2, 3, 4].map((n) => (
+                        <div key={n} className={styles.otherPropertySkeletonCard}>
+                          <div className={styles.skeletonImage} />
+                          <div className={styles.skeletonBadge} />
+                          <div className={styles.skeletonTextTitle} />
+                          <div className={styles.skeletonTextSub} />
+                        </div>
+                      ))}
+                    </div>
                   ) : (
-                    otherProperties.slice(0, 4).map((prop) => (
+                    otherProperties.map((prop) => (
                       <div key={prop.id} className={styles.otherPropertyCardWrapper}>
                         <PropertyCard property={prop} />
                       </div>

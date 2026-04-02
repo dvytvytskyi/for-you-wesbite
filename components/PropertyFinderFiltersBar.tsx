@@ -19,6 +19,7 @@ export interface Filters {
   sort: string;
   developerId?: string;
   cityId?: string;
+  completionDate?: string;
 }
 
 interface PropertyFiltersProps {
@@ -75,6 +76,8 @@ export default function PropertyFinderFiltersBar({ filters, onFilterChange, isMo
   const priceRef = useRef<HTMLDivElement>(null);
   const developerRef = useRef<HTMLDivElement>(null);
   const furnishingRef = useRef<HTMLDivElement>(null);
+  const completionRef = useRef<HTMLDivElement>(null);
+  const [isCompletionOpen, setIsCompletionOpen] = useState(false);
 
   // State for dropdown direction (openUp/openDown)
   const [dropdownDirections, setDropdownDirections] = useState<Record<string, boolean>>({});
@@ -219,6 +222,9 @@ export default function PropertyFinderFiltersBar({ filters, onFilterChange, isMo
       if (furnishingRef.current && !furnishingRef.current.contains(event.target as Node)) {
         setIsFurnishingOpen(false);
       }
+      if (completionRef.current && !completionRef.current.contains(event.target as Node)) {
+        setIsCompletionOpen(false);
+      }
     };
 
     if (!isLocationOpen) setAreaSearch('');
@@ -226,7 +232,7 @@ export default function PropertyFinderFiltersBar({ filters, onFilterChange, isMo
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [isLocationOpen, isDeveloperOpen, isBedroomsOpen, isSizeOpen, isPriceOpen, isFurnishingOpen]);
+  }, [isLocationOpen, isDeveloperOpen, isBedroomsOpen, isSizeOpen, isPriceOpen, isFurnishingOpen, isCompletionOpen]);
 
   const handleChange = (field: keyof Filters, value: any) => {
     let newFilters = { ...localFilters, [field]: value };
@@ -246,6 +252,7 @@ export default function PropertyFinderFiltersBar({ filters, onFilterChange, isMo
 
     if (field === 'type' && value === 'secondary') {
       newFilters.developerId = undefined;
+      newFilters.completionDate = undefined;
     }
     setLocalFilters(newFilters);
     onFilterChange(newFilters);
@@ -326,6 +333,11 @@ export default function PropertyFinderFiltersBar({ filters, onFilterChange, isMo
         {from} - {to} <span className={styles.unitInLabel}>AED</span>
       </>
     );
+  };
+
+  const getCompletionLabel = () => {
+    if (!localFilters.completionDate) return t('completionDate.placeholder') || 'Completion Date';
+    return localFilters.completionDate;
   };
 
   const handleNumberChange = (field: 'sizeFrom' | 'sizeTo' | 'priceFrom' | 'priceTo', value: string) => {
@@ -578,6 +590,50 @@ export default function PropertyFinderFiltersBar({ filters, onFilterChange, isMo
             </div>
           )}
         </div>
+
+        {/* Completion Year Dropdown */}
+        {localFilters.type === 'new' && (
+          <div
+            className={`${styles.dropdownWrapper} ${isModal ? styles.dropdownWrapperModal : ''}`}
+            ref={completionRef}
+            data-dropdown-open={isCompletionOpen ? 'true' : 'false'}
+          >
+            <button
+              className={styles.dropdownButton}
+              onClick={() => handleDropdownToggle('completion', completionRef, isCompletionOpen, setIsCompletionOpen)}
+            >
+              <span>{getCompletionLabel()}</span>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" className={isCompletionOpen ? styles.rotated : ''}>
+                <path d="M6 9L12 15L18 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+            {isCompletionOpen && (
+              <div className={`${styles.dropdownMenu} ${dropdownDirections.completion ? styles.dropdownMenuUp : styles.dropdownMenuDown} ${isModal ? styles.dropdownMenuModal : ''}`}>
+                <div
+                  className={`${styles.dropdownItem} ${!localFilters.completionDate ? styles.active : ''}`}
+                  onClick={() => {
+                    handleChange('completionDate', undefined);
+                    setIsCompletionOpen(false);
+                  }}
+                >
+                  {t('completionDate.any') || 'Any Year'}
+                </div>
+                {['2022', '2023', '2024', '2025', '2026', '2027', '2028', '2029', '2030', '2031', '2032', '2033', '2034'].map((year) => (
+                  <div
+                    key={year}
+                    className={`${styles.dropdownItem} ${localFilters.completionDate === year ? styles.active : ''}`}
+                    onClick={() => {
+                      handleChange('completionDate', year);
+                      setIsCompletionOpen(false);
+                    }}
+                  >
+                    {year}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
       </div>
     </div>

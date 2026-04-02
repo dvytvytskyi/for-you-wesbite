@@ -85,9 +85,28 @@
 }
 
 .imageWrapper {
-  position: relative;
+  display: flex;
   width: 100%;
   height: 100%;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.imageWrapper::-webkit-scrollbar {
+  display: none;
+}
+
+.imageSlide {
+  position: relative;
+  flex: 0 0 100%;
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
+  scroll-snap-align: start;
   overflow: hidden;
 }
 
@@ -115,6 +134,7 @@
   left: 0;
   width: 100%;
   height: 100%;
+  object-fit: cover;
 }
 
 .preloadImage {
@@ -128,81 +148,7 @@
   z-index: -1;
 }
 
-.currentImage {
-  opacity: 1;
-  transform: translateX(0);
-  z-index: 1;
-}
 
-.prevImage {
-  opacity: 1;
-  transform: translateX(0);
-  z-index: 2;
-}
-
-.currentImage.slideInRight {
-  animation: slideInRight 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-}
-
-.currentImage.slideInLeft {
-  animation: slideInLeft 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-}
-
-.prevImage.slideOutLeft {
-  animation: slideOutLeft 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-}
-
-.prevImage.slideOutRight {
-  animation: slideOutRight 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-}
-
-@keyframes slideInRight {
-  from {
-    transform: translateX(100%);
-    opacity: 1;
-  }
-
-  to {
-    transform: translateX(0);
-    opacity: 1;
-  }
-}
-
-@keyframes slideInLeft {
-  from {
-    transform: translateX(-100%);
-    opacity: 1;
-  }
-
-  to {
-    transform: translateX(0);
-    opacity: 1;
-  }
-}
-
-@keyframes slideOutLeft {
-  from {
-    transform: translateX(0);
-    opacity: 1;
-  }
-
-  to {
-    transform: translateX(-100%);
-    opacity: 1;
-  }
-}
-
-@keyframes slideOutRight {
-  from {
-    transform: translateX(0);
-    opacity: 1;
-  }
-
-  to {
-    transform: translateX(100%);
-    opacity: 1;
-  }
-}
 
 .imageNav {
   position: absolute;
@@ -600,11 +546,14 @@
     border-bottom: 1px solid rgba(0, 48, 119, 0.08);
   }
 
-  .imageContainer {
+  .imageContainer,
+  .imageWrapper,
+  .imageSlide {
     width: 100%;
     margin: 0;
     border-radius: 0;
-    height: 260px;
+    height: 260px !important;
+    min-height: 260px !important;
   }
 
   .content {

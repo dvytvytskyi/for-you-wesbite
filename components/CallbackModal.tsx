@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
 import { submitCallback } from '@/lib/api';
+import { isValidPhoneNumber, AsYouType } from 'libphonenumber-js';
 import styles from './CallbackModal.module.css';
 
 interface CallbackModalProps {
@@ -19,6 +20,7 @@ export default function CallbackModal({ isOpen, onClose, projectName }: Callback
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isSuccess, setIsSuccess] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [phoneError, setPhoneError] = useState<string | null>(null);
 
     useEffect(() => {
         if (isOpen) {
@@ -26,6 +28,8 @@ export default function CallbackModal({ isOpen, onClose, projectName }: Callback
             setIsSuccess(false);
             setName('');
             setPhone('');
+            setPhoneError(null);
+            setError(null);
         } else {
             document.body.style.overflow = 'unset';
         }
@@ -36,8 +40,27 @@ export default function CallbackModal({ isOpen, onClose, projectName }: Callback
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        setIsSubmitting(true);
+        
+        // Phone validation
+        setPhoneError(null);
         setError(null);
+
+        if (!name.trim()) {
+            setError(locale === 'ru' ? 'Имя обязательно' : 'Name is required');
+            return;
+        }
+
+        try {
+            if (!isValidPhoneNumber(phone)) {
+                setPhoneError(locale === 'ru' ? 'Неверный номер телефона' : 'Invalid phone number (e.g. +971...)');
+                return;
+            }
+        } catch {
+            setPhoneError(locale === 'ru' ? 'Неверный номер телефона' : 'Invalid phone number');
+            return;
+        }
+
+        setIsSubmitting(true);
 
         try {
             await submitCallback({
@@ -79,7 +102,7 @@ export default function CallbackModal({ isOpen, onClose, projectName }: Callback
                         </p>
 
                         <div className={styles.inputGroup}>
-                            <label htmlFor="name">{t('nameLabel')}</label>
+                            <label htmlFor="name">{t('nameLabel')}*</label>
                             <input
                                 type="text"
                                 id="name"
@@ -91,15 +114,25 @@ export default function CallbackModal({ isOpen, onClose, projectName }: Callback
                         </div>
 
                         <div className={styles.inputGroup}>
-                            <label htmlFor="phone">{t('phoneLabel')}</label>
+                            <label htmlFor="phone">{t('phoneLabel')}*</label>
                             <input
                                 type="tel"
                                 id="phone"
                                 value={phone}
-                                onChange={(e) => setPhone(e.target.value)}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  const asYouType = new AsYouType();
+                                  const formatted = asYouType.input(val);
+                                  setPhone(formatted);
+                                }}
+                                onFocus={() => {
+                                  if (!phone) setPhone("+");
+                                }}
                                 placeholder={t('phonePlaceholder')}
+                                className={phoneError ? styles.inputError : ''}
                                 required
                             />
+                            {phoneError && <span className={styles.errorMessage}>{phoneError}</span>}
                         </div>
 
                         <button type="submit" className={styles.submitButton} disabled={isSubmitting}>

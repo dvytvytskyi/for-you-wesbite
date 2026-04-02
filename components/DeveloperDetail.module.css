@@ -106,6 +106,7 @@
 
 .descriptionSection,
 .pricesSection,
+.areasSection,
 .communitiesSection,
 .imagesSection {
     margin-bottom: 60px;
@@ -454,6 +455,9 @@
     }
 
     .descriptionSection,
+    .pricesSection,
+    .areasSection,
+    .communitiesSection,
     .imagesSection,
     .localFilters,
     .propertiesSection {

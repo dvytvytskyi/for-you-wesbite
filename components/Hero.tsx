@@ -104,7 +104,7 @@ export default function Hero() {
     // Якщо є вибрані фільтри, додаємо їх до URL
     const params = new URLSearchParams();
     if (selectedArea) {
-      params.set('location', selectedArea.slug || selectedArea.id);
+      params.set('location', selectedArea.id || selectedArea.slug);
     }
     if (selectedBedrooms !== 'all') {
       params.set('bedrooms', selectedBedrooms);

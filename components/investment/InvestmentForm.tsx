@@ -13,6 +13,8 @@ import { formatNumber, generateWhatsAppLink, getLeadReference } from '@/lib/util
 import { useFavorites } from '@/lib/favoritesContext';
 import styles from './InvestmentForm.module.css';
 
+import { isValidPhoneNumber, AsYouType } from 'libphonenumber-js';
+
 interface InvestmentFormProps {
   propertyId: string;
   propertyPriceFrom?: number; // AED
@@ -22,23 +24,76 @@ interface InvestmentFormProps {
   property?: any;
 }
 
+const BROKERS = [
+  {
+    name: 'Daniil',
+    role: 'Real Estate Expert',
+    roleRu: 'Эксперт по недвижимости',
+    image: 'https://res.cloudinary.com/dgv0rxd60/image/upload/v1766060132/photo_2025-12-14_15-36-47_qnxkzt.jpg'
+  },
+  {
+    name: 'Ruslan',
+    role: 'Real Estate Consultant',
+    roleRu: 'Консультант по недвижимости',
+    image: 'https://res.cloudinary.com/dgv0rxd60/image/upload/v1765715854/photo_2025-12-14_15-36-43_jn55hm.jpg'
+  },
+  {
+    name: 'Kamila',
+    role: 'Real Estate Consultant',
+    roleRu: 'Консультант по недвижимости',
+    image: 'https://res.cloudinary.com/dgv0rxd60/image/upload/v1766060132/photo_2025-12-14_15-36-54_p8m9zm.jpg'
+  },
+  {
+    name: 'Ekaterina',
+    role: 'Property Consultant',
+    roleRu: 'Консультант по недвижимости',
+    image: 'https://res.cloudinary.com/dgv0rxd60/image/upload/v1766060132/photo_2025-12-14_15-36-50_a7m9zm.jpg'
+  }
+];
+
 // Unified schema - all fields, but user fields are optional for authenticated users
 const investmentSchema = z.object({
   amount: z.number().min(1, 'Amount must be greater than 0'),
   notes: z.string().optional(),
-  userEmail: z.string().email('Invalid email address').optional(),
-  userPhone: z.string().min(10, 'Phone number must be at least 10 characters').optional(),
-  userFirstName: z.string().min(1, 'First name is required').optional(),
-  userLastName: z.string().min(1, 'Last name is required').optional(),
-}).refine((data) => {
+  userEmail: z.string().email('Invalid email address').optional().or(z.literal('')),
+  userPhone: z.string().optional(),
+  userFirstName: z.string().optional(),
+  userLastName: z.string().optional(),
+}).superRefine((data, ctx) => {
   // For non-authenticated users, require user fields
   const authenticated = typeof window !== 'undefined' && localStorage.getItem('token');
   if (!authenticated) {
-    return data.userPhone && data.userFirstName;
+    if (!data.userFirstName || data.userFirstName.trim().length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'First name is required',
+        path: ['userFirstName'],
+      });
+    }
+    if (!data.userPhone || data.userPhone.trim().length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Phone number is required',
+        path: ['userPhone'],
+      });
+    } else {
+      try {
+        if (!isValidPhoneNumber(data.userPhone)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Invalid phone number (use international format, e.g. +971...)',
+            path: ['userPhone'],
+          });
+        }
+      } catch {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Invalid phone number',
+          path: ['userPhone'],
+        });
+      }
+    }
   }
-  return true;
-}, {
-  message: 'All user fields are required for non-authenticated users',
 });
 
 type InvestmentFormData = z.infer<typeof investmentSchema>;
@@ -73,11 +128,14 @@ export default function InvestmentForm({
     formState: { errors },
     watch,
     setValue,
+    trigger,
   } = useForm<InvestmentFormData>({
     resolver: zodResolver(schema),
+    mode: 'onTouched',
     defaultValues: {
       amount: defaultAmount,
       notes: '',
+      userPhone: '',
     },
   });
 
@@ -87,6 +145,20 @@ export default function InvestmentForm({
       setFormattedAmount(formatNumber(defaultAmount));
     }
   }, [defaultAmount]);
+
+  // Select a stable random broker based on propertyId
+  const getBroker = () => {
+    if (!propertyId) return BROKERS[0];
+    // Simple hash function to get a stable index
+    let hash = 0;
+    for (let i = 0; i < propertyId.length; i++) {
+      hash = propertyId.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const index = Math.abs(hash) % BROKERS.length;
+    return BROKERS[index];
+  };
+
+  const selectedBroker = getBroker();
 
   const onSubmit = async (data: InvestmentFormData) => {
     setLoading(true);
@@ -170,29 +242,27 @@ export default function InvestmentForm({
       <div className={styles.agentSection}>
         <div className={styles.agentAvatar}>
           <Image
-            src="https://res.cloudinary.com/dgv0rxd60/image/upload/v1765715854/photo_2025-12-14_15-36-43_jn55hm.jpg"
-            alt={t('agentName') || 'Agent'}
+            src={selectedBroker.image}
+            alt={selectedBroker.name}
             fill
             style={{ objectFit: 'cover' }}
             sizes="(max-width: 768px) 100vw, 50px"
             unoptimized
             onError={(e) => {
-              if (process.env.NODE_ENV === 'development') {
-              }
-              // Fallback to initials if image fails
               const target = e.target as HTMLImageElement;
               target.style.display = 'none';
               const parent = target.parentElement;
               if (parent && !parent.textContent) {
-                const name = t('agentName') || 'A';
-                parent.textContent = name.charAt(0).toUpperCase();
+                parent.textContent = selectedBroker.name.charAt(0).toUpperCase();
               }
             }}
           />
         </div>
         <div className={styles.agentInfo}>
-          <div className={styles.agentName}>{t('agentName') || 'Contact Agent'}</div>
-          <div className={styles.agentRole}>{t('agentRole') || 'Real Estate Specialist'}</div>
+          <div className={styles.agentName}>{selectedBroker.name}</div>
+          <div className={styles.agentRole}>
+            {locale === 'ru' ? selectedBroker.roleRu : selectedBroker.role}
+          </div>
         </div>
       </div>
 
@@ -282,7 +352,7 @@ export default function InvestmentForm({
             <div className={styles.formRow}>
               <div className={styles.formField}>
                 <label htmlFor="userFirstName" className={styles.label}>
-                  {t('firstName') || 'First Name'}
+                  {t('firstName') || 'First Name'}*
                 </label>
                 <input
                   id="userFirstName"
@@ -331,14 +401,26 @@ export default function InvestmentForm({
 
             <div className={styles.formField}>
               <label htmlFor="userPhone" className={styles.label}>
-                {t('phone') || 'Phone'}
+                {t('phone') || 'Phone'}*
               </label>
               <input
                 id="userPhone"
                 type="tel"
                 {...register('userPhone')}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  // If user is typing, format it as you type
+                  const asYouType = new AsYouType();
+                  const formatted = asYouType.input(val);
+                  setValue('userPhone', formatted, { shouldValidate: true });
+                }}
+                onFocus={(e) => {
+                  if (!e.target.value) {
+                    setValue('userPhone', '+', { shouldValidate: false });
+                  }
+                }}
                 className={`${styles.input} ${errors.userPhone ? styles.inputError : ''}`}
-                placeholder={t('phonePlaceholder') || '+971501234567'}
+                placeholder={t('phonePlaceholder') || '+971 50 123 4567'}
               />
               {errors.userPhone && (
                 <span className={styles.errorMessage}>{errors.userPhone.message}</span>
@@ -394,6 +476,14 @@ export default function InvestmentForm({
           )}
         </div>
 
+        <button
+          type="submit"
+          className={styles.submitButton}
+          disabled={loading}
+        >
+          {loading ? (t('submitting') || 'Submitting...') : (t('submit') || 'Submit Investment')}
+        </button>
+
         <div className={styles.termsMessage}>
           {t('termsMessage') || 'When sending, I agree to terms and conditions.'}
           {property && property.propertyType === 'secondary' && (
@@ -402,14 +492,6 @@ export default function InvestmentForm({
             </span>
           )}
         </div>
-
-        <button
-          type="submit"
-          className={styles.submitButton}
-          disabled={loading}
-        >
-          {loading ? (t('submitting') || 'Submitting...') : (t('submit') || 'Submit Investment')}
-        </button>
       </form>
     </div>
   );

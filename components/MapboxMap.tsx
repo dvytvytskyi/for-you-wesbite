@@ -40,6 +40,7 @@ interface MapProperty {
   };
   images: string[];
   type: 'new' | 'secondary' | 'rent' | 'sale';
+  propertyType?: 'off-plan' | 'secondary' | string;
   coordinates: [number, number]; // [lng, lat]
   amenities?: string[];
   units?: Array<{
@@ -53,6 +54,8 @@ interface MapProperty {
   isForYouChoice?: boolean;
   isPartial?: boolean;
   isPropertyFinder?: boolean;
+  priceAED?: number;
+  priceFromAED?: number;
 }
 
 interface MapboxMapProps {
@@ -486,28 +489,61 @@ export default function MapboxMap({ accessToken, properties = [], selectedId, on
                 // PF units have a different structure, we should handle them carefully
                 setSelectedProperty(prev => {
                   if (!prev) return null;
+                  const pf = fullProperty as any;
                   return {
                     ...prev,
-                    name: (fullProperty as any).name || prev.name,
-                    nameRu: (fullProperty as any).nameRu || prev.nameRu,
-                    images: (fullProperty as any).images || (fullProperty as any).photos || prev.images,
-                    description: (fullProperty as any).description,
-                    descriptionRu: (fullProperty as any).descriptionRu,
-                    amenities: (fullProperty as any).amenities || [],
-                    developer: (fullProperty as any).developer || prev.developer,
+                    name: pf.name || prev.name,
+                    nameRu: pf.nameRu || pf.name || prev.nameRu,
+                    images: (pf.images && pf.images.length > 0) ? pf.images : (pf.photos || prev.images),
+                    description: pf.description,
+                    descriptionRu: pf.descriptionRu,
+                    amenities: pf.amenities || [],
+                    developer: {
+                      name: pf.developer || prev.developer.name,
+                      nameRu: pf.developer || prev.developer.nameRu,
+                    },
                     location: {
                       ...prev.location,
-                      area: (fullProperty as any).location || prev.location.area,
-                      areaRu: (fullProperty as any).location || prev.location.areaRu,
+                      area: pf.location || prev.location.area,
+                      areaRu: pf.location || prev.location.areaRu,
                     },
+                    price: {
+                      ...prev.price,
+                      aed: pf.minPriceAed || pf.priceAED || prev.price.aed,
+                    },
+                    priceAED: pf.minPriceAed || pf.priceAED || prev.priceAED,
+                    priceFromAED: pf.minPriceAed || pf.priceAED || prev.priceFromAED,
+                    bedrooms: pf.bedrooms || prev.bedrooms,
+                    bathrooms: pf.bathrooms || prev.bathrooms,
+                    size: {
+                      sqm: pf.size || prev.size.sqm,
+                      sqft: (pf.size || 0) * 10.764 || prev.size.sqft,
+                    },
+                    propertyType: pf.propertyType || pf.status?.includes('off-plan') || pf.projectStatus === 'off-plan' ? 'off-plan' : 'secondary',
                     isPartial: false
-                  };
+                  } as any;
                 });
               } else {
                 import('@/lib/transformers').then(({ convertPropertyToMapFormat }) => {
                   const fullMapProperty = convertPropertyToMapFormat(fullProperty as any, locale);
                   if (fullMapProperty) {
-                    setSelectedProperty(fullMapProperty);
+                    setSelectedProperty(prev => {
+                      if (!prev) return fullMapProperty;
+                      return {
+                        ...fullMapProperty,
+                        // Ensure we don't lose data that was in the marker but might be missing in summary
+                        name: fullMapProperty.name || prev.name,
+                        nameRu: fullMapProperty.nameRu || prev.nameRu,
+                        images: (fullMapProperty.images && fullMapProperty.images.length > 0) ? fullMapProperty.images : prev.images,
+                        location: {
+                          area: fullMapProperty.location?.area || prev.location?.area,
+                          areaRu: fullMapProperty.location?.areaRu || prev.location?.areaRu,
+                          city: fullMapProperty.location?.city || prev.location?.city,
+                          cityRu: fullMapProperty.location?.cityRu || prev.location?.cityRu,
+                        },
+                        isPartial: false
+                      } as any;
+                    });
                   }
                 });
               }

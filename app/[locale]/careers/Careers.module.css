@@ -494,3 +494,33 @@
         font-size: 16px;
     }
 }
+
+.goTopButton {
+    position: fixed;
+    bottom: 140px; /* Positioned above WhatsApp and Telegram icons on mobile */
+    right: 20px;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background-color: #003077;
+    color: white;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+    z-index: 10000;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.goTopButton:hover {
+    background-color: #001e4d;
+    transform: translateY(-5px);
+}
+
+@media (min-width: 1025px) {
+    .goTopButton {
+        display: none;
+    }
+}

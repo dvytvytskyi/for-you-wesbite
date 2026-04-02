@@ -2,14 +2,14 @@
   background: #ffffff;
   border: 1px solid rgba(0, 48, 119, 0.1);
   border-radius: 12px;
-  padding: 25px;
+  padding: 16px 20px;
   margin-bottom: 0;
   position: relative;
   z-index: auto;
 }
 
 .filters.withMap {
-  padding: 16px;
+  padding: 12px 16px;
   background: #ffffff;
   border-bottom: 1px solid rgba(0, 48, 119, 0.05);
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.02);
@@ -24,7 +24,7 @@
 
 .filtersRow {
   display: flex;
-  gap: 12px;
+  gap: 8px;
   align-items: center;
   flex-wrap: wrap;
 }
@@ -32,7 +32,7 @@
 .filtersRow.withMap {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 12px;
+  gap: 8px;
   align-items: center;
 }
 
@@ -69,7 +69,7 @@
 }
 
 .typeButton {
-  padding: 10px 20px;
+  padding: 8px 16px;
   border: none;
   background: #ffffff;
   color: #003077;
@@ -96,17 +96,17 @@
 }
 
 .searchWrapper {
-  flex: 1;
-  min-width: 200px;
+  flex: 1 1 180px;
+  min-width: 180px;
 }
 
 .searchInput {
   width: 100%;
-  padding: 10px 16px;
+  padding: 10px 14px;
   border: 1px solid rgba(0, 48, 119, 0.2);
   border-radius: 8px;
   font-family: 'Inter', sans-serif;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 300;
   color: #003077;
   outline: none;
@@ -142,11 +142,11 @@
 
 /* Location Dropdown - ширший для довгих назв */
 .locationDropdown {
-  min-width: 180px;
+  min-width: 140px;
 }
 
 .locationDropdown .dropdownButton {
-  min-width: 180px;
+  min-width: 140px;
 }
 
 .locationDropdown .dropdownMenu {
@@ -156,11 +156,11 @@
 
 /* Bedrooms Dropdown - вужчий */
 .bedroomsDropdown {
-  min-width: 140px;
+  min-width: 110px;
 }
 
 .bedroomsDropdown .dropdownButton {
-  min-width: 140px;
+  min-width: 110px;
 }
 
 .bedroomsDropdown .dropdownMenu {
@@ -170,11 +170,11 @@
 
 /* Size Dropdown - середній */
 .sizeDropdown {
-  min-width: 140px;
+  min-width: 110px;
 }
 
 .sizeDropdown .dropdownButton {
-  min-width: 140px;
+  min-width: 110px;
 }
 
 .sizeDropdown .dropdownMenu {
@@ -186,11 +186,11 @@
 
 /* Price Dropdown - середній */
 .priceDropdown {
-  min-width: 140px;
+  min-width: 110px;
 }
 
 .priceDropdown .dropdownButton {
-  min-width: 140px;
+  min-width: 110px;
 }
 
 .priceDropdown .dropdownMenu {
@@ -200,26 +200,35 @@
   right: 0;
 }
 
+/* Completion Year Dropdown */
+.completionDropdown {
+  min-width: 140px;
+}
+
+.completionDropdown .dropdownButton {
+  min-width: 140px;
+}
+
 /* Sort Dropdown - середній */
-.sortDropdown {
-  min-width: 140px;
-}
-
-.sortDropdown .dropdownButton {
-  min-width: 140px;
-}
-
 .sortDropdown .dropdownMenu {
   min-width: 180px;
   max-width: 220px;
+}
+
+.statusDropdown {
+  min-width: 140px;
+}
+
+.amenitiesDropdown {
+  min-width: 140px;
 }
 
 .dropdownButton {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 10px 16px;
+  gap: 8px;
+  padding: 10px 12px;
   width: 100%;
   border: 1px solid rgba(0, 48, 119, 0.2);
   border-radius: 8px;
@@ -252,6 +261,18 @@
 
 .dropdownButton svg.rotated {
   transform: rotate(180deg);
+}
+
+.buttonMain {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow: hidden;
+}
+
+.filterIcon {
+  flex-shrink: 0;
+  color: rgba(0, 48, 119, 0.5);
 }
 
 .dropdownMenu {
@@ -659,6 +680,12 @@
     width: 100%;
   }
 
+  /* Hide Status and Amenities on mobile main bar - they stay in the Modal */
+  .filtersRow:not(.filtersRowModal) .statusDropdown,
+  .filtersRow:not(.filtersRowModal) .amenitiesDropdown {
+    display: none !important;
+  }
+
   .searchInput,
   .rangeInput,
   .dropdownButton,
@@ -674,5 +701,50 @@
   .bedroomsDropdown .dropdownButton,
   .dropdownSearchInput {
     font-size: 16px;
+  }
+}
+
+.resetButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: #f8faff;
+  border: 1px solid rgba(0, 48, 119, 0.15);
+  border-radius: 8px;
+  color: #003077;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  flex-shrink: 0;
+  height: 38px;
+}
+
+.resetButton:hover {
+  background: #ffffff;
+  border-color: #003077;
+  box-shadow: 0 2px 8px rgba(0, 48, 119, 0.1);
+}
+
+.resetButton:active {
+  transform: scale(0.96);
+}
+
+.resetButton svg {
+  transition: transform 0.5s ease;
+}
+
+.resetButton:hover svg {
+  transform: rotate(-180deg);
+}
+
+@media (max-width: 900px) {
+  .resetButton {
+    width: 100%;
+    justify-content: center;
+    margin-top: 8px;
   }
 }

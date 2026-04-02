@@ -125,17 +125,17 @@ function HeaderContent() {
   };
 
   const navItems = [
-    { key: 'home', path: '/', label: 'Home', labelRu: 'Головна' },
-    { key: 'buy', path: '/properties?type=secondary', label: 'Buy', labelRu: 'Купити' },
-    { key: 'sell', path: '/sell', label: 'Sell', labelRu: 'Продати', isComingSoon: true },
-    { key: 'offPlan', path: '/properties?type=new', label: 'Off-plan', labelRu: 'Off-plan' },
-    { key: 'newLaunches', path: '/properties?sort=newest', label: 'New launches', labelRu: 'Новинки', isComingSoon: true },
+    { key: 'home', path: '/', label: 'Home', labelRu: 'Главная' },
+    { key: 'buy', path: '/properties?type=secondary', label: 'Buy', labelRu: 'Купить' },
+    { key: 'sell', path: '/sell', label: 'Sell', labelRu: 'Продать', isComingSoon: true },
+    { key: 'offPlan', path: '/properties?type=new', label: 'Off-plan', labelRu: 'Новостройки' },
+    { key: 'newLaunches', path: '/properties?sort=newest', label: 'New launches', labelRu: 'Скоро в продаже', isComingSoon: true },
     { key: 'map', path: '/map', label: 'Map', labelRu: 'Карта' },
-    { key: 'areas', path: '/areas', label: 'Areas', labelRu: 'Райони' },
-    { key: 'developers', path: '/developers', label: 'Developers', labelRu: 'Забудовники' },
-    { key: 'aboutUs', path: '/about', label: 'About', labelRu: 'Про нас' },
-    { key: 'news', path: '/news', label: 'News', labelRu: 'Новини' },
-    { key: 'careers', path: '/careers', label: 'Careers', labelRu: 'Кар\'єра' },
+    { key: 'areas', path: '/areas', label: 'Areas', labelRu: 'Районы' },
+    { key: 'developers', path: '/developers', label: 'Developers', labelRu: 'Застройщики' },
+    { key: 'aboutUs', path: '/about', label: 'About', labelRu: 'О нас' },
+    { key: 'news', path: '/news', label: 'News', labelRu: 'Новости' },
+    { key: 'careers', path: '/careers', label: 'Careers', labelRu: 'Карьера' },
   ];
 
   return (
@@ -314,7 +314,7 @@ function HeaderContent() {
 
       <div className={`${styles.mobileMenu} ${isMobileMenuOpen ? styles.mobileMenuOpen : ''}`}>
         <nav className={styles.mobileNav}>
-          {navItems.filter(item => item.key !== 'developers').map((item) => (
+          {navItems.filter(item => !['sell', 'newLaunches', 'developers'].includes(item.key)).map((item) => (
             <Link
               key={item.key}
               href={getLocalizedPath(item.path)}

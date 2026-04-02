@@ -6,7 +6,8 @@ const ADMIN_API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://admin.foryou-
 // On the client, we use our local next.js proxy to bypass CORS
 // On the server, we go direct for performance
 const IS_BROWSER = typeof window !== 'undefined';
-const API_BASE_URL = ADMIN_API_BASE;
+const API_BASE_URL = IS_BROWSER ? '' : ADMIN_API_BASE;
+const API_PROXY_PREFIX = '/api/proxy';
 
 const API_KEY = process.env.NEXT_PUBLIC_API_KEY || 'fyr_7084daf35cf6427f60e06bccd675f133b8a19ce4866cf941156bb4f38fba4016';
 const API_SECRET = process.env.NEXT_PUBLIC_API_SECRET || '2e9e9a3a8080f207cf1c684baaeff40dcd4404c10f4d2207340bb48ee8ccdccda3f4e2fde5bd74fa4d8f463e361c45c9437206a97abb772415263e3a69655a73';
@@ -24,6 +25,15 @@ const apiClient: AxiosInstance = axios.create({
 // Aggressive logging for ALL requests on server
 apiClient.interceptors.request.use((config) => {
   (config as any)._startTime = Date.now();
+  
+  // Handle proxying for browser requests to bypass CORS
+  if (IS_BROWSER && config.url && !config.url.startsWith('http') && !config.url.startsWith('/api/proxy')) {
+    // Prefix relative or root-relative URLs with the proxy path
+    const urlPath = config.url.startsWith('/') ? config.url : `/${config.url}`;
+    config.url = `${API_PROXY_PREFIX}${urlPath}`;
+    // Base URL is empty in browser, so it will hit current origin
+  }
+  
   return config;
 });
 
@@ -127,12 +137,18 @@ export interface PropertyFilters {
   seed?: number | string; // For stable random sorting
   isForYouChoice?: boolean;
   summary?: boolean;
+  locationIds?: string[];
+  amenityIds?: string[];
+  status?: string;
+  completionDateFrom?: string;
+  completionDateTo?: string;
 }
 
 export interface Property {
   id: string;
   slug?: string;
   propertyType: 'off-plan' | 'secondary';
+  type?: 'new' | 'secondary';
   status: string;
   saleStatus: string;
   readiness?: string;
@@ -426,10 +442,18 @@ export interface GetDevelopersResult {
 
 export interface MapMarker {
   id: string;
-  lat: number;
-  lng: number;
-  priceAED: number;
+  lat: number | string;
+  lng: number | string;
+  priceAED: number | string;
   propertyType: 'off-plan' | 'secondary';
+  completionDate?: string;
+  previewImage?: string;
+  mainImage?: string;
+  image?: string;
+  photo?: string;
+  thumbnail?: string;
+  nameEn?: string;
+  nameRu?: string;
 }
 
 // Cache for map markers (partitioned by type)
@@ -446,7 +470,7 @@ export async function getMapMarkers(filters?: PropertyFilters): Promise<MapMarke
       return cached.data;
     }
 
-    const response = await apiClient.get<any>('/public/map', { params: filters });
+    const response = await apiClient.get<any>('/public/map-markers', { params: filters });
 
     let data: MapMarker[] = [];
     if (Array.isArray(response.data)) {
@@ -487,35 +511,56 @@ export async function getProperties(filters?: PropertyFilters, useCache: boolean
       }
     }
 
-    const params = new URLSearchParams();
-    if (filters?.propertyType) params.append('propertyType', filters.propertyType);
-    if (filters?.developerId) params.append('developerId', filters.developerId);
-    if (filters?.cityId) params.append('cityId', filters.cityId);
-    if (filters?.areaId) params.append('areaId', filters.areaId);
-    if (filters?.areaSlug) params.append('areaSlug', filters.areaSlug);
-    if (filters?.bedrooms) params.append('bedrooms', filters.bedrooms);
-    if (filters?.sizeFrom) params.append('sizeFrom', filters.sizeFrom.toString());
-    if (filters?.sizeTo) params.append('sizeTo', filters.sizeTo.toString());
-    if (filters?.priceFrom) params.append('priceFrom', filters.priceFrom.toString());
-    if (filters?.priceTo) params.append('priceTo', filters.priceTo.toString());
-    if (filters?.search) params.append('search', filters.search);
+    const url = `/public/properties`;
+    // We pass filters directly as query parameters via axios config object
+    const axiosParams: any = { ...filters };
+    
+    // Clean up empty filters and join arrays for the backend if needed
+    Object.keys(axiosParams).forEach(key => {
+      if (axiosParams[key] === undefined || axiosParams[key] === '' || (Array.isArray(axiosParams[key]) && axiosParams[key].length === 0)) {
+        delete axiosParams[key];
+      } else if (Array.isArray(axiosParams[key])) {
+        // Support multiple common array formats for the backend
+        const joined = axiosParams[key].join(',');
+        axiosParams[key] = joined;
+        
+        // Add redundant plural forms if they don't exist
+        if (key === 'areaIds' && !axiosParams['areaIds']) axiosParams['areaIds'] = joined;
+      }
+    });
 
-    const sortBy = filters?.sortBy || 'createdAt';
-    const sortOrder = filters?.sortOrder || 'DESC';
-    params.append('sortBy', sortBy);
-    params.append('sortOrder', sortOrder);
+    // Final sanity check: if areaId is present but areaIds is not, add it
+    if (axiosParams.areaId && !axiosParams.areaIds) axiosParams.areaIds = axiosParams.areaId;
+    if (axiosParams.areaIds && !axiosParams.areaId) axiosParams.areaId = axiosParams.areaIds.split(',')[0];
+    
+    // Some backends use 'area' or 'district' or 'neighborhood'
+    if (axiosParams.locationIds) {
+      axiosParams.location_ids = axiosParams.locationIds;
+      axiosParams.areaIds = axiosParams.locationIds;
+    }
+    if (axiosParams.amenityIds) {
+      axiosParams.amenity_ids = axiosParams.amenityIds;
+      axiosParams.amenities = axiosParams.amenityIds;
+    }
+    
+    // Explicit type mapping for strict off-plan/secondary separation
+    if (axiosParams.type === 'new' || axiosParams.type === 'new-building') {
+      axiosParams.type = 'off-plan';
+      axiosParams.propertyType = 'off-plan';
+    } else if (axiosParams.type === 'secondary' || axiosParams.type === 'resale') {
+      axiosParams.type = 'secondary';
+      axiosParams.propertyType = 'secondary';
+    }
+    
+    if (axiosParams.status) {
+      axiosParams.projectStatus = axiosParams.status;
+    }
 
-    params.append('page', (filters?.page || 1).toString());
-    params.append('limit', (filters?.limit || 100).toString());
-
-    if (filters?.isForYouChoice !== undefined) params.append('isForYouChoice', filters.isForYouChoice.toString());
-    if (filters?.summary) params.append('summary', 'true');
-    if (filters?.seed) params.append('seed', filters.seed.toString());
-
-    const url = `/public/properties?${params.toString()}`;
+    const sortBy = axiosParams.sortBy || 'createdAt';
+    const sortOrder = axiosParams.sortOrder || 'DESC';
 
     try {
-      const response = await apiClient.get<ApiResponse<Property[]>>(url);
+      const response = await apiClient.get<ApiResponse<Property[]>>(url, { params: axiosParams });
       const apiResponse = response.data as any;
 
       const requestTime = Date.now() - startTime;
@@ -542,10 +587,39 @@ export async function getProperties(filters?: PropertyFilters, useCache: boolean
       if (!totalCount) {
         totalCount = apiResponse.total ||
           apiResponse.totalCount ||
-          (apiResponse.pagination && apiResponse.pagination.total) ||
-          (apiResponse.data && (apiResponse.data.total || apiResponse.data.totalCount)) ||
+          apiResponse.total_items ||
+          apiResponse.totalItems ||
+          apiResponse.meta?.total ||
+          apiResponse.meta?.pagination?.total ||
+          apiResponse.pagination?.total ||
+          apiResponse.pagination?.totalCount ||
+          apiResponse.recordCount ||
+          apiResponse.total_records ||
+          apiResponse.total_count ||
+          apiResponse.rows_count ||
+          apiResponse.full_count ||
+          apiResponse.count ||
+          apiResponse.resultsCount ||
+          (apiResponse.data && (
+            apiResponse.data.total || 
+            apiResponse.data.totalCount || 
+            apiResponse.data.meta?.total || 
+            apiResponse.data.pagination?.total ||
+            apiResponse.data.recordCount
+          )) ||
           data.length;
       }
+
+      // Pure total detection from standard backend fields
+      if (!totalCount) {
+        totalCount = apiResponse.total || 
+                   apiResponse.meta?.total || 
+                   apiResponse.data?.total ||
+                   apiResponse.data?.meta?.total ||
+                   data.length;
+      }
+
+      totalCount = Number(totalCount) || 0;
 
       const normalizedData = (Array.isArray(data) ? data : []).map(p => normalizeProperty(p));
 
@@ -717,7 +791,7 @@ function normalizePFProject(p: any, locale: string = 'en'): PropertyFinderProjec
     if (typeof val === 'string') return val;
     if (typeof val === 'object') {
       // Priority list for localized fields
-      return val.en || val.ru || val.nameEn || val.nameRu || val.name || val.id || '';
+      return val.en || val.ru || val.nameEn || val.nameRu || val.name || val.title || val.id || '';
     }
     return '';
   };
@@ -729,11 +803,12 @@ function normalizePFProject(p: any, locale: string = 'en'): PropertyFinderProjec
     // Helper to process media objects (common in PF data)
     const processMedia = (media: any) => {
       if (!media) return;
-      const images = media.images || media.gallery || [];
+      const images = media.images || media.gallery || media.photos || [];
       if (Array.isArray(images)) {
         images.forEach((img: any) => {
           if (typeof img === 'string') raw.push(img);
           else if (img?.original?.url) raw.push(img.original.url);
+          else if (img?.full?.url) raw.push(img.full.url);
           else if (img?.url) raw.push(img.url);
           else if (img?.link) raw.push(img.link);
         });
@@ -747,61 +822,66 @@ function normalizePFProject(p: any, locale: string = 'en'): PropertyFinderProjec
 
     if (item.coverImage) raw.push(item.coverImage);
     if (fd.coverImage) raw.push(fd.coverImage);
+    if (item.cover_image) raw.push(item.cover_image);
 
     // Root level arrays
-    if (Array.isArray(item.images)) item.images.forEach((img: any) => raw.push(typeof img === 'string' ? img : (img.url || img.link)));
-    if (Array.isArray(fd.images)) fd.images.forEach((img: any) => raw.push(typeof img === 'string' ? img : (img.url || img.link)));
+    if (Array.isArray(item.images)) item.images.forEach((img: any) => raw.push(typeof img === 'string' ? img : (img.url || img.link || img.original)));
+    if (Array.isArray(fd.images)) fd.images.forEach((img: any) => raw.push(typeof img === 'string' ? img : (img.url || img.link || img.original)));
     
     // Photos fallback
     if (item.photos) {
-      if (Array.isArray(item.photos)) raw.push(...item.photos);
+      if (Array.isArray(item.photos)) (item.photos as any[]).forEach(ph => raw.push(typeof ph === 'string' ? ph : (ph.url || ph.link)));
       else raw.push(item.photos);
     }
     
     // Check common field names directly
-    const commonFields = ['coverImage', 'cover_image', 'mainImage', 'main_image', 'thumbnail', 'photo', 'image'];
+    const commonFields = ['coverImage', 'cover_image', 'mainImage', 'main_image', 'thumbnail', 'photo', 'image', 'picture'];
     commonFields.forEach(f => {
       if (item[f]) raw.push(item[f]);
       if (fd[f]) raw.push(fd[f]);
     });
 
-    // Deep search inside fullData
-    const deepSearch = (obj: any) => {
-      if (!obj || typeof obj !== 'object') return;
+    // Deep search inside fullData - increased depth and robustness
+    const deepSearch = (obj: any, depth = 0) => {
+      if (!obj || typeof obj !== 'object' || depth > 4) return;
       Object.keys(obj).forEach(key => {
         const lowerKey = key.toLowerCase();
-        if (lowerKey === 'url' || lowerKey === 'link' || lowerKey === 'original' || lowerKey === 'original_url') {
-           if (typeof obj[key] === 'string' && obj[key].startsWith('http')) raw.push(obj[key]);
-           else if (obj[key]?.url) raw.push(obj[key].url);
+        const value = obj[key];
+        
+        if (lowerKey === 'url' || lowerKey === 'link' || lowerKey === 'original' || lowerKey === 'original_url' || lowerKey === 'full') {
+           if (typeof value === 'string' && value.startsWith('http')) raw.push(value);
+           else if (value?.url) raw.push(value.url);
+           else if (value?.full) raw.push(value.full);
         }
-        if (lowerKey.includes('image') || lowerKey.includes('photo') || lowerKey.includes('media')) {
-           if (typeof obj[key] === 'string' && obj[key].startsWith('http')) raw.push(obj[key]);
-           else if (Array.isArray(obj[key])) {
-             obj[key].forEach((v: any) => {
+        
+        if (lowerKey.includes('image') || lowerKey.includes('photo') || lowerKey.includes('media') || lowerKey.includes('gallery')) {
+           if (typeof value === 'string' && value.startsWith('http')) raw.push(value);
+           else if (Array.isArray(value)) {
+             value.forEach((v: any) => {
                if (typeof v === 'string') raw.push(v);
-               else if (v?.url || v?.link || v?.original?.url) raw.push(v.url || v.link || v.original?.url);
+               else if (v?.url || v?.link || v?.original?.url || v?.full) raw.push(v.url || v.link || v.original?.url || v.full);
              });
-           } else if (typeof obj[key] === 'object' && obj[key] !== null) {
-              if (obj[key].url) raw.push(obj[key].url);
-              if (obj[key].link) raw.push(obj[key].link);
-              if (obj[key].original?.url) raw.push(obj[key].original.url);
+           } else if (typeof value === 'object' && value !== null) {
+              if (value.url) raw.push(value.url);
+              if (value.link) raw.push(value.link);
+              if (value.full) raw.push(value.full);
+              if (value.original?.url) raw.push(value.original.url);
+              if (depth < 3) deepSearch(value, depth + 1);
            }
+        } else if (typeof value === 'object' && value !== null && depth < 2) {
+           deepSearch(value, depth + 1);
         }
       });
     };
     deepSearch(fd);
 
-    // Deduplicate and ensure absolute URLs
+    // Filter out duplicates and invalid URLs
     return [...new Set(raw)].map(ensureAbsoluteUrl).filter(Boolean);
   };
 
   const images = extractImages(p, fullData);
-  const finalName = getName(p.title || p.name || fullData.title || fullData.name || `Project ${p.pfId || p.id}`);
+  const finalName = getName(p.title || p.name || fullData.title || fullData.name || p.projectName || fullData.projectName) || `Project ${p.pfId || p.id}`;
   
-  if (process.env.NODE_ENV === 'development' && Math.random() < 0.2) {
-     console.log(`[API] PF Mapping ${p.id}:`, { name: finalName, imagesCount: images.length, firstImage: images[0] || 'NONE' });
-  }
-
   // Prioritize our own Hetzner storage URLs over external PF CDN (which blocks hotlinking)
   const sortedImages = [
     ...images.filter((u: string) => u.includes('objectstorage.com') || u.includes('foryou')),
@@ -1015,9 +1095,13 @@ export async function getPropertyFinderMapMarkers(status?: string): Promise<any[
   try {
     console.log('[API] Fetching PF map markers...', status ? `with status: ${status}` : '');
     const params = new URLSearchParams();
-    if (status) params.append('status', status);
+    if (status) {
+      let mappedStatus = status;
+      if (mappedStatus === 'off-plan') mappedStatus = 'off_plan';
+      params.append('status', mappedStatus);
+    }
     
-    const url = `/property-finder/map${status ? `?${params.toString()}` : ''}`;
+    const url = `/property-finder/map?${params.toString()}`;
     const response = await apiClient.get<any>(url);
     const result = response.data;
     
@@ -1349,46 +1433,74 @@ export function normalizeProperty(property: any): Property {
     property.developer = { id: '', name: '' };
   }
 
-  // 1. Normalize photos field first
+  // Comprehensive image field detection
   let rawPhotos: any[] = [];
-  if (Array.isArray(property.photos) && property.photos.length > 0) {
-    rawPhotos = property.photos;
-  } else if (typeof property.photos === 'string' && property.photos.length > 0) {
-    try {
-      const parsed = JSON.parse(property.photos);
-      rawPhotos = Array.isArray(parsed) ? parsed : [property.photos];
-    } catch {
-      rawPhotos = [property.photos];
-    }
-  } else {
-    // Try alternative fields one last time
-    const altPhotosFiltered = [
-      property.images,
-      property.image,
-      property.imageUrl,
-      property.gallery,
-      property.mainImage,
-      property.thumbnail
-    ].filter(Boolean);
+  
+  // Try all possible image field variations (prioritize the new direct links)
+  const possibleImageFields = [
+    property.mainImage,
+    property.previewImage,
+    property.main_image,
+    property.preview_image,
+    property.photos,
+    property.images,
+    property.image,
+    property.imageUrl,
+    property.image_url,
+    property.banner,
+    property.banners,
+    property.preview,
+    property.thumbnail,
+    property.gallery,
+    property.cover,
+    property.first_photo,
+    property.poster
+  ];
 
-    if (altPhotosFiltered.length > 0) {
-      const firstAlt = altPhotosFiltered[0];
-      if (Array.isArray(firstAlt) && firstAlt.length > 0) {
-        rawPhotos = firstAlt;
-      } else if (typeof firstAlt === 'string' && firstAlt.length > 0) {
-        rawPhotos = [firstAlt];
+  // Find the first field that has valid data
+  for (const field of possibleImageFields) {
+    if (!field) continue;
+    
+    if (Array.isArray(field) && field.length > 0) {
+      rawPhotos = field;
+      break;
+    } else if (typeof field === 'string' && field.length > 0) {
+      if (field.startsWith('[') && field.endsWith(']')) {
+        try {
+          const parsed = JSON.parse(field);
+          if (Array.isArray(parsed)) {
+            rawPhotos = parsed;
+            break;
+          }
+        } catch (e) {}
       }
+      rawPhotos = [field];
+      break;
     }
+  }
+
+  // Final fallback: check inside fullData if available
+  if (rawPhotos.length === 0 && property.fullData) {
+    let fd = property.fullData;
+    if (typeof fd === 'string') {
+      try { fd = JSON.parse(fd); } catch (e) { fd = {}; }
+    }
+    if (fd.images && Array.isArray(fd.images)) rawPhotos = fd.images;
+    else if (fd.photos && Array.isArray(fd.photos)) rawPhotos = fd.photos;
+    else if (fd.main_image) rawPhotos = [fd.main_image];
   }
 
   // Map to absolute URLs and cleanup
   property.photos = rawPhotos
+    .filter(Boolean)
     .map(p => {
-      if (typeof p === 'string') return p;
-      if (p && typeof p === 'object') return (p.full || p.small || p.url || p.link || p.original);
-      return null;
+      let url = '';
+      if (typeof p === 'string') url = p;
+      else if (p && typeof p === 'object') {
+        url = p.full || p.small || p.url || p.link || p.original || p.linkEn || p.link_en;
+      }
+      return url ? ensureAbsoluteUrl(url) : null;
     })
-    .map(ensureAbsoluteUrl)
     .filter(Boolean);
 
   // 2. Ensure images is always an array and populated
@@ -1562,7 +1674,7 @@ export async function getAreasSimple(): Promise<Array<{ id: string; nameEn: stri
 /**
  * Get simple list of developers (ID and name only)
  */
-export async function getDevelopersSimple(): Promise<Array<{ id: string; name: string }>> {
+export async function getDevelopersSimple(): Promise<Array<{ id: string; name: string; logo?: string | null; projectsCount?: number; count?: number }>> {
   try {
     const response = await apiClient.get<ApiResponse<any[]>>('/public/developers-simple');
     return response.data.data;
@@ -1573,7 +1685,64 @@ export async function getDevelopersSimple(): Promise<Array<{ id: string; name: s
 }
 
 /**
- * Get simple list of facilities
+ * Get unified list of locations (cities and areas)
+ */
+export async function getPublicLocations(): Promise<Array<{ id: string; nameEn: string; nameRu: string; type: 'city' | 'area'; parentId?: string }>> {
+  try {
+    const response = await apiClient.get<ApiResponse<any[]>>('/public/locations');
+    return response.data.data;
+  } catch (error) {
+    console.error('Failed to fetch public locations', error);
+    return [];
+  }
+}
+
+/**
+ * Get full list of amenities
+ */
+export async function getPublicAmenities(propertyType?: string): Promise<Array<{ id: string; nameEn: string; nameRu: string; projectsCount?: number }>> {
+  try {
+    const params: any = {};
+    if (propertyType) {
+      params.propertyType = propertyType;
+      params.type = propertyType;
+    }
+    
+    const response = await apiClient.get<any>('/public/amenities-list', { params });
+    
+    // Support various response structures from different backend versions
+    let rawData = [];
+    if (response.data) {
+      if (Array.isArray(response.data)) {
+        rawData = response.data;
+      } else if (response.data.data && Array.isArray(response.data.data)) {
+        rawData = response.data.data;
+      } else if (response.data.amenities && Array.isArray(response.data.amenities)) {
+        rawData = response.data.amenities;
+      }
+    }
+
+    // Fallback to facilities if still empty
+    if (rawData.length === 0) {
+      const facResponse = await apiClient.get<any>('/public/facilities-list', { params });
+      if (facResponse.data) {
+        if (Array.isArray(facResponse.data)) {
+          rawData = facResponse.data;
+        } else if (facResponse.data.data && Array.isArray(facResponse.data.data)) {
+          rawData = facResponse.data.data;
+        }
+      }
+    }
+    
+    return rawData;
+  } catch (error) {
+    console.error('Failed to fetch public amenities', error);
+    return [];
+  }
+}
+
+/**
+ * Get optimized list of facilities
  */
 export async function getFacilitiesSimple(): Promise<Array<{ id: string; nameEn: string; nameRu: string; nameAr: string; iconName: string }>> {
   try {

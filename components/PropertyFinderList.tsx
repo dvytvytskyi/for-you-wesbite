@@ -180,8 +180,18 @@ export default function PropertyFinderList({ initialData }: Props) {
                 return <option key={val} value={val}>{name}</option>;
               })}
             </select>
-            <svg className={styles.selectArrow} width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M6 9l6 6 6-6" />
+            <svg 
+              width="12" 
+              height="8" 
+              viewBox="0 0 12 8" 
+              fill="none" 
+              stroke="currentColor" 
+              strokeWidth="1.5" 
+              strokeLinecap="round" 
+              strokeLinejoin="round"
+              className={styles.selectArrow}
+            >
+              <path d="M1 1.5L6 6.5L11 1.5" />
             </svg>
           </div>
 
@@ -195,8 +205,18 @@ export default function PropertyFinderList({ initialData }: Props) {
               <option value="off-plan">{locale === 'ru' ? 'Off Plan / Будується' : 'Off Plan / Under Construction'}</option>
               <option value="completed">{locale === 'ru' ? 'Завершено' : 'Completed'}</option>
             </select>
-            <svg className={styles.selectArrow} width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M6 9l6 6 6-6" />
+            <svg 
+              width="12" 
+              height="8" 
+              viewBox="0 0 12 8" 
+              fill="none" 
+              stroke="currentColor" 
+              strokeWidth="1.5" 
+              strokeLinecap="round" 
+              strokeLinejoin="round"
+              className={styles.selectArrow}
+            >
+              <path d="M1 1.5L6 6.5L11 1.5" />
             </svg>
           </div>
 

@@ -309,7 +309,21 @@
     },
     "location": {
       "placeholder": "Location",
-      "selected": "selected"
+      "selected": "Selected",
+      "all": "All areas"
+    },
+    "area": {
+      "placeholder": "All areas",
+      "all": "All areas",
+      "selected": "Selected"
+    },
+    "status": {
+      "placeholder": "Status",
+      "any": "Any Status"
+    },
+    "amenities": {
+      "placeholder": "Amenities",
+      "selected": "Selected"
     },
     "bedrooms": {
       "placeholder": "Bedrooms",
@@ -337,7 +351,11 @@
     "apply": "Apply Filters",
     "reset": "Reset",
     "showFilters": "Show More Filters",
-    "hideFilters": "Hide Filters"
+    "hideFilters": "Hide Filters",
+    "completionDate": {
+      "placeholder": "Completion Date",
+      "any": "Any Year"
+    }
   },
   "propertyDetail": {
     "loading": "Loading...",
@@ -355,7 +373,8 @@
     "sqft": "sq.ft",
     "beds": "beds",
     "baths": "baths",
-    "balcony": "balcony"
+    "balcony": "balcony",
+    "similarProperties": "Similar Properties"
   },
   "investment": {
     "title": "Submit Investment Request",
@@ -406,7 +425,26 @@
   },
   "newsDetail": {
     "loading": "Loading news article...",
-    "notFound": "News article not found"
+    "notFound": "News article not found",
+    "recommendedProjects": "Recommended Projects",
+    "category": "Market",
+    "relatedTitle": "Related",
+    "relatedTitleAccent": "News",
+    "seeAll": "See all",
+    "by": "By",
+    "author": {
+      "writtenBy": "Written by",
+      "role": "Real Estate Expert",
+      "specialization": "Investment Consultant",
+      "languages": "English, Russian",
+      "whatsapp": "Message {name} on WhatsApp",
+      "bookCall": "Book a Free Consultation",
+      "formTitle": "Interested in properties?",
+      "nameLabel": "Your Name",
+      "phoneLabel": "Phone Number",
+      "submitButton": "Contact Me",
+      "successMessage": "Thank you! We will contact you shortly."
+    }
   },
   "auth": {
     "loginTitle": "Sign In",
@@ -522,7 +560,11 @@
     "galleryTitle": "Gallery",
     "projectsTitle": "Developer Projects",
     "offPlan": "Off-plan",
-    "secondary": "Secondary"
+    "secondary": "Secondary",
+    "avgPricesTitle": "Average Prices",
+    "areasTitle": "Areas of Operation",
+    "communitiesTitle": "Featured Communities",
+    "showMoreImages": "Show More Images"
   },
   "callback": {
     "title": "Request a Call",
@@ -536,5 +578,18 @@
     "disclaimer": "By submitting this form, you agree to our privacy policy.",
     "successTitle": "Thank You!",
     "successSubtitle": "Your request has been sent successfully. We will call you soon."
+  },
+  "notFound": {
+    "title": "404",
+    "subtitle": "Oops! Page Not Found",
+    "description": "The page you are looking for might have been removed, had its name changed, or is temporarily unavailable.",
+    "backHome": "Back to Home",
+    "contactSupport": "Contact Support"
+  },
+  "cookieConsent": {
+    "message": "We use cookies to improve your experience on our site. By using our site, you agree to our use of cookies.",
+    "accept": "Accept",
+    "decline": "Decline",
+    "learnMore": "Learn More"
   }
 }

@@ -6,6 +6,7 @@ import { locales } from '@/i18n';
 import { FavoritesProvider } from '@/lib/favoritesContext';
 import Tracker from '@/components/Tracker';
 import FloatingSocial from '@/components/FloatingSocial';
+import CookieConsent from '@/components/CookieConsent';
 
 export function generateStaticParams() {
   return locales.map((locale) => ({ locale }));
@@ -13,9 +14,19 @@ export function generateStaticParams() {
 
 export async function generateMetadata({ params: { locale } }: { params: { locale: string } }) {
   const t = await getTranslations({ locale, namespace: 'hero' });
+  const baseUrl = 'https://www.foryou-realestate.com';
+  
   return {
+    metadataBase: new URL(baseUrl),
     title: 'For You Real Estate | Dubai Properties',
     description: t('subtitle'),
+    alternates: {
+      canonical: `/${locale}`,
+      languages: {
+        'en': '/en',
+        'ru': '/ru',
+      },
+    },
   };
 }
 
@@ -54,6 +65,7 @@ export default async function LocaleLayout({
         <Tracker />
         {children}
         <FloatingSocial />
+        <CookieConsent />
       </NextIntlClientProvider>
     </FavoritesProvider>
   );
