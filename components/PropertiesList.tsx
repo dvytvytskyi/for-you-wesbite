@@ -310,6 +310,22 @@ export default function PropertiesList() {
 
   const debouncedSearch = useDebounce(filters.search, 500);
 
+  const shuffleWithSeed = useCallback((array: any[], seed: number) => {
+    let m = array.length, t, i;
+    const items = [...array];
+    // Deterministic random using seed
+    let s = seed;
+    while (m) {
+      s = (s * 9301 + 49297) % 233280;
+      const rnd = s / 233280;
+      i = Math.floor(rnd * m--);
+      t = items[m];
+      items[m] = items[i];
+      items[i] = t;
+    }
+    return items;
+  }, []);
+
   const balanceByArea = useCallback((properties: Property[]) => {
     if (properties.length <= 2) return properties;
 
@@ -365,8 +381,13 @@ export default function PropertiesList() {
         );
       }
       
-      // Balance by area if we're in random mode to avoid large clusters of the same area
+      // If sort is random, we shuffle and THEN balance by area
       if (filters.sort === 'random' && loadedProperties.length > 2) {
+        // Initial shuffle using page-stable seed
+        const pageSeed = sessionSeed + currentPage;
+        loadedProperties = shuffleWithSeed(loadedProperties, pageSeed);
+        
+        // Then apply area balancing to ensure no clusters
         loadedProperties = balanceByArea(loadedProperties);
       }
 
@@ -378,7 +399,7 @@ export default function PropertiesList() {
     } finally {
       setLoading(false);
     }
-  }, [filters, currentPage, debouncedSearch, sessionSeed, t, balanceByArea]);
+  }, [filters, currentPage, debouncedSearch, sessionSeed, t, balanceByArea, shuffleWithSeed]);
 
   useEffect(() => {
     loadProperties();

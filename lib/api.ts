@@ -558,8 +558,25 @@ export async function getProperties(filters?: PropertyFilters, useCache: boolean
 
     const sortBy = axiosParams.sortBy || 'createdAt';
     const sortOrder = axiosParams.sortOrder || 'DESC';
+    
+    // Add additional aliases for random sorting to ensure backend picks it up
+    if (sortBy === 'random') {
+      axiosParams.sort = 'random';
+      if (axiosParams.seed) {
+        axiosParams.random_seed = axiosParams.seed;
+        axiosParams.randomSeed = axiosParams.seed;
+      }
+    }
 
     try {
+      if (process.env.NODE_ENV === 'development') {
+        const queryParams = new URLSearchParams();
+        Object.entries(axiosParams).forEach(([key, val]: [string, any]) => {
+          if (val !== undefined) queryParams.append(key, val.toString());
+        });
+        console.log(`[API] Fetching properties: ${url}?${queryParams.toString()}`);
+      }
+      
       const response = await apiClient.get<ApiResponse<Property[]>>(url, { params: axiosParams });
       const apiResponse = response.data as any;
 
