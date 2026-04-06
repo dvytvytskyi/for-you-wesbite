@@ -57,17 +57,17 @@ export default function UnitAvailabilityModal({
     setPhoneError(null);
 
     if (!name.trim()) {
-      setNameError(locale === "ru" ? "Ім'я обов'язкове" : "Name is required");
+      setNameError(locale === "ru" ? "Имя обязательно" : "Name is required");
       return;
     }
 
     try {
       if (!isValidPhoneNumber(phone)) {
-        setPhoneError(locale === "ru" ? "Невірний номер телефону" : "Invalid phone number (e.g. +971...)");
+        setPhoneError(locale === "ru" ? "Неверный номер телефона" : "Invalid phone number (e.g. +971...)");
         return;
       }
     } catch {
-      setPhoneError(locale === "ru" ? "Невірний номер телефону" : "Invalid phone number");
+      setPhoneError(locale === "ru" ? "Неверный номер телефона" : "Invalid phone number");
       return;
     }
 
@@ -95,18 +95,18 @@ export default function UnitAvailabilityModal({
 
   const content = {
     ru: {
-      title: "Запитати наявність",
-      subtitle: unitId ? `Для об'єкта ${unitId} у проекті ${projectName}` : "Запит наявності об'єкта",
-      description: "Наш брокер перевірить актуальність об'єкта та зв'яжеться з вами за обраним способом (дзвінок або WhatsApp).",
-      nameLabel: "Ваше ім'я",
-      phoneLabel: "Номер телефону",
-      contactLabel: "Бажаний спосіб зв'язку",
-      whatsapp: "Написати у WhatsApp",
-      call: "Зателефонувати мені",
-      submit: "Надіслати запит",
-      sending: "Надсилаємо...",
-      successTitle: "Запит надіслано!",
-      successSubtitle: "Брокер зв'яжеться з вами найближчим часом.",
+      title: "Запросить наличие",
+      subtitle: unitId ? `Для объекта ${unitId} в проекте ${projectName}` : "Запрос наличия объекта",
+      description: "Наш брокер проверит актуальность объекта и свяжется с вами выбранным способом (звонок или WhatsApp).",
+      nameLabel: "Ваше имя",
+      phoneLabel: "Номер телефона",
+      contactLabel: "Желаемый способ связи",
+      whatsapp: "Написать в WhatsApp",
+      call: "Позвонить мне",
+      submit: "Отправить запрос",
+      sending: "Отправляем...",
+      successTitle: "Запрос отправлен!",
+      successSubtitle: "Брокер свяжется с вами в ближайшее время.",
     },
     en: {
       title: "Check Availability",

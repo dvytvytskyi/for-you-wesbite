@@ -54,13 +54,13 @@ function PropertyCard({ property, currentPage = 1, index = 10, isSelected = fals
       
       const areaName = getLocation();
       if (areaName) {
-        const base = locale === 'ru' ? 'Новый проект в' : 'Project in';
+        const base = locale === 'ru' ? 'Проект в' : 'Project in';
         return `${base} ${areaName}`;
       }
       
       return property.developer?.name || (locale === 'ru' ? 'Новостройка' : 'New Project');
     } else {
-      const type = locale === 'ru' ? 'Апартаменти' : 'Apartment';
+      const type = locale === 'ru' ? 'Апартаменты' : 'Apartment';
       const areaName = getLocation();
       if (areaName) {
         return locale === 'ru' ? `${type} в ${areaName}` : `${type} in ${areaName}`;
@@ -232,14 +232,14 @@ function PropertyCard({ property, currentPage = 1, index = 10, isSelected = fals
         const count = property.unitsCount;
         const n = Math.abs(count) % 100;
         const n1 = n % 10;
-        if (n > 10 && n < 20) return `${count} юнітів`;
-        if (n1 > 1 && n1 < 5) return `${count} юніта`;
-        if (n1 === 1) return `${count} юніт`;
-        return `${count} юнітів`;
+        if (n > 10 && n < 20) return `${count} юнитов`;
+        if (n1 > 1 && n1 < 5) return `${count} юнита`;
+        if (n1 === 1) return `${count} юнит`;
+        return `${count} юнитов`;
       }
       return `${property.unitsCount} ${property.unitsCount === 1 ? 'unit' : 'units'}`;
     }
-    return locale === 'ru' ? 'Запитати наявність' : 'Ask Availability';
+    return locale === 'ru' ? 'Запросить наличие' : 'Ask Availability';
   };
 
   const MAX_PHOTOS_TO_LOAD = 5;

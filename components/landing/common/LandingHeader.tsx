@@ -22,10 +22,10 @@ export default function LandingHeader({ isRu, projectName }: LandingHeaderProps)
       </div>
       
       <div className={styles.navAnchors}>
-        <a href="#info">{isRu ? 'Інфо' : 'Info'}</a>
-        <a href="#plans">{isRu ? 'Плани' : 'Plans'}</a>
-        <a href="#amenities">{isRu ? 'Зручності' : 'Amenities'}</a>
-        <a href="#developer">{isRu ? 'Забудовник' : 'Developer'}</a>
+        <a href="#info">{isRu ? 'Инфо' : 'Info'}</a>
+        <a href="#plans">{isRu ? 'Планы' : 'Plans'}</a>
+        <a href="#amenities">{isRu ? 'Удобства' : 'Amenities'}</a>
+        <a href="#developer">{isRu ? 'Застройщик' : 'Developer'}</a>
       </div>
 
       <div className={styles.navActions}>

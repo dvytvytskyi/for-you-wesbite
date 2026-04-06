@@ -157,7 +157,7 @@ export default function PropertyFinderList({ initialData }: Props) {
             <input 
               type="text"
               className={styles.searchInput}
-              placeholder={locale === 'ru' ? 'Поиск проекту або локації...' : 'Search project or location...'}
+              placeholder={locale === 'ru' ? 'Поиск проекта или локации...' : 'Search project or location...'}
               value={searchTerm}
               onChange={(e) => handleSearchChange(e.target.value)}
             />
@@ -167,7 +167,7 @@ export default function PropertyFinderList({ initialData }: Props) {
             </svg>
           </div>
 
-          <div className={styles.locationWrapper} title={locale === 'ru' ? 'Буде реалізовано незабаром' : 'To be made soon'}>
+          <div className={styles.locationWrapper} title={locale === 'ru' ? 'Будет реализовано скоро' : 'To be made soon'}>
             <select 
               value={selectedLocation}
               className={styles.locationSelect}
@@ -202,7 +202,7 @@ export default function PropertyFinderList({ initialData }: Props) {
               onChange={(e) => updateFilters({ status: e.target.value })}
             >
               <option value="">{locale === 'ru' ? 'Все статусы' : 'All statuses'}</option>
-              <option value="off-plan">{locale === 'ru' ? 'Off Plan / Будується' : 'Off Plan / Under Construction'}</option>
+              <option value="off-plan">{locale === 'ru' ? 'Off Plan / Строится' : 'Off Plan / Under Construction'}</option>
               <option value="completed">{locale === 'ru' ? 'Завершено' : 'Completed'}</option>
             </select>
             <svg 

@@ -525,6 +525,13 @@ export default function PropertiesList() {
   const totalPages = Math.max(1, Math.ceil(totalProperties / ITEMS_PER_PAGE));
   const validPage = Math.min(Math.max(1, currentPage), totalPages);
 
+  const getUnitsLabel = (count: number) => {
+    if (locale === 'en') return 'properties';
+    if (count % 10 === 1 && count % 100 !== 11) return 'юнит';
+    if ([2, 3, 4].includes(count % 10) && ![12, 13, 14].includes(count % 100)) return 'юнита';
+    return 'юнитов';
+  };
+
   return (
     <div className={`${styles.propertiesList} ${viewMode === 'map' ? styles.viewModeMap : ''}`}>
       <div className={styles.container}>
@@ -567,7 +574,7 @@ export default function PropertiesList() {
                       {loading ? (
                         <div className={styles.countSkeleton}></div>
                       ) : (
-                        `${formatNumberWithCommas(totalProperties)} ${locale === 'en' ? 'properties' : 'объектов'}`
+                        `${formatNumberWithCommas(totalProperties)} ${getUnitsLabel(totalProperties)}`
                       )}
                     </div>
                   </div>
@@ -642,8 +649,8 @@ export default function PropertiesList() {
                                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-palmtree"><path d="M13 8c0-2.76-2.46-5-5.5-5S2 5.24 2 8h2l1-1 1 1h4"/><path d="M13 7.14A5.82 5.82 0 0 1 16.5 6c3.04 0 5.5 2.24 5.5 5h-3l-1-1-1 1h-3"/><path d="M5.89 9.71c-2.15 2.15-2.3 5.47-.35 7.43l4.24-4.25.7-.7.71-.71 2.12-2.12c-1.95-1.96-5.27-1.8-7.42.35z"/><path d="M11 15.5c.5 2.5-.17 4.5-1 6.5"/><path d="M13 10.5c.5 2.5-.17 4.5-1 6.5"/><path d="M15 5.5c.5 2.5-.17 4.5-1 6.5"/></svg>
                                   <span>
                                     {filters.amenities.length > 0 
-                                      ? (locale === 'en' ? `${filters.amenities.length} Selected` : `${filters.amenities.length} Вибрано`)
-                                      : (locale === 'en' ? 'Amenities' : 'Зручності')}
+                                      ? (locale === 'en' ? `${filters.amenities.length} Selected` : `${filters.amenities.length} Выбрано`)
+                                      : (locale === 'en' ? 'Amenities' : 'Удобства')}
                                   </span>
                                   <svg
                                     width="12"
@@ -689,7 +696,7 @@ export default function PropertiesList() {
                                           className={styles.amenitiesClearBtn}
                                           onClick={() => handleFilterChange({ ...filters, amenities: [] })}
                                         >
-                                          {locale === 'en' ? 'Clear' : 'Очистити'}
+                                          {locale === 'en' ? 'Clear' : 'Очистить'}
                                         </button>
                                       </div>
                                     )}

@@ -33,7 +33,7 @@ export default function AnonymousHeader() {
     <header className={styles.header}>
       <div className={styles.container}>
         <Link href={getLocalizedPath('/')} className={styles.appTitle}>
-          {locale === 'ru' ? 'Каталог Проектів' : 'Project Catalog'}
+          {locale === 'ru' ? 'Каталог Проектов' : 'Project Catalog'}
         </Link>
 
         <div className={styles.right}>

@@ -1292,12 +1292,12 @@ export default function PropertyDetail({ propertyId, initialProperty = null }: P
                                 {beds === 'Studio' ? beds : `${Math.round(Number(beds))} ${locale === 'ru' ? 'Сп.' : 'BR'}`}
                               </div>
                               <div className={styles.accordionStats}>
-                                {units.length} {locale === 'ru' ? 'Об\'єкта' : 'Units'}
+                                {units.length} {locale === 'ru' ? 'Юнита' : 'Units'}
                               </div>
                             </div>
                             {!isExpanded && (
                               <div className={styles.accordionHint}>
-                                {locale === 'ru' ? 'натисніть, щоб переглянути об\'єкти' : 'press to view units'}
+                                {locale === 'ru' ? 'нажмите, чтобы просмотреть юниты' : 'press to view units'}
                               </div>
                             )}
                             <div className={styles.accordionAction}>
@@ -1316,9 +1316,9 @@ export default function PropertyDetail({ propertyId, initialProperty = null }: P
                                       <th>{locale === 'ru' ? 'План' : 'Plan'}</th>
                                       <th>{locale === 'ru' ? 'Тип' : 'Type'}</th>
                                       <th>{locale === 'ru' ? 'Номер' : 'Number'}</th>
-                                      <th>{locale === 'ru' ? 'Поверх' : 'Floor'}</th>
-                                      <th>{locale === 'ru' ? 'Площа' : 'Area'}</th>
-                                      <th>{locale === 'ru' ? 'Ціна' : 'Price'}</th>
+                                      <th>{locale === 'ru' ? 'Этаж' : 'Floor'}</th>
+                                      <th>{locale === 'ru' ? 'Площадь' : 'Area'}</th>
+                                      <th>{locale === 'ru' ? 'Цена' : 'Price'}</th>
                                     </tr>
                                   </thead>
                                   <tbody>
@@ -1385,7 +1385,7 @@ export default function PropertyDetail({ propertyId, initialProperty = null }: P
                                       return next;
                                     })}
                                   >
-                                    {locale === 'ru' ? 'Показати більше' : 'Show more'}
+                                    {locale === 'ru' ? 'Показать больше' : 'Show more'}
                                   </button>
                                 </div>
                               )}
@@ -1467,7 +1467,7 @@ export default function PropertyDetail({ propertyId, initialProperty = null }: P
                               setIsAvailabilityModalOpen(true);
                             }}
                           >
-                            {locale === 'ru' ? 'Запитати наявність' : 'Check Availability'}
+                            {locale === 'ru' ? 'Уточнить наличие' : 'Check Availability'}
                           </button>
                         </div>
                       </div>
@@ -1481,7 +1481,7 @@ export default function PropertyDetail({ propertyId, initialProperty = null }: P
           {/* Detailed Payment Plan Section */}
           {property.propertyType === 'off-plan' && property.paymentPlansJson && property.paymentPlansJson.length > 0 && (
             <div className={styles.descriptionSection} style={{ marginTop: '48px' }}>
-              <h2 className={styles.sectionTitle}>{locale === 'ru' ? 'Схема оплати' : 'Payment Plan'}</h2>
+              <h2 className={styles.sectionTitle}>{locale === 'ru' ? 'Пеймент план' : 'Payment Plan'}</h2>
               <div className={styles.paymentPlanPremiumBox}>
                 {/* Segmented Progress Bar */}
                 <div className={styles.paymentBarContainer}>
@@ -1540,7 +1540,7 @@ export default function PropertyDetail({ propertyId, initialProperty = null }: P
                       <circle cx="12" cy="12" r="10" />
                       <path d="M12 16v-4" /><path d="M12 8h.01" />
                     </svg>
-                    <span>{property.paymentPlansJson[0].months_after_handover} {locale === 'ru' ? 'місяців після здачі' : 'months post-handover'}</span>
+                    <span>{property.paymentPlansJson[0].months_after_handover} {locale === 'ru' ? 'месяцев после сдачи' : 'months post-handover'}</span>
                   </div>
                 )}
               </div>

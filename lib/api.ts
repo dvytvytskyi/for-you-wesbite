@@ -559,13 +559,19 @@ export async function getProperties(filters?: PropertyFilters, useCache: boolean
     const sortBy = axiosParams.sortBy || 'createdAt';
     const sortOrder = axiosParams.sortOrder || 'DESC';
     
-    // Add additional aliases for random sorting to ensure backend picks it up
+    // Simplify parameters for the backend to avoid 500 errors
     if (sortBy === 'random') {
-      axiosParams.sort = 'random';
-      if (axiosParams.seed) {
-        axiosParams.random_seed = axiosParams.seed;
-        axiosParams.randomSeed = axiosParams.seed;
+      // Use standard names that the backend expects after the recent fix
+      axiosParams.sortBy = 'random';
+      // If we have any form of seed, ensure it's just 'seed' for the backend
+      const seedValue = axiosParams.seed || axiosParams.random_seed || axiosParams.randomSeed;
+      if (seedValue) {
+        axiosParams.seed = seedValue;
       }
+      // Remove aliases to keep URL clean and avoid parsing conflicts
+      delete axiosParams.random_seed;
+      delete axiosParams.randomSeed;
+      delete axiosParams.sort;
     }
 
     try {
@@ -1065,14 +1071,29 @@ export async function getPropertyFinderProjects(filters?: PropertyFinderFilters)
 
 export async function getPropertyFinderProject(id: string, locale: string = 'en'): Promise<PropertyFinderProject | null> {
   try {
-    const response = await apiClient.get<ApiResponse<any>>(`/property-finder/projects/${id}`);
+    const url = `/property-finder/projects/${id}`;
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[API] getPropertyFinderProject: ${url} (locale: ${locale})`);
+    }
+    
+    const response = await apiClient.get<ApiResponse<any>>(url);
     
     if (response.data && response.data.success && response.data.data) {
-      return normalizePFProject(response.data.data, locale);
+      const normalized = normalizePFProject(response.data.data, locale);
+      if (!normalized) {
+        if (process.env.NODE_ENV === 'development') {
+          console.error(`[API] normalizePFProject returned NULL for ID: ${id}`);
+        }
+      }
+      return normalized;
+    }
+    
+    if (process.env.NODE_ENV === 'development') {
+      console.warn(`[API] getPropertyFinderProject ${id} NOT FOUND or success:false`, response.data);
     }
     return null;
-  } catch (error) {
-    console.error(`Failed to get Property Finder project ${id}`, error);
+  } catch (error: any) {
+    console.error(`Failed to get Property Finder project ${id}`, error?.response?.data || error.message);
     return null;
   }
 }

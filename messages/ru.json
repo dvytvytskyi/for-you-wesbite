@@ -264,7 +264,7 @@
   },
   "properties": {
     "title": "Недвижимость",
-    "resultsCount": "{count, plural, =0 {Объектов не найдено} one {Найден # объект} few {Найдено # объекта} other {Найдено # объектов}}",
+    "resultsCount": "{count, plural, =0 {Юнитов не найдено} one {Найден # юнит} few {Найдено # юнита} other {Найдено # юнитов}}",
     "showing": "Показано {count} объектов",
     "loading": "Загрузка недвижимости...",
     "errorLoading": "Ошибка загрузки недвижимости",
@@ -364,7 +364,7 @@
     "developer": "Застройщик",
     "description": "Описание",
     "facilities": "Удобства",
-    "availableUnits": "Доступные единицы",
+    "availableUnits": "Доступные юниты",
     "location": "Расположение",
     "priceOnRequest": "Цена по запросу",
     "sizeOnRequest": "Площадь по запросу",

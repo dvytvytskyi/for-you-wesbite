@@ -89,7 +89,7 @@ export default function PropertyFinderCard({ project, anonymous = false }: Props
             {getStatusText()}
           </span>
           <span className={styles.categoryBadge}>
-            {project.category === 'commercial' ? (locale === 'ru' ? 'Коммерція' : 'Commercial') : (locale === 'ru' ? 'Жила' : 'Residential')}
+            {project.category === 'commercial' ? (locale === 'ru' ? 'Коммерция' : 'Commercial') : (locale === 'ru' ? 'Жилая' : 'Residential')}
           </span>
           {project.yearBuilt && (
             <span className={styles.infoBadge}>
