@@ -1260,7 +1260,15 @@ export function normalizeProperty(property: any): Property {
   if (!property) return {} as Property;
 
   // Ensure basic fields exist
-  if (!property.name) {
+  // Improve name logic for off-plan properties from main properties table
+  if (property.propertyType === 'off-plan' || property.status === 'off-plan') {
+    const rawName = property.projectName || property.buildingName || property.nameEn || property.nameRu || property.name;
+    if (rawName && rawName !== 'Property') {
+      property.name = rawName;
+    } else {
+      property.name = property.nameEn || property.nameRu || 'Property';
+    }
+  } else if (!property.name) {
     property.name = property.nameEn || property.nameRu || 'Property';
   }
 
