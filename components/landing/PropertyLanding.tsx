@@ -3,6 +3,8 @@
 import React from 'react';
 import styles from './PropertyLanding.module.css';
 import Image from 'next/image';
+import CallbackModal from '../CallbackModal';
+import { useState } from 'react';
 
 interface LandingProps {
   project: {
@@ -24,6 +26,7 @@ interface LandingProps {
 }
 
 export default function PropertyLanding({ project, locale }: LandingProps) {
+  const [isModalOpen, setIsModalOpen] = useState(false);
   
   // JSON-LD Schema for Google Rich Snippets
   const schemaMarkup = {
@@ -227,11 +230,22 @@ export default function PropertyLanding({ project, locale }: LandingProps) {
            <div style={{ background: '#0b1a31', color: '#fff', padding: '60px', borderRadius: '15px', textAlign: 'center' }}>
               <h2>{locale === 'ru' ? 'Хотите узнать больше?' : 'Interested in this Project?'}</h2>
               <p>Get exclusive floor plans and full pricing details sent to your WhatsApp</p>
-              <button style={{ background: '#d4a017', color: '#fff', border: 'none', padding: '15px 30px', borderRadius: '5px', marginTop: '20px', cursor: 'pointer', fontWeight: 'bold' }}>
+              <button 
+                onClick={() => setIsModalOpen(true)}
+                style={{ background: '#d4a017', color: '#fff', border: 'none', padding: '15px 30px', borderRadius: '5px', marginTop: '20px', cursor: 'pointer', fontWeight: 'bold' }}
+              >
                  GET FULL DETAILS
               </button>
            </div>
         </section>
+
+        <CallbackModal 
+           isOpen={isModalOpen} 
+           onClose={() => setIsModalOpen(false)} 
+           projectName={project.name}
+           source={`Property Landing: ${project.name}`}
+           initialMessage={locale === 'ru' ? `Я хочу получить полные детали о проекте ${project.name}` : `I would like to get full details about ${project.name}`}
+        />
 
       </main>
     </>

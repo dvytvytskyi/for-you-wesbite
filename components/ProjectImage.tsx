@@ -20,6 +20,7 @@ export default function ProjectImage() {
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
+    email: '',
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -98,6 +99,7 @@ export default function ProjectImage() {
       await submitCallback({
         name: formData.name,
         phone: formData.phone,
+        email: formData.email,
         source: 'Get in touch / Contact Us (Project)'
       });
       
@@ -217,17 +219,32 @@ export default function ProjectImage() {
                   disabled={isSubmitting}
                 />
                 <div className={styles.phoneInputWrapper}>
-                  <span className={styles.phonePrefix}>+</span>
                   <input
                     type="tel"
                     placeholder={t('form.phone')}
                     value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      const asYouType = new AsYouType();
+                      const formatted = asYouType.input(val);
+                      setFormData({ ...formData, phone: formatted });
+                    }}
+                    onFocus={() => {
+                      if (!formData.phone) setFormData({ ...formData, phone: "+" });
+                    }}
                     className={styles.formInput}
                     required
                     disabled={isSubmitting}
                   />
                 </div>
+                <input
+                  type="email"
+                  placeholder={locale === 'ru' ? 'Email (Опционально)' : 'Email (Optional)'}
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  className={styles.formInput}
+                  disabled={isSubmitting}
+                />
                 <button type="submit" className={styles.submitButton} disabled={isSubmitting}>
                   {isSubmitting ? '...' : t('form.send')}
                 </button>
@@ -288,17 +305,32 @@ export default function ProjectImage() {
                       disabled={isSubmitting}
                     />
                     <div className={styles.modalPhoneWrapper}>
-                      <span className={styles.modalPhonePrefix}>+</span>
                       <input
                         type="tel"
                         placeholder={t('form.phone')}
                         value={formData.phone}
-                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          const asYouType = new AsYouType();
+                          const formatted = asYouType.input(val);
+                          setFormData({ ...formData, phone: formatted });
+                        }}
+                        onFocus={() => {
+                          if (!formData.phone) setFormData({ ...formData, phone: "+" });
+                        }}
                         className={styles.modalInput}
                         required
                         disabled={isSubmitting}
                       />
                     </div>
+                    <input
+                      type="email"
+                      placeholder={locale === 'ru' ? 'Email (Опционально)' : 'Email (Optional)'}
+                      value={formData.email}
+                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                      className={styles.modalInput}
+                      disabled={isSubmitting}
+                    />
                     <button type="submit" className={styles.modalSubmitButton} disabled={isSubmitting}>
                       {isSubmitting ? '...' : t('form.send')}
                     </button>

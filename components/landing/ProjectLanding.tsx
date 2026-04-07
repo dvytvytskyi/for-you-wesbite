@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import styles from './ProjectLanding.module.css';
 import Image from 'next/image';
+import CallbackModal from '../CallbackModal';
 
 interface ProjectProps {
   project: {
@@ -203,18 +204,13 @@ export default function ProjectLanding({ project, locale }: ProjectProps) {
         <a href="https://t.me/xxx" className={styles.tg}>Telegram</a>
       </div>
 
-      {/* POPUP presentation */}
-      {showPopup && (
-        <div className={styles.overlay}>
-           <div className={styles.modal}>
-              <button className={styles.closeBtn} onClick={() => setShowPopup(false)}>✕</button>
-              <h3>{isEn ? 'Project Brochure' : 'Брошура проекту'}</h3>
-              <p>{isEn ? 'Download the detailed floor plans and current availability for' : 'Завантажте детальні плани та актуальну наявність для'} {project.name}</p>
-              <input type="text" placeholder="+971..." className={styles.input} />
-              <button className={styles.submitBtn}>{isEn ? 'DOWNLOAD NOW' : 'ЗАВАНТАЖИТИ'}</button>
-           </div>
-        </div>
-      )}
+      <CallbackModal 
+        isOpen={showPopup} 
+        onClose={() => setShowPopup(false)} 
+        projectName={project.name}
+        source={`Project Landing: ${project.name}`}
+        initialMessage={isEn ? `I would like to download the brochure and pricing for ${project.name}` : `Я хочу завантажити брошуру та прайс для ${project.name}`}
+      />
 
     </article>
   );

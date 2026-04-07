@@ -10,9 +10,11 @@ interface CallbackModalProps {
     isOpen: boolean;
     onClose: () => void;
     projectName?: string;
+    source?: string;
+    initialMessage?: string;
 }
 
-export default function CallbackModal({ isOpen, onClose, projectName }: CallbackModalProps) {
+export default function CallbackModal({ isOpen, onClose, projectName, source, initialMessage }: CallbackModalProps) {
     const t = useTranslations('callback');
     const locale = useLocale();
     const [name, setName] = useState('');
@@ -76,7 +78,8 @@ export default function CallbackModal({ isOpen, onClose, projectName }: Callback
                 name,
                 phone,
                 email,
-                source: projectName ? `Callback from ${projectName}` : 'Callback Form'
+                message: initialMessage,
+                source: source || (projectName ? `Callback from ${projectName}` : 'Callback Form')
             });
             setIsSuccess(true);
             setTimeout(() => {
