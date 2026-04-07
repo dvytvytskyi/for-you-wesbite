@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import axios from 'axios';
 
-const TARGET_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.foryou-realestate.co/api';
+let TARGET_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://admin.foryou-realestate.com/api';
+if (TARGET_BASE_URL.includes('api.foryou-realestate.co')) {
+  TARGET_BASE_URL = 'https://admin.foryou-realestate.com/api'; // Defensive fallback: force working API
+}
+
 const API_KEY = process.env.NEXT_PUBLIC_API_KEY || 'fyr_7084daf35cf6427f60e06bccd675f133b8a19ce4866cf941156bb4f38fba4016';
 const API_SECRET = process.env.NEXT_PUBLIC_API_SECRET || '2e9e9a3a8080f207cf1c684baaeff40dcd4404c10f4d2207340bb48ee8ccdccda3f4e2fde5bd74fa4d8f463e361c45c9437206a97abb772415263e3a69655a73';
 
@@ -37,7 +41,13 @@ async function handleProxy(request: NextRequest, path: string[]) {
   const url = new URL(request.url);
   const searchParams = url.searchParams.toString();
   const fullPath = path.join('/');
-  const targetUrl = `${TARGET_BASE_URL}/${fullPath}${searchParams ? `?${searchParams}` : ''}`;
+  const targetUrl = (() => {
+    // Override the target URL just for forms
+    if (path[0] === 'callback' || path[0] === 'meetings') {
+      return `https://api.foryou-realestate.co/api/${fullPath}${searchParams ? `?${searchParams}` : ''}`;
+    }
+    return `${TARGET_BASE_URL}/${fullPath}${searchParams ? `?${searchParams}` : ''}`;
+  })();
 
   try {
     const headers: any = {

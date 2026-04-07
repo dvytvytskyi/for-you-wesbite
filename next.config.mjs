@@ -88,7 +88,7 @@ const nextConfig = {
     return [
       {
         source: '/api/:path*',
-        destination: 'https://api.foryou-realestate.co/api/:path*',
+        destination: 'https://admin.foryou-realestate.com/api/:path*',
       },
     ];
   },

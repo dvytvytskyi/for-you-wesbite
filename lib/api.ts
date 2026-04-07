@@ -1,7 +1,10 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
 
 // API Configuration
-const ADMIN_API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://api.foryou-realestate.co/api';
+let ADMIN_API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://admin.foryou-realestate.com/api';
+if (ADMIN_API_BASE.includes('api.foryou-realestate.co')) {
+  ADMIN_API_BASE = 'https://admin.foryou-realestate.com/api';
+}
 
 // On the client, we use our local next.js proxy to bypass CORS
 // On the server, we go direct for performance
