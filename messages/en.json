@@ -573,6 +573,8 @@
     "namePlaceholder": "John Doe",
     "phoneLabel": "Phone Number",
     "phonePlaceholder": "+971 50 123 4567",
+    "emailLabel": "Email (Optional)",
+    "emailPlaceholder": "example@mail.com",
     "submitButton": "Request Call",
     "sending": "Sending...",
     "disclaimer": "By submitting this form, you agree to our privacy policy.",

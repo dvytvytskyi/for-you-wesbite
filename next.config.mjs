@@ -35,7 +35,7 @@ const nextConfig = {
       },
       {
         protocol: 'https',
-        hostname: 'admin.foryou-realestate.com',
+        hostname: 'api.foryou-realestate.co',
       },
       {
         protocol: 'https',
@@ -63,7 +63,7 @@ const nextConfig = {
       },
       {
         protocol: 'https',
-        hostname: 'foryou-realestate.com',
+        hostname: 'foryou-realestate.co',
       },
       {
         protocol: 'https',
@@ -88,7 +88,7 @@ const nextConfig = {
     return [
       {
         source: '/api/:path*',
-        destination: 'https://admin.foryou-realestate.com/api/:path*',
+        destination: 'https://api.foryou-realestate.co/api/:path*',
       },
     ];
   },

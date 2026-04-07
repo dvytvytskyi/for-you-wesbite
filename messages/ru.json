@@ -573,6 +573,8 @@
     "namePlaceholder": "Иван Иванов",
     "phoneLabel": "Номер телефона",
     "phonePlaceholder": "+971 50 123 4567",
+    "emailLabel": "Email (Опционально)",
+    "emailPlaceholder": "example@mail.com",
     "submitButton": "Заказать звонок",
     "sending": "Отправка...",
     "disclaimer": "Отправляя эту форму, вы соглашаетесь с нашей политикой конфиденциальности.",

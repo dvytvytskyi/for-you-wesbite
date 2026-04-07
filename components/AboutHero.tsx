@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
 import Image from 'next/image';
 import { scheduleMeeting, submitCallback } from '@/lib/api';
+import { AsYouType, isValidPhoneNumber } from 'libphonenumber-js';
 import Partners from './Partners';
 import styles from './AboutHero.module.css';
 
@@ -220,6 +221,9 @@ export function OfficeSection({ t }: { t: any }) {
 
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
+  const [date, setDate] = useState('');
+  const [time, setTime] = useState('');
   const [message, setMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
@@ -380,6 +384,9 @@ export function OfficeSection({ t }: { t: any }) {
       await scheduleMeeting({
         name,
         phone,
+        email,
+        date,
+        time,
         notes: message,
         location: 'Main Office'
       });
@@ -443,11 +450,58 @@ export function OfficeSection({ t }: { t: any }) {
                     <input
                       type="tel"
                       value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        const asYouType = new AsYouType();
+                        const formatted = asYouType.input(val);
+                        setPhone(formatted);
+                      }}
+                      onFocus={() => {
+                        if (!phone) setPhone("+");
+                      }}
                       placeholder={t('officeForm.phonePlaceholder')}
                       required
                       disabled={isSubmitting}
                     />
+                  </div>
+                </div>
+
+                <div className={styles.formField}>
+                  <label>{t('officeForm.emailLabel')}</label>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder={t('officeForm.emailPlaceholder')}
+                    required
+                    disabled={isSubmitting}
+                  />
+                </div>
+
+                <div className={styles.formRow}>
+                  <div className={styles.formField}>
+                    <label>{t('officeForm.dateLabel')}</label>
+                    <input
+                      type="date"
+                      value={date}
+                      onChange={(e) => setDate(e.target.value)}
+                      required
+                      disabled={isSubmitting}
+                    />
+                  </div>
+                  <div className={styles.formField}>
+                    <label>{t('officeForm.timeLabel')}</label>
+                    <select
+                      value={time}
+                      onChange={(e) => setTime(e.target.value)}
+                      required
+                      disabled={isSubmitting}
+                    >
+                      <option value="" disabled>{t('officeForm.timeLabel')}</option>
+                      {Array.from({ length: 10 }, (_, i) => i + 9).map(hour => (
+                        <option key={hour} value={`${hour}:00`}>{`${hour}:00`}</option>
+                      ))}
+                    </select>
                   </div>
                 </div>
 
@@ -581,6 +635,7 @@ function FAQContactModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => 
   const [mounted, setMounted] = useState(false);
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
   const [message, setMessage] = useState('');
 
   useEffect(() => {
@@ -611,12 +666,14 @@ function FAQContactModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => 
       await submitCallback({
         name,
         phone,
+        email,
         message,
         source: 'FAQ Contact Modal'
       });
       setStep('success');
       setName('');
       setPhone('');
+      setEmail('');
       setMessage('');
     } catch (error) {
       console.error('FAQ Contact form submission failed:', error);
@@ -657,7 +714,23 @@ function FAQContactModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => 
                   type="tel"
                   placeholder="Phone number"
                   value={phone}
-                  onChange={e => setPhone(e.target.value)}
+                  onChange={e => {
+                    const val = e.target.value;
+                    const asYouType = new AsYouType();
+                    const formatted = asYouType.input(val);
+                    setPhone(formatted);
+                  }}
+                  onFocus={() => {
+                    if (!phone) setPhone("+");
+                  }}
+                  required
+                  className={styles.modalInput}
+                />
+                <input
+                  type="email"
+                  placeholder="Email"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
                   required
                   className={styles.modalInput}
                 />

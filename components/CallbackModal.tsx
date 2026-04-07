@@ -17,6 +17,7 @@ export default function CallbackModal({ isOpen, onClose, projectName }: Callback
     const locale = useLocale();
     const [name, setName] = useState('');
     const [phone, setPhone] = useState('');
+    const [email, setEmail] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isSuccess, setIsSuccess] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -28,6 +29,7 @@ export default function CallbackModal({ isOpen, onClose, projectName }: Callback
             setIsSuccess(false);
             setName('');
             setPhone('');
+            setEmail('');
             setPhoneError(null);
             setError(null);
         } else {
@@ -50,14 +52,21 @@ export default function CallbackModal({ isOpen, onClose, projectName }: Callback
             return;
         }
 
-        try {
-            if (!isValidPhoneNumber(phone)) {
-                setPhoneError(locale === 'ru' ? 'Неверный номер телефона' : 'Invalid phone number (e.g. +971...)');
+        if (!phone.trim() && !email.trim()) {
+            setError(locale === 'ru' ? 'Введите телефон или email' : 'Please provide phone or email');
+            return;
+        }
+
+        if (phone.trim()) {
+            try {
+                if (!isValidPhoneNumber(phone)) {
+                    setPhoneError(locale === 'ru' ? 'Неверный номер телефона' : 'Invalid phone number (e.g. +971...)');
+                    return;
+                }
+            } catch {
+                setPhoneError(locale === 'ru' ? 'Неверный номер телефона' : 'Invalid phone number');
                 return;
             }
-        } catch {
-            setPhoneError(locale === 'ru' ? 'Неверный номер телефона' : 'Invalid phone number');
-            return;
         }
 
         setIsSubmitting(true);
@@ -66,6 +75,7 @@ export default function CallbackModal({ isOpen, onClose, projectName }: Callback
             await submitCallback({
                 name,
                 phone,
+                email,
                 source: projectName ? `Callback from ${projectName}` : 'Callback Form'
             });
             setIsSuccess(true);
@@ -100,6 +110,7 @@ export default function CallbackModal({ isOpen, onClose, projectName }: Callback
                                 : t('subtitle')
                             }
                         </p>
+                        {error && <div className={styles.errorMessage} style={{ textAlign: 'center', marginBottom: '10px' }}>{error}</div>}
 
                         <div className={styles.inputGroup}>
                             <label htmlFor="name">{t('nameLabel')}*</label>
@@ -114,7 +125,7 @@ export default function CallbackModal({ isOpen, onClose, projectName }: Callback
                         </div>
 
                         <div className={styles.inputGroup}>
-                            <label htmlFor="phone">{t('phoneLabel')}*</label>
+                            <label htmlFor="phone">{t('phoneLabel')}</label>
                             <input
                                 type="tel"
                                 id="phone"
@@ -130,9 +141,20 @@ export default function CallbackModal({ isOpen, onClose, projectName }: Callback
                                 }}
                                 placeholder={t('phonePlaceholder')}
                                 className={phoneError ? styles.inputError : ''}
-                                required
                             />
                             {phoneError && <span className={styles.errorMessage}>{phoneError}</span>}
+                        </div>
+
+                        <div className={styles.inputGroup}>
+                            <label htmlFor="email">{t('emailLabel')}</label>
+                            <input
+                                type="email"
+                                id="email"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                placeholder={t('emailPlaceholder')}
+                                disabled={isSubmitting}
+                            />
                         </div>
 
                         <button type="submit" className={styles.submitButton} disabled={isSubmitting}>
