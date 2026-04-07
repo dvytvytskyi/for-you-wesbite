@@ -71,6 +71,13 @@ async function handleProxy(request: NextRequest, path: string[]) {
        validateStatus: () => true, // Don't throw on error statuses
     });
 
+    if (response.status >= 400) {
+      console.error(`[PROXY-ERROR] ${request.method} ${fullPath} returned ${response.status}`);
+      console.error(`[PROXY-ERROR] Response body:`, JSON.stringify(response.data).substring(0, 500));
+    } else {
+      console.log(`[PROXY-SUCCESS] ${request.method} ${fullPath} returned ${response.status}`);
+    }
+
     return NextResponse.json(response.data, { status: response.status });
   } catch (error: any) {
     console.error('Proxy Error:', error.message);

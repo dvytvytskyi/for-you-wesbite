@@ -159,7 +159,7 @@ export default function InvestmentForm({
       const cleanPhone = data.userPhone?.replace(/[^\d+]/g, '') || '';
       const requestData: InvestmentRequest = {
         propertyId,
-        amount: amountUSD,
+        amount: amountUSD.toString(),
         date: new Date().toISOString(),
         notes: data.notes || undefined,
         referenceId: getLeadReference(),

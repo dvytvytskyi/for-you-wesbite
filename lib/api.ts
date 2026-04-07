@@ -336,7 +336,7 @@ export interface PublicData {
 // Investment API
 export interface InvestmentRequest {
   propertyId: string;
-  amount: number; // USD
+  amount: number | string; // USD
   date: string; // ISO date
   notes?: string;
   // For non-registered users
