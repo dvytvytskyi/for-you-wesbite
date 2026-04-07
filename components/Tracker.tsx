@@ -30,6 +30,10 @@ export default function Tracker() {
                     const date = new Date();
                     date.setTime(date.getTime() + (365 * 24 * 60 * 60 * 1000));
                     document.cookie = `referenceId=${result.referenceId}; expires=${date.toUTCString()}; path=/`;
+
+                    // Notify CRM that this user is here
+                    const { trackVisit } = await import('@/lib/api');
+                    trackVisit(result.referenceId, window.location.href);
                 }
             } catch (error) {
                 console.error('Failed to initialize tracking:', error);

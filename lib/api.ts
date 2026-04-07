@@ -2384,6 +2384,14 @@ export async function trackUserActivity(payload: UserActivityPayload): Promise<v
   }
 }
 
+export async function trackVisit(visitorId: string, url: string): Promise<void> {
+  try {
+    await apiClient.post('/tracking/visit', { visitorId, url });
+  } catch (error: any) {
+    // Silent fail for tracking to not disturb user
+  }
+}
+
 /**
  * Check if user is authenticated
  */
