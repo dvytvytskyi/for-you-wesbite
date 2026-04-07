@@ -7,7 +7,12 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import Image from 'next/image';
-import { submitInvestment, submitInvestmentPublic, isAuthenticated } from '@/lib/api';
+import { 
+  submitInvestment, 
+  submitInvestmentPublic, 
+  isAuthenticated,
+  InvestmentRequest 
+} from '@/lib/api';
 import { aedToUsd } from '@/lib/utils';
 import { formatNumber, generateWhatsAppLink, getLeadReference } from '@/lib/utils';
 import { useFavorites } from '@/lib/favoritesContext';
@@ -29,25 +34,25 @@ const BROKERS = [
     name: 'Daniil',
     role: 'Real Estate Expert',
     roleRu: 'Эксперт по недвижимости',
-    image: 'https://res.cloudinary.com/dgv0rxd60/image/upload/v1766060132/photo_2025-12-14_15-36-47_qnxkzt.jpg'
+    image: null
   },
   {
     name: 'Ruslan',
     role: 'Real Estate Consultant',
     roleRu: 'Консультант по недвижимости',
-    image: 'https://res.cloudinary.com/dgv0rxd60/image/upload/v1765715854/photo_2025-12-14_15-36-43_jn55hm.jpg'
+    image: null
   },
   {
     name: 'Kamila',
     role: 'Real Estate Consultant',
     roleRu: 'Консультант по недвижимости',
-    image: 'https://res.cloudinary.com/dgv0rxd60/image/upload/v1766060132/photo_2025-12-14_15-36-54_p8m9zm.jpg'
+    image: null
   },
   {
     name: 'Ekaterina',
     role: 'Property Consultant',
     roleRu: 'Консультант по недвижимости',
-    image: 'https://res.cloudinary.com/dgv0rxd60/image/upload/v1766060132/photo_2025-12-14_15-36-50_a7m9zm.jpg'
+    image: null
   }
 ];
 
@@ -77,21 +82,6 @@ const investmentSchema = z.object({
         path: ['userPhone'],
       });
     } else {
-      try {
-        if (!isValidPhoneNumber(data.userPhone)) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: 'Invalid phone number (use international format, e.g. +971...)',
-            path: ['userPhone'],
-          });
-        }
-      } catch {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: 'Invalid phone number',
-          path: ['userPhone'],
-        });
-      }
     }
   }
 });
@@ -166,7 +156,8 @@ export default function InvestmentForm({
 
     try {
       const amountUSD = aedToUsd(data.amount);
-      const requestData: any = {
+      const cleanPhone = data.userPhone?.replace(/[^\d+]/g, '') || '';
+      const requestData: InvestmentRequest = {
         propertyId,
         amount: amountUSD,
         date: new Date().toISOString(),
@@ -174,14 +165,9 @@ export default function InvestmentForm({
         referenceId: getLeadReference(),
         ...(authenticated ? {} : {
           userEmail: data.userEmail!,
-          email: data.userEmail!,
-          userPhone: data.userPhone?.replace(/[^\d+]/g, '') || '',
-          phone: data.userPhone?.replace(/[^\d+]/g, '') || '',
+          userPhone: cleanPhone,
           userFirstName: data.userFirstName!,
-          firstName: data.userFirstName!,
           userLastName: data.userLastName!,
-          lastName: data.userLastName!,
-          name: `${data.userFirstName} ${data.userLastName}`.trim(),
         }),
       };
 
@@ -246,22 +232,20 @@ export default function InvestmentForm({
       {/* Agent Section */}
       <div className={styles.agentSection}>
         <div className={styles.agentAvatar}>
-          <Image
-            src={selectedBroker.image}
-            alt={selectedBroker.name}
-            fill
-            style={{ objectFit: 'cover' }}
-            sizes="(max-width: 768px) 100vw, 50px"
-            unoptimized
-            onError={(e) => {
-              const target = e.target as HTMLImageElement;
-              target.style.display = 'none';
-              const parent = target.parentElement;
-              if (parent && !parent.textContent) {
-                parent.textContent = selectedBroker.name.charAt(0).toUpperCase();
-              }
-            }}
-          />
+          {selectedBroker.image ? (
+            <Image
+              src={selectedBroker.image}
+              alt={selectedBroker.name}
+              fill
+              style={{ objectFit: 'cover' }}
+              sizes="(max-width: 768px) 100vw, 50px"
+              unoptimized
+            />
+          ) : (
+             <div className={styles.avatarFallback}>
+               {selectedBroker.name.charAt(0).toUpperCase()}
+             </div>
+          )}
         </div>
         <div className={styles.agentInfo}>
           <div className={styles.agentName}>{selectedBroker.name}</div>
