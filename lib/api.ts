@@ -906,7 +906,7 @@ function normalizePFProject(p: any, locale: string = 'en'): PropertyFinderProjec
   };
 
   const images = extractImages(p, fullData);
-  const finalName = getName(p.title || p.name || fullData.title || fullData.name || p.projectName || fullData.projectName) || `Project ${p.pfId || p.id}`;
+  const finalName = getName(p.name || p.projectName || p.title || fullData.name || fullData.projectName || fullData.title) || `Project ${p.pfId || p.id}`;
   
   // Prioritize our own Hetzner storage URLs over external PF CDN (which blocks hotlinking)
   const sortedImages = [
