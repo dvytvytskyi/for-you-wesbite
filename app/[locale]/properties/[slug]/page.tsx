@@ -3,7 +3,7 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import PropertyDetail from '@/components/PropertyDetail';
 import PropertyDetailSkeleton from '@/components/PropertyDetailSkeleton';
-import { getPropertyBySlug } from '@/lib/api';
+import { getPropertyBySlug, Property } from '@/lib/api';
 import { notFound } from 'next/navigation';
 import { unstable_setRequestLocale } from 'next-intl/server';
 import { getTranslations } from 'next-intl/server';
@@ -16,6 +16,56 @@ interface PropertyDetailPageProps {
   }>;
 }
 
+function cleanMetaText(text: string) {
+  return text.replace(/<[^>]*>?/gm, '').replace(/\s+/g, ' ').trim();
+}
+
+function formatAed(value: number) {
+  return new Intl.NumberFormat('en-US').format(value);
+}
+
+function getPriceText(property: Property): string | null {
+  const priceAED = property.propertyType === 'off-plan'
+    ? property.priceFromAED ?? (property.priceFrom ? Math.round(Number(property.priceFrom) * 3.673) : null)
+    : property.priceAED ?? (property.price ? Math.round(Number(property.price) * 3.673) : null);
+
+  return priceAED && priceAED > 0 ? `${formatAed(priceAED)} AED` : null;
+}
+
+function getBedroomsText(property: Property, locale: string) {
+  const isRu = locale === 'ru';
+  const formatCount = (count: number) => isRu ? `${count} спальни` : `${count} beds`;
+
+  if (property.propertyType === 'off-plan') {
+    if (property.bedroomsFrom != null && property.bedroomsTo != null && property.bedroomsFrom !== property.bedroomsTo) {
+      return isRu
+        ? `${property.bedroomsFrom}-${property.bedroomsTo} спальни`
+        : `${property.bedroomsFrom}-${property.bedroomsTo} beds`;
+    }
+    if (property.bedroomsFrom != null) return formatCount(property.bedroomsFrom);
+    if (property.bedroomsTo != null) return formatCount(property.bedroomsTo);
+  }
+
+  if (property.bedrooms != null) return formatCount(property.bedrooms);
+  return '';
+}
+
+function buildFallbackDescription(property: Property, locale: string, areaName: string) {
+  const isRu = locale === 'ru';
+  const typeLabel = property.propertyType === 'off-plan'
+    ? (isRu ? 'Off-plan' : 'Off-plan')
+    : (isRu ? 'вторичная недвижимость' : 'secondary property');
+  const priceText = getPriceText(property);
+  const bedroomsText = getBedroomsText(property, locale);
+  const parts = [`${property.name} ${isRu ? 'в' : 'in'} ${areaName}.`, typeLabel];
+
+  if (bedroomsText) parts.push(bedroomsText);
+  if (priceText) parts.push(`${isRu ? 'от' : 'from'} ${priceText}`);
+  parts.push(isRu ? 'Узнайте планы оплаты, сроки сдачи и стоимость.' : 'Discover payment plans, completion dates and pricing.');
+
+  return parts.filter(Boolean).join(' ');
+}
+
 export async function generateMetadata({ params }: PropertyDetailPageProps): Promise<Metadata> {
   const { slug, locale } = await params;
   const t = await getTranslations({ locale, namespace: 'metadata' });
@@ -26,20 +76,25 @@ export async function generateMetadata({ params }: PropertyDetailPageProps): Pro
     const property = await getPropertyBySlug(slug);
     console.log(`[METADATA] Fetched property in ${Date.now() - startMeta}ms`);
 
-    const areaName = typeof property.area === 'string' 
-      ? property.area.split(',')[0].trim() 
+    const areaName = typeof property.area === 'string'
+      ? property.area.split(',')[0].trim()
       : (locale === 'ru' ? property.area?.nameRu : property.area?.nameEn) || 'Dubai';
 
     // Premium Title Template for SEO or Custom SEO Title
-    const defaultTitle = locale === 'ru' 
+    const defaultTitle = locale === 'ru'
       ? `${property.name} в ${areaName} — Цены, Планы оплат и Сроки сдачи 2024`
       : `${property.name} in ${areaName} — Prices, Payment Plans and Completion 2024`;
 
     const title = (locale === 'ru' ? property.seoTitleRu : property.seoTitle) || defaultTitle;
 
-    const description = (locale === 'ru' ? property.seoDescriptionRu : property.seoDescription) || (property.description
-      ? property.description.substring(0, 160).replace(/<[^>]*>?/gm, '') + '...'
-      : t('propertiesDescription'));
+    const descriptionSource = locale === 'ru'
+      ? property.seoDescriptionRu || property.descriptionRu || property.description
+      : property.seoDescription || property.description;
+
+    const cleanedDescription = descriptionSource ? cleanMetaText(descriptionSource) : '';
+    const description = cleanedDescription
+      ? (cleanedDescription.length > 160 ? `${cleanedDescription.slice(0, 160).replace(/\s+$/g, '')}...` : cleanedDescription)
+      : buildFallbackDescription(property, locale, areaName);
 
     const imageUrl = property.photos && property.photos.length > 0
       ? property.photos[0]
