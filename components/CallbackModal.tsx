@@ -76,7 +76,7 @@ export default function CallbackModal({ isOpen, onClose, projectName, source, in
         try {
             await submitCallback({
                 name,
-                phone: phone.replace(/[\s\(\)-]/g, ''),
+                phone: phone.replace(/[^\d+]/g, ''),
                 email,
                 message: initialMessage,
                 source: source || (projectName ? `Callback from ${projectName}` : 'Callback Form')

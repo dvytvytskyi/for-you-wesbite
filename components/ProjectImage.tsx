@@ -99,7 +99,7 @@ export default function ProjectImage() {
     try {
       await submitCallback({
         name: formData.name,
-        phone: formData.phone.replace(/[\s\(\)-]/g, ''),
+        phone: formData.phone.replace(/[^\d+]/g, ''),
         email: formData.email,
         source: 'Get in touch / Contact Us (Project)'
       });

@@ -76,7 +76,7 @@ export default function UnitAvailabilityModal({
     try {
       await submitCallback({
         name,
-        phone,
+        phone: phone.replace(/[^\d+]/g, ""),
         source: `Check Availability - ${projectName || propertyId} - Unit ${unitId || "General"}`,
         message: `Preferred contact: ${contactMethod}. Requested availability for Unit ${unitId || "any"}.`,
       });

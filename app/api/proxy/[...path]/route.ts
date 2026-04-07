@@ -57,6 +57,12 @@ async function handleProxy(request: NextRequest, path: string[]) {
 
     const body = request.method !== 'GET' ? await request.json().catch(() => null) : undefined;
 
+    if (fullPath.includes('investments')) {
+      console.log('[PROXY-INVEST] Route:', fullPath);
+      console.log('[PROXY-INVEST] Target:', targetUrl);
+      console.log('[PROXY-INVEST] Body Snippet:', JSON.stringify(body).substring(0, 200));
+    }
+
     const response = await axios({
        method: request.method,
        url: targetUrl,
