@@ -79,8 +79,73 @@ const nextConfig = {
     return [
       {
         source: '/eng',
-        destination: '/',
+        destination: '/en',
         permanent: true,
+      },
+      {
+        source: '/eng/:path*',
+        destination: '/en/:path*',
+        permanent: true,
+      },
+      {
+        source: '/blog',
+        destination: '/news',
+        permanent: true,
+      },
+      {
+        source: '/ru/blog',
+        destination: '/ru/news',
+        permanent: true,
+      },
+      {
+        source: '/projects/:slug*',
+        destination: '/properties/:slug*',
+        permanent: true,
+      },
+      {
+        source: '/ru/projects/:slug*',
+        destination: '/ru/properties/:slug*',
+        permanent: true,
+      },
+      {
+        source: '/about-us',
+        destination: '/about',
+        permanent: true,
+      },
+      {
+        source: '/ru/about-us',
+        destination: '/ru/about',
+        permanent: true,
+      },
+      {
+        source: '/contacts',
+        destination: '/',
+        permanent: false,
+      },
+      {
+        source: '/ru/contacts',
+        destination: '/ru',
+        permanent: false,
+      },
+      {
+        source: '/policy',
+        destination: '/privacy',
+        permanent: true,
+      },
+      {
+        source: '/ru/policy',
+        destination: '/ru/privacy',
+        permanent: true,
+      },
+      {
+        source: '/sell',
+        destination: '/',
+        permanent: false,
+      },
+      {
+        source: '/ru/sell',
+        destination: '/ru',
+        permanent: false,
       },
     ];
   },
