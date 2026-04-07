@@ -383,7 +383,7 @@ export function OfficeSection({ t }: { t: any }) {
     try {
       await scheduleMeeting({
         name,
-        phone,
+        phone: phone.replace(/[\s\(\)-]/g, ''),
         email,
         date,
         time,
@@ -665,7 +665,7 @@ function FAQContactModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => 
     try {
       await submitCallback({
         name,
-        phone,
+        phone: phone.replace(/[\s\(\)-]/g, ''),
         email,
         message,
         source: 'FAQ Contact Modal'

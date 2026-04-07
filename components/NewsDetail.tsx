@@ -327,7 +327,7 @@ export default function NewsDetail({ slug }: NewsDetailProps) {
                     try {
                       await submitCallback({
                         name: sidebarName,
-                        phone: sidebarPhone,
+                        phone: sidebarPhone.replace(/[\s\(\)-]/g, ''),
                         source: `Contact from News: ${getTitle()}`
                       });
                       setSidebarSuccess(true);

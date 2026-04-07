@@ -7,6 +7,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { createPortal } from 'react-dom';
 import { submitCallback } from '@/lib/api';
+import { AsYouType } from 'libphonenumber-js';
 import styles from './ProjectImage.module.css';
 
 export default function ProjectImage() {
@@ -98,13 +99,13 @@ export default function ProjectImage() {
     try {
       await submitCallback({
         name: formData.name,
-        phone: formData.phone,
+        phone: formData.phone.replace(/[\s\(\)-]/g, ''),
         email: formData.email,
         source: 'Get in touch / Contact Us (Project)'
       });
       
       setIsSuccess(true);
-      setFormData({ name: '', phone: '' });
+      setFormData({ name: '', phone: '', email: '' });
 
       if (isModalOpen) {
         setTimeout(() => {

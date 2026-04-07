@@ -174,7 +174,7 @@ export default function InvestmentForm({
         referenceId: getLeadReference(),
         ...(authenticated ? {} : {
           userEmail: data.userEmail!,
-          userPhone: data.userPhone!,
+          userPhone: data.userPhone?.replace(/[\s\(\)-]/g, '') || '',
           userFirstName: data.userFirstName!,
           userLastName: data.userLastName!,
         }),
