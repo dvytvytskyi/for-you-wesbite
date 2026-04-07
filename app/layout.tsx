@@ -1,5 +1,6 @@
 import { Inter, Cormorant_Garamond } from 'next/font/google';
 import './globals.css';
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 const inter = Inter({
   subsets: ['latin', 'cyrillic'],
@@ -54,6 +55,7 @@ export default function RootLayout({
       </head>
       <body>
         {children}
+        <SpeedInsights />
       </body>
     </html>
   );
