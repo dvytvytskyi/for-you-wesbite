@@ -41,13 +41,7 @@ async function handleProxy(request: NextRequest, path: string[]) {
   const url = new URL(request.url);
   const searchParams = url.searchParams.toString();
   const fullPath = path.join('/');
-  const targetUrl = (() => {
-    // Override the target URL just for forms
-    if (path[0] === 'callback' || path[0] === 'meetings' || path[0] === 'investments') {
-      return `https://api.foryou-realestate.co/api/${fullPath}${searchParams ? `?${searchParams}` : ''}`;
-    }
-    return `${TARGET_BASE_URL}/${fullPath}${searchParams ? `?${searchParams}` : ''}`;
-  })();
+  const targetUrl = `${TARGET_BASE_URL}/${fullPath}${searchParams ? `?${searchParams}` : ''}`;
 
   try {
     const headers: any = {

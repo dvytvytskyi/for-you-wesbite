@@ -85,12 +85,14 @@ const nextConfig = {
     ];
   },
   async rewrites() {
-    return [
-      {
-        source: '/api/:path*',
-        destination: 'https://admin.foryou-realestate.com/api/:path*',
-      },
-    ];
+    return {
+      fallback: [
+        {
+          source: '/api/:path*',
+          destination: 'https://admin.foryou-realestate.com/api/:path*',
+        },
+      ],
+    };
   },
 };
 
