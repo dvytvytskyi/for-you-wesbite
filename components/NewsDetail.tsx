@@ -26,6 +26,64 @@ interface NewsDetailProps {
   slug: string;
 }
 
+const NEWS_FALLBACK_IMAGE = 'https://res.cloudinary.com/dgv0rxd60/image/upload/f_auto,q_auto,w_1200/v1768389720/new_logo_blue.png';
+const TARGET_RECOMMENDED_PROJECTS = 9;
+const MIN_PROJECTS_BETWEEN_SAME_AREA = 6;
+
+function safeImageSrc(value?: string | null): string {
+  if (typeof value === 'string' && value.trim().length > 0) {
+    return value;
+  }
+  return NEWS_FALLBACK_IMAGE;
+}
+
+function getAreaKey(property: Property): string {
+  const area = property.area;
+
+  if (typeof area === 'string' && area.trim().length > 0) {
+    return area.trim().toLowerCase();
+  }
+
+  if (area && typeof area === 'object') {
+    const candidate = area.slug || area.nameEn || area.nameRu || area.nameAr;
+    if (candidate && candidate.trim().length > 0) {
+      return candidate.trim().toLowerCase();
+    }
+  }
+
+  return 'unknown-area';
+}
+
+function distributeProjectsByArea(
+  projects: Property[],
+  targetCount: number,
+  minProjectsBetweenSameArea: number
+): Property[] {
+  const remaining = [...projects];
+  const result: Property[] = [];
+  const lastSeenIndex = new Map<string, number>();
+
+  while (result.length < targetCount && remaining.length > 0) {
+    const currentIndex = result.length;
+
+    let selectedIndex = remaining.findIndex((project) => {
+      const areaKey = getAreaKey(project);
+      const lastIndex = lastSeenIndex.get(areaKey);
+      return lastIndex === undefined || currentIndex - lastIndex > minProjectsBetweenSameArea;
+    });
+
+    if (selectedIndex === -1) {
+      break;
+    }
+
+    const [selected] = remaining.splice(selectedIndex, 1);
+    result.push(selected);
+    lastSeenIndex.set(getAreaKey(selected), currentIndex);
+  }
+
+  return result;
+}
+
 export default function NewsDetail({ slug }: NewsDetailProps) {
   const t = useTranslations('newsDetail');
   const locale = useLocale();
@@ -73,10 +131,15 @@ export default function NewsDetail({ slug }: NewsDetailProps) {
         const { news: latest } = await getNews(1, 10);
         setRelatedNews(latest.filter(item => item.slug !== slug));
 
-        const { properties: allProperties } = await getProperties({ limit: 20, sortBy: 'createdAt', sortOrder: 'DESC' });
+        const { properties: allProperties } = await getProperties({ limit: 120, sortBy: 'createdAt', sortOrder: 'DESC' });
         // Filter out properties without photos
         const withPhotos = allProperties.filter(p => (p.photos && p.photos.length > 0) || (p.images && p.images.length > 0));
-        setRecommendedProjects(withPhotos.slice(0, 9));
+        const arrangedProjects = distributeProjectsByArea(
+          withPhotos,
+          TARGET_RECOMMENDED_PROJECTS,
+          MIN_PROJECTS_BETWEEN_SAME_AREA
+        );
+        setRecommendedProjects(arrangedProjects);
       } catch (err) {
         setError('Failed to load news article.');
       } finally {
@@ -90,6 +153,20 @@ export default function NewsDetail({ slug }: NewsDetailProps) {
   const getTitle = () => {
     if (!news) return '';
     return locale === 'ru' ? news.titleRu : news.title;
+  };
+
+  const getContentTitle = (block: NewsContent) => {
+    if (locale === 'ru') {
+      return (block as any).titleRu || block.title || '';
+    }
+    return block.title || '';
+  };
+
+  const getContentDescription = (block: NewsContent) => {
+    if (locale === 'ru') {
+      return (block as any).descriptionRu || block.description || '';
+    }
+    return block.description || '';
   };
 
   if (loading) {
@@ -146,7 +223,7 @@ export default function NewsDetail({ slug }: NewsDetailProps) {
 
             <div className={styles.mainImageContainer}>
               <Image
-                src={news.imageUrl}
+                src={safeImageSrc(news.imageUrl)}
                 alt={getTitle()}
                 fill
                 className={styles.mainImage}
@@ -198,7 +275,11 @@ export default function NewsDetail({ slug }: NewsDetailProps) {
                         target="_blank"
                         rel="noopener noreferrer"
                       >
-                        <span>{t('author.whatsapp', { name: news.author?.name || 'Ruslan' })}</span>
+                        <span>
+                          {locale === 'ru'
+                            ? 'Написать Руслану в WhatsApp'
+                            : t('author.whatsapp', { name: 'Ruslan' })}
+                        </span>
                       </a>
                       <button
                         className={styles.bookCallButton}
@@ -218,10 +299,10 @@ export default function NewsDetail({ slug }: NewsDetailProps) {
                 <div key={block.id} className={styles.contentBlock}>
                   {block.type === 'text' && (
                     <div className={styles.textBlock}>
-                      {block.title && <h2 className={styles.contentTitle}>{block.title}</h2>}
+                      {getContentTitle(block) && <h2 className={styles.contentTitle}>{getContentTitle(block)}</h2>}
                       <div
                         className={styles.contentDescription}
-                        dangerouslySetInnerHTML={{ __html: renderTextWithLinks(block.description || '') }}
+                        dangerouslySetInnerHTML={{ __html: renderTextWithLinks(getContentDescription(block)) }}
                       />
                     </div>
                   )}
@@ -231,7 +312,7 @@ export default function NewsDetail({ slug }: NewsDetailProps) {
                       <div className={styles.contentImageContainer}>
                         <Image
                           src={block.imageUrl}
-                          alt={block.title || ''}
+                          alt={getContentTitle(block) || ''}
                           fill
                           className={styles.contentImage}
                           sizes="(max-width: 900px) 100vw, 800px"
@@ -245,7 +326,7 @@ export default function NewsDetail({ slug }: NewsDetailProps) {
                       <div className={styles.videoContainer}>
                         <iframe
                           src={block.videoUrl.replace('watch?v=', 'embed/')}
-                          title={block.title || 'Video content'}
+                          title={getContentTitle(block) || 'Video content'}
                           className={styles.video}
                           allowFullScreen
                         />
@@ -270,7 +351,7 @@ export default function NewsDetail({ slug }: NewsDetailProps) {
                 <a key={item.id} href={`/${locale}/news/${item.slug}`} className={styles.smallCard}>
                   <div className={styles.smallCardImageWrapper}>
                     <Image
-                      src={item.image}
+                      src={safeImageSrc(item.image)}
                       alt={locale === 'ru' ? item.titleRu : item.title}
                       fill
                       className={styles.smallCardImage}

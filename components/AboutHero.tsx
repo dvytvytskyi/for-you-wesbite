@@ -120,9 +120,6 @@ export default function AboutHero() {
       {/* Office Section */}
       <OfficeSection t={t} />
 
-      {/* Leadership Section */}
-      <LeadershipSection t={t} />
-
       {/* FAQ Section */}
       <FAQSection t={t} />
     </div >

@@ -143,6 +143,23 @@ function PropertyCard({ property, currentPage = 1, index = 10, isSelected = fals
     }
   };
 
+  const getBathroomsLabel = () => {
+    const bathsText = `${getBathrooms()}`;
+    const nums = bathsText.match(/\d+/g);
+    const count = nums && nums.length > 0 ? parseInt(nums[nums.length - 1], 10) : 0;
+
+    if (locale !== 'ru') {
+      return count === 1 ? 'bath' : 'baths';
+    }
+
+    const n = Math.abs(count) % 100;
+    const n1 = n % 10;
+    if (n > 10 && n < 20) return 'ванных';
+    if (n1 > 1 && n1 < 5) return 'ванные';
+    if (n1 === 1) return 'ванная';
+    return 'ванных';
+  };
+
   const getSize = () => {
     if (property.propertyType === 'off-plan') {
       // Backend sends: size/sizeFrom in sq.m, sizeSqft/sizeFromSqft in sq.ft
@@ -535,7 +552,7 @@ function PropertyCard({ property, currentPage = 1, index = 10, isSelected = fals
                 <circle cx="12.5" cy="11" r="0.8" fill="currentColor" />
                 <path d="M10 8V11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
-              <span>{getBathrooms()} {locale === 'ru' ? 'ванн' : 'baths'}</span>
+              <span>{getBathrooms()} {getBathroomsLabel()}</span>
             </div>
           )}
           {getSize() && (

@@ -2662,7 +2662,9 @@ export interface NewsContent {
   newsId: string;
   type: 'text' | 'image' | 'video';
   title: string;
+  titleRu?: string;
   description: string | null;
+  descriptionRu?: string | null;
   imageUrl: string | null;
   videoUrl: string | null;
   order: number;
@@ -2832,9 +2834,17 @@ export async function getNewsBySlug(slug: string): Promise<NewsDetail | null> {
 
     const news = response.data.data;
 
-    // Sort contents by order if present
+    // Normalize localized content fields and keep stable order.
     if (news.contents && Array.isArray(news.contents)) {
-      news.contents.sort((a, b) => a.order - b.order);
+      news.contents = news.contents
+        .map((content: any) => ({
+          ...content,
+          title: content?.title || '',
+          titleRu: content?.titleRu || content?.title_ru || content?.title || '',
+          description: content?.description ?? null,
+          descriptionRu: content?.descriptionRu ?? content?.description_ru ?? content?.description ?? null,
+        }))
+        .sort((a, b) => a.order - b.order);
     }
 
     return news;

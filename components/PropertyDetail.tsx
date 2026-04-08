@@ -23,6 +23,56 @@ interface PropertyDetailProps {
   initialProperty?: Property | null;
 }
 
+const OTHER_PROPERTIES_TARGET = 18;
+const MIN_PROJECTS_BETWEEN_SAME_AREA = 6;
+
+function getAreaKey(property: Property): string {
+  const area = property.area;
+
+  if (typeof area === 'string' && area.trim().length > 0) {
+    return area.trim().toLowerCase();
+  }
+
+  if (area && typeof area === 'object') {
+    const candidate = area.slug || area.nameEn || area.nameRu || area.nameAr;
+    if (candidate && candidate.trim().length > 0) {
+      return candidate.trim().toLowerCase();
+    }
+  }
+
+  return 'unknown-area';
+}
+
+function distributePropertiesByArea(
+  properties: Property[],
+  targetCount: number,
+  minProjectsBetweenSameArea: number
+): Property[] {
+  const remaining = [...properties];
+  const result: Property[] = [];
+  const lastSeenIndex = new Map<string, number>();
+
+  while (result.length < targetCount && remaining.length > 0) {
+    const currentIndex = result.length;
+
+    const selectedIndex = remaining.findIndex((project) => {
+      const areaKey = getAreaKey(project);
+      const lastIndex = lastSeenIndex.get(areaKey);
+      return lastIndex === undefined || currentIndex - lastIndex > minProjectsBetweenSameArea;
+    });
+
+    if (selectedIndex === -1) {
+      break;
+    }
+
+    const [selected] = remaining.splice(selectedIndex, 1);
+    result.push(selected);
+    lastSeenIndex.set(getAreaKey(selected), currentIndex);
+  }
+
+  return result;
+}
+
 export default function PropertyDetail({ propertyId, initialProperty = null }: PropertyDetailProps) {
   const t = useTranslations('propertyDetail');
   const tCard = useTranslations('propertyCard');
@@ -260,7 +310,7 @@ export default function PropertyDetail({ propertyId, initialProperty = null }: P
           : (property.price || 0);
 
         const initialFilters: any = {
-          limit: 18,
+          limit: OTHER_PROPERTIES_TARGET,
           propertyType: property.propertyType,
           sortBy: 'random'
         };
@@ -284,7 +334,7 @@ export default function PropertyDetail({ propertyId, initialProperty = null }: P
         // Fallback 1: If too few in same area, search same price range globally
         if (filtered.length < 4 && targetPrice > 0) {
           const globalResult = await getProperties({
-            limit: 18,
+            limit: OTHER_PROPERTIES_TARGET,
             propertyType: property.propertyType,
             priceFrom: Math.round(targetPrice * 0.85),
             priceTo: Math.round(targetPrice * 1.15),
@@ -302,7 +352,7 @@ export default function PropertyDetail({ propertyId, initialProperty = null }: P
         // Fallback 2: If still too few, search same area regardless of price
         if (filtered.length < 4) {
           const areaOnlyFilters: any = {
-            limit: 18,
+            limit: OTHER_PROPERTIES_TARGET,
             propertyType: property.propertyType,
             sortBy: 'random'
           };
@@ -326,7 +376,7 @@ export default function PropertyDetail({ propertyId, initialProperty = null }: P
         // Fallback 3: Just any properties of the same type
         if (filtered.length < 4) {
           const anyResult = await getProperties({
-            limit: 18,
+            limit: OTHER_PROPERTIES_TARGET,
             propertyType: property.propertyType,
             sortBy: 'random'
           }, true);
@@ -339,9 +389,14 @@ export default function PropertyDetail({ propertyId, initialProperty = null }: P
           });
         }
 
-        // Randomize the variety from the pool
+        // Randomize pool first, then enforce strict area spacing.
         const shuffled = [...filtered].sort(() => Math.random() - 0.5);
-        setOtherProperties(shuffled.slice(0, 18));
+        const arranged = distributePropertiesByArea(
+          shuffled,
+          OTHER_PROPERTIES_TARGET,
+          MIN_PROJECTS_BETWEEN_SAME_AREA
+        );
+        setOtherProperties(arranged);
       } catch (err) {
         console.error('Failed to load other properties', err);
         setOtherProperties([]);

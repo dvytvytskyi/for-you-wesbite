@@ -1,7 +1,7 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
-import { TeamSection, OfficeSection, LeadershipSection, FAQSection } from '@/components/AboutHero';
+import { TeamSection, OfficeSection, FAQSection } from '@/components/AboutHero';
 export default function AboutSections() {
   const t = useTranslations('aboutUs');
 
@@ -9,7 +9,6 @@ export default function AboutSections() {
     <>
       <TeamSection t={t} />
       <OfficeSection t={t} />
-      <LeadershipSection t={t} />
       <FAQSection t={t} />
     </>
   );

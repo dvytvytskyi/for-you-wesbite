@@ -293,8 +293,8 @@ export default function PropertyPopup({ property, onClose, onRequestCallback }: 
                 <div className={styles.unitsList}>
                   {property.units.map((unit, index) => (
                     <div key={index} className={styles.unitItem}>
-                      <span>{unit.bedrooms} {tDetail('beds')}</span>
-                      <span>{unit.bathrooms} {tDetail('baths')}</span>
+                      <span>{unit.bedrooms} {tDetail('beds', { count: unit.bedrooms })}</span>
+                      <span>{unit.bathrooms} {tDetail('baths', { count: unit.bathrooms })}</span>
                       <span>
                         {locale === 'ru'
                           ? `${formatNumber(Math.round(unit.size.sqft / 10.7639))} м²`
@@ -326,15 +326,6 @@ export default function PropertyPopup({ property, onClose, onRequestCallback }: 
 
         {/* Fixed bottom actions */}
         <div className={styles.bottomActions}>
-          <button
-            className={styles.callbackButton}
-            onClick={() => {
-              if (onRequestCallback) onRequestCallback(getName());
-            }}
-          >
-            {locale === 'ru' ? 'Заказать звонок' : 'Request callback'}
-          </button>
-
           <a
             href={generateWhatsAppLink({
               phone: '971501769699', // using main line instead of 971501234567

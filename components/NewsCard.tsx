@@ -21,8 +21,17 @@ interface NewsCardProps {
   isFeatured?: boolean;
 }
 
+const NEWS_FALLBACK_IMAGE = 'https://res.cloudinary.com/dgv0rxd60/image/upload/f_auto,q_auto,w_1200/v1768389720/new_logo_blue.png';
+
 export default function NewsCard({ news, isFeatured = false }: NewsCardProps) {
   const locale = useLocale();
+
+  const getImageSrc = () => {
+    if (typeof news.image === 'string' && news.image.trim().length > 0) {
+      return news.image;
+    }
+    return NEWS_FALLBACK_IMAGE;
+  };
 
   const getLocalizedPath = (path: string) => {
     return locale === 'en' ? path : `/${locale}${path}`;
@@ -50,7 +59,7 @@ export default function NewsCard({ news, isFeatured = false }: NewsCardProps) {
       <Link href={getLocalizedPath(`/news/${news.slug}`)} className={styles.featuredCard}>
         <div className={styles.imageContainer}>
           <Image
-            src={news.image}
+            src={getImageSrc()}
             alt={getTitle()}
             fill
             style={{ objectFit: 'cover' }}
@@ -78,7 +87,7 @@ export default function NewsCard({ news, isFeatured = false }: NewsCardProps) {
     <Link href={getLocalizedPath(`/news/${news.slug}`)} className={styles.card}>
       <div className={styles.imageContainer}>
         <Image
-          src={news.image}
+          src={getImageSrc()}
           alt={getTitle()}
           fill
           style={{ objectFit: 'cover' }}
