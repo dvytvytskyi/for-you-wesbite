@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <sitemap>
+    <loc>https://foryou-realestate.com/sitemap-main.xml</loc>
+    <lastmod>2026-04-07</lastmod>
+  </sitemap>
+  <sitemap>
+    <loc>https://foryou-realestate.com/sitemap-projects-1.xml</loc>
+    <lastmod>2026-04-07</lastmod>
+  </sitemap>
+  <sitemap>
+    <loc>https://foryou-realestate.com/sitemap-projects-2.xml</loc>
+    <lastmod>2026-04-07</lastmod>
+  </sitemap>
+  <sitemap>
+    <loc>https://foryou-realestate.com/sitemap-units.xml</loc>
+    <lastmod>2026-04-07</lastmod>
+  </sitemap>
+  <sitemap>
+    <loc>https://foryou-realestate.com/sitemap-news.xml</loc>
+    <lastmod>2026-04-07</lastmod>
+  </sitemap>
+</sitemapindex>

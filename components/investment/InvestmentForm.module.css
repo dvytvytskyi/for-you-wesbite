@@ -1,12 +1,12 @@
 .formContainer {
   background: #ffffff;
   border-radius: 12px;
-  padding: 0px 0px 0px 24px;
+  padding: 0;
 }
 
 .title {
   font-family: 'Inter', sans-serif;
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 600;
   color: #003077;
   margin: 0 0 8px 0;
@@ -18,6 +18,34 @@
   color: rgb(93 93 93 / 80%);
   margin: 0 0 24px 0;
   line-height: 1.5;
+}
+
+.topIsland,
+.bottomIsland {
+  background: #ffffff;
+  border: 1px solid rgba(0, 48, 119, 0.08);
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.topIsland {
+  margin-bottom: 16px;
+}
+
+.islandTitle {
+  font-family: 'Inter', sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+  color: #003077;
+  margin: 0 0 6px;
+}
+
+.islandDescription {
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  color: rgb(93 93 93 / 80%);
+  line-height: 1.4;
+  margin: 0 0 14px;
 }
 
 .error {
@@ -45,7 +73,7 @@
 
 .success h3 {
   font-family: 'Inter', sans-serif;
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 600;
   color: #003077;
   margin: 0 0 8px 0;
@@ -129,7 +157,7 @@
 
 .submitButton {
   font-family: 'Inter', sans-serif;
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 500;
   padding: 14px 24px;
   background: #003077;
@@ -138,7 +166,7 @@
   border-radius: 8px;
   cursor: pointer;
   transition: background 0.3s ease;
-  margin-top: 8px;
+  margin-top: 4px;
   width: 100%;
   box-sizing: border-box;
 }
@@ -157,7 +185,7 @@
   font-size: 12px;
   color: rgb(93 93 93 / 80%);
   line-height: 1.5;
-  margin-top: 4px;
+  margin-top: 0;
   margin-bottom: 0;
   text-align: center;
 }
@@ -166,14 +194,35 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 24px;
+  margin-bottom: 16px;
 }
 
 .directContact {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  margin-bottom: 24px;
+  margin-bottom: 0;
+}
+
+.amountSummary {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 0 2px;
+}
+
+.amountLabel {
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  color: #003077;
+}
+
+.amountValue {
+  font-family: 'Inter', sans-serif;
+  font-size: 24px;
+  font-weight: 700;
+  color: #e39a44;
+  line-height: 1.2;
 }
 
 .phoneRow {
@@ -301,7 +350,7 @@
 
 .agentName {
   font-family: 'Inter', sans-serif;
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 600;
   color: #003077;
   margin-bottom: 4px;
@@ -316,6 +365,11 @@
 @media (max-width: 768px) {
   .formContainer {
     padding: 0 12px;
+  }
+
+  .topIsland,
+  .bottomIsland {
+    padding: 14px;
   }
 
   .formRow {

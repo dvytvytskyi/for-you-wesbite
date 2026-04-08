@@ -44,7 +44,7 @@ const mapSortToBackend = (frontendSort: string | undefined, propertyType: 'off-p
   return mapping[sortValue] || mapping['newest'];
 };
 
-const convertFiltersToApi = (filters: Filters, page: number, seed?: number): ApiPropertyFilters => {
+const convertFiltersToApi = (filters: Filters, page: number, locale: string, seed?: number): ApiPropertyFilters => {
   const propertyType = filters.type === 'all' ? undefined : (filters.type === 'new' ? 'off-plan' : 'secondary');
   const sort = mapSortToBackend(filters.sort, propertyType === 'off-plan' ? 'off-plan' : 'secondary');
 
@@ -70,22 +70,24 @@ const convertFiltersToApi = (filters: Filters, page: number, seed?: number): Api
   
   if (filters.bedrooms.length > 0) apiFilters.bedrooms = filters.bedrooms.join(',');
   
-  // Size filtering (Backend stores in SQM, so convert SQFT inputs from UI)
+  // Size filtering (Backend expects SQFT, so convert SQM inputs from RU UI)
   if (filters.sizeFrom) {
-    const sqft = parseFloat(filters.sizeFrom.replace(/,/g, '')) || 0;
-    apiFilters.sizeFrom = Math.round(sqft / 10.76);
+    const val = parseFloat(filters.sizeFrom.replace(/,/g, '')) || 0;
+    apiFilters.sizeFrom = locale === 'ru' ? Math.round(val * 10.7639) : val;
   }
   if (filters.sizeTo) {
-    const sqft = parseFloat(filters.sizeTo.replace(/,/g, '')) || 0;
-    apiFilters.sizeTo = Math.round(sqft / 10.76);
+    const val = parseFloat(filters.sizeTo.replace(/,/g, '')) || 0;
+    apiFilters.sizeTo = locale === 'ru' ? Math.round(val * 10.7639) : val;
   }
   
-  // Price filtering (Backend expects AED and handles conversion)
+  // Price filtering (Backend expects AED, so convert USD inputs from RU UI)
   if (filters.priceFrom) {
-    apiFilters.priceFrom = parseFloat(filters.priceFrom.replace(/,/g, '')) || undefined;
+    const val = parseFloat(filters.priceFrom.replace(/,/g, '')) || 0;
+    apiFilters.priceFrom = locale === 'ru' ? Math.round(val * 3.6725) : val;
   }
   if (filters.priceTo) {
-    apiFilters.priceTo = parseFloat(filters.priceTo.replace(/,/g, '')) || undefined;
+    const val = parseFloat(filters.priceTo.replace(/,/g, '')) || 0;
+    apiFilters.priceTo = locale === 'ru' ? Math.round(val * 3.6725) : val;
   }
   
   if (filters.search) apiFilters.search = filters.search;
@@ -103,7 +105,7 @@ const filtersToUrlParams = (filters: Filters, page?: number): URLSearchParams =>
   if (filters.sizeTo) params.set('sizeTo', filters.sizeTo);
   if (filters.priceFrom) params.set('priceFrom', filters.priceFrom);
   if (filters.priceTo) params.set('priceTo', filters.priceTo);
-  if (filters.sort !== 'newest') params.set('sort', filters.sort);
+  if (filters.sort !== 'newest' && !(filters.sort === 'random' && filters.type === 'secondary')) params.set('sort', filters.sort);
   if (filters.developerId) params.set('developerId', filters.developerId);
   if (filters.cityId) params.set('cityId', filters.cityId);
   if (filters.projectStatus) params.set('status', filters.projectStatus);
@@ -124,7 +126,7 @@ const urlParamsToFilters = (searchParams: URLSearchParams): Filters => {
     sizeTo: searchParams.get('sizeTo') || '',
     priceFrom: searchParams.get('priceFrom') || '',
     priceTo: searchParams.get('priceTo') || '',
-    sort: searchParams.get('sort') || 'random',
+    sort: searchParams.get('sort') || (type === 'secondary' ? 'random' : 'newest'),
     developerId: searchParams.get('developerId') || undefined,
     cityId: searchParams.get('cityId') || undefined,
     projectStatus: searchParams.get('status') || undefined,
@@ -363,7 +365,7 @@ export default function PropertiesList() {
     setLoading(true);
     setError(null);
     try {
-      const apiFilters = convertFiltersToApi(filters, currentPage, sessionSeed);
+      const apiFilters = convertFiltersToApi(filters, currentPage, locale, sessionSeed);
       if (debouncedSearch) apiFilters.search = debouncedSearch;
 
       const result = await getProperties(apiFilters, true);
@@ -426,13 +428,16 @@ export default function PropertiesList() {
     const loadMarkers = async () => {
       try {
         setLoadingMap(true);
-        const apiFilters = convertFiltersToApi(filters, 1, sessionSeed);
+        const apiFilters = convertFiltersToApi(filters, 1, locale, sessionSeed);
         apiFilters.limit = 5000; // Get all markers for the map
         const markers = await getMapMarkers(apiFilters);
 
         // Convert to partial map format
         const mapProperties = markers.map(m => {
-          const previewImg = m.mainImage || m.previewImage || m.image || m.photo || m.thumbnail;
+          const previewRaw = m.mainImage || m.previewImage || m.image || m.photo || m.thumbnail;
+          const previewImg = typeof previewRaw === 'string'
+            ? (previewRaw.includes(',') ? previewRaw.split(',')[0].trim() : previewRaw.trim())
+            : '';
           return {
             id: m.id,
             slug: '',
@@ -448,7 +453,7 @@ export default function PropertiesList() {
             bedrooms: 0,
             bathrooms: 0,
             size: { sqm: 0, sqft: 0 },
-            images: previewImg ? [previewImg] : [],
+            images: previewImg && /^https?:\/\//.test(previewImg) ? [previewImg] : [],
             type: m.propertyType === 'off-plan' ? 'new' as const : 'secondary' as const,
             coordinates: [
               typeof m.lng === 'string' ? parseFloat(m.lng) : Number(m.lng),

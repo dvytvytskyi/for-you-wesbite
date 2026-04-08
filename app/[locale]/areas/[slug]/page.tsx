@@ -24,21 +24,27 @@ export async function generateMetadata({ params }: AreaDetailPageProps): Promise
   }
 
   const title = locale === 'ru' ? `${area.nameRu} | Районы Дубая` : `${area.nameEn} | Dubai Areas`;
+  const description = locale === 'ru'
+    ? `Район ${area.nameRu}: недвижимость, инфраструктура, образ жизни и инвестиционный потенциал в Дубае.`
+    : `${area.nameEn} area guide: properties, lifestyle, infrastructure, and investment potential in Dubai.`;
   const canonical = locale === 'en'
     ? `https://foryou-realestate.com/areas/${slug}`
     : `https://foryou-realestate.com/${locale}/areas/${slug}`;
 
   return {
     title: title,
+    description: description,
     alternates: {
       canonical: canonical,
       languages: {
         'en': `https://foryou-realestate.com/areas/${slug}`,
         'ru': `https://foryou-realestate.com/ru/areas/${slug}`,
+        'x-default': `https://foryou-realestate.com/areas/${slug}`,
       },
     },
     openGraph: {
       title: title,
+      description: description,
       url: canonical,
       locale: locale,
       type: 'website',

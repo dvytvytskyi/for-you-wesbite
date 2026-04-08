@@ -2,6 +2,57 @@ import createNextIntlPlugin from 'next-intl/plugin';
 
 const withNextIntl = createNextIntlPlugin('./i18n.ts');
 
+const legacyAreaSlugs = [
+  'al-marjan-island-ras-al-khaimah',
+  'business-bay',
+  'creek-harbour',
+  'damac-hills',
+  'damac-hills-2-2',
+  'damac-lagoons',
+  'downtown-dubai',
+  'dubai-islands',
+  'emirates-hills',
+  'expo-city-dubai',
+  'jumeirah-village-circle',
+  'jumeirach-village-circle',
+  'jvc',
+  'marina',
+  'mina-rashid',
+  'mjl',
+  'palm-jumeirah',
+  'tilal-al-ghaf',
+  'town-square',
+];
+
+const legacyDeveloperSlugs = [
+  'aldar',
+  'azizi-developments',
+  'damac',
+  'danube-properties',
+  'darglobal',
+  'deyaar',
+  'dubai-properties',
+  'ellington',
+  'emaar',
+  'mag',
+  'meraas',
+  'nakheel',
+  'omniyat',
+  'select-group',
+  'sobha-realty',
+];
+
+const legacyNewsSlugs = [
+  'annual-price-growth-dubai-up-19-5-abu-dhabi-rises-7-11',
+  'dubai-hits-aed-66-8-billion-in-may-transactions',
+  'fitch-dubai-property-prices-could-fall-by-15-in-late-2025',
+  'june-2025-aed-54-2-billion-in-sales',
+  'new-hotspots-across-all-seven-emirates-abu-dhabi-leads',
+  'off-plan-boom-69-of-may-transactions',
+  'property-tokenization-goes-live-prypco-mint',
+  'q1-2025-off-plan-sales-across-uae-hit-aed-115-6-billion',
+];
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   typescript: {
@@ -99,12 +150,12 @@ const nextConfig = {
       },
       {
         source: '/projects/:slug*',
-        destination: '/properties/:slug*',
+        destination: '/properties',
         permanent: true,
       },
       {
         source: '/ru/projects/:slug*',
-        destination: '/ru/properties/:slug*',
+        destination: '/ru/properties',
         permanent: true,
       },
       {
@@ -123,6 +174,31 @@ const nextConfig = {
         permanent: false,
       },
       {
+        source: '/contact',
+        destination: '/about',
+        permanent: true,
+      },
+      {
+        source: '/ru/contact',
+        destination: '/ru/about',
+        permanent: true,
+      },
+      {
+        source: '/home',
+        destination: '/',
+        permanent: true,
+      },
+      {
+        source: '/sell',
+        destination: '/properties',
+        permanent: true,
+      },
+      {
+        source: '/ru/sell',
+        destination: '/ru/properties',
+        permanent: true,
+      },
+      {
         source: '/ru/contacts',
         destination: '/ru',
         permanent: false,
@@ -133,20 +209,139 @@ const nextConfig = {
         permanent: true,
       },
       {
+        source: '/privacy-policy',
+        destination: '/privacy',
+        permanent: true,
+      },
+      {
+        source: '/terms-and-conditions',
+        destination: '/terms',
+        permanent: true,
+      },
+      {
+        source: '/policy/eng',
+        destination: '/en/privacy',
+        permanent: true,
+      },
+      {
+        source: '/eng/policy',
+        destination: '/en/privacy',
+        permanent: true,
+      },
+      {
+        source: '/feed',
+        destination: '/news',
+        permanent: false,
+      },
+      {
+        source: '/comments/feed',
+        destination: '/news',
+        permanent: false,
+      },
+      {
         source: '/ru/policy',
         destination: '/ru/privacy',
         permanent: true,
       },
       {
-        source: '/sell',
-        destination: '/',
-        permanent: false,
+        source: '/hot_offers/:path*',
+        destination: '/properties',
+        permanent: true,
       },
       {
-        source: '/ru/sell',
-        destination: '/ru',
-        permanent: false,
+        source: '/category/:path*',
+        destination: '/news',
+        permanent: true,
       },
+      {
+        source: '/business-bay/:path*',
+        destination: '/areas/business-bay',
+        permanent: true,
+      },
+      {
+        source: '/tilal-al-ghaf/:path*',
+        destination: '/areas/tilal-al-ghaf',
+        permanent: true,
+      },
+      {
+        source: '/emirates-hills/:path*',
+        destination: '/areas/emirates-hills',
+        permanent: true,
+      },
+      {
+        source: '/damac-hills/:path*',
+        destination: '/areas/damac-hills',
+        permanent: true,
+      },
+      {
+        source: '/palm-jumeirah/:path*',
+        destination: '/areas/palm-jumeirah',
+        permanent: true,
+      },
+      {
+        source: '/dubai-marina/:path*',
+        destination: '/areas/marina',
+        permanent: true,
+      },
+      {
+        source: '/downtown-dubai/:path*',
+        destination: '/areas/downtown-dubai',
+        permanent: true,
+      },
+      {
+        source: '/town-square/:path*',
+        destination: '/areas/town-square',
+        permanent: true,
+      },
+      {
+        source: '/dubai-hills-estate/:path*',
+        destination: '/areas/dubai-hills',
+        permanent: true,
+      },
+      {
+        source: '/emaar/:path*',
+        destination: '/developers',
+        permanent: true,
+      },
+      {
+        source: '/sobha-realty/:path*',
+        destination: '/developers',
+        permanent: true,
+      },
+      {
+        source: '/ellington/:path*',
+        destination: '/developers',
+        permanent: true,
+      },
+      ...legacyAreaSlugs.flatMap((slug) => ([
+        {
+          source: `/${slug}`,
+          destination: '/areas',
+          permanent: true,
+        },
+        {
+          source: `/${slug}/:path*`,
+          destination: '/areas',
+          permanent: true,
+        },
+      ])),
+      ...legacyDeveloperSlugs.flatMap((slug) => ([
+        {
+          source: `/${slug}`,
+          destination: '/developers',
+          permanent: true,
+        },
+        {
+          source: `/${slug}/:path*`,
+          destination: '/developers',
+          permanent: true,
+        },
+      ])),
+      ...legacyNewsSlugs.map((slug) => ({
+        source: `/${slug}`,
+        destination: `/news/${slug}`,
+        permanent: true,
+      })),
     ];
   },
   async rewrites() {

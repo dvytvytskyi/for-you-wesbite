@@ -47,7 +47,15 @@ export default function AnalyticsCards() {
   if (loading) {
     return (
       <div className={styles.analyticsCards}>
-        <div className={styles.loading}>Loading analytics...</div>
+        {Array.from({ length: 4 }).map((_, idx) => (
+          <div key={idx} className={styles.skeletonAnalyticsCard}>
+            <div className={styles.skeletonIcon} />
+            <div className={styles.skeletonAnalyticsContent}>
+              <div className={styles.skeletonTextLine} />
+              <div className={styles.skeletonTextLineShort} />
+            </div>
+          </div>
+        ))}
       </div>
     );
   }

@@ -159,11 +159,18 @@ export default function DevelopersList() {
           };
         });
 
-        setAllDevelopers(convertedDevelopers.filter(dev => {
+        const filteredDevelopers = convertedDevelopers.filter(dev => {
           const devName = (dev.nameEn || dev.name || '').toLowerCase();
           const isExcluded = ['ab developers', 'aces'].some(ex => devName.includes(ex));
           return dev.logo && dev.logo.trim() !== '' && !isExcluded;
-        }));
+        });
+
+        setAllDevelopers(
+          filteredDevelopers.sort((a, b) => {
+            if (b.projectsCount !== a.projectsCount) return b.projectsCount - a.projectsCount;
+            return a.name.localeCompare(b.name);
+          })
+        );
       } catch (err: any) {
         setError(err.message || 'Failed to load developers');
       } finally {

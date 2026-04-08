@@ -11,11 +11,13 @@ export async function generateMetadata({ params: { locale } }: { params: { local
 
   return {
     title: t('areas'),
+    description: t('areasDescription'),
     alternates: {
       canonical: canonical,
     },
     openGraph: {
       title: t('areas'),
+      description: t('areasDescription'),
       siteName: 'ForYou Real Estate',
       type: 'website',
       url: canonical,

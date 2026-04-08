@@ -115,14 +115,16 @@ export function convertPropertyToMapFormat(property: ApiProperty, locale: string
     // Get size
     const getSize = () => {
         if (property.propertyType === 'off-plan') {
+            const sizeSqft = property.sizeFromSqft || property.sizeFrom || 0;
             return {
-                sqm: property.sizeFrom || 0,
-                sqft: property.sizeFromSqft || (property.sizeFrom ? property.sizeFrom * 10.764 : 0),
+                sqm: sizeSqft > 0 ? sizeSqft / 10.7639 : 0,
+                sqft: sizeSqft,
             };
         } else {
+            const sizeSqft = property.sizeSqft || property.size || 0;
             return {
-                sqm: property.size || 0,
-                sqft: property.sizeSqft || (property.size ? property.size * 10.764 : 0),
+                sqm: sizeSqft > 0 ? sizeSqft / 10.7639 : 0,
+                sqft: sizeSqft,
             };
         }
     };
@@ -130,17 +132,20 @@ export function convertPropertyToMapFormat(property: ApiProperty, locale: string
     // Get units for off-plan
     const getUnits = () => {
         if (property.propertyType === 'off-plan' && property.units) {
-            return property.units.map(unit => ({
-                bedrooms: parseInt(unit.bedrooms || '0', 10),
-                bathrooms: 0, // Individual units might still have null/missing bathrooms in some cases
-                size: {
-                    sqm: unit.totalSize,
-                    sqft: unit.totalSizeSqft || (unit.totalSize * 10.764), // Convert if not provided
-                },
-                price: {
-                    aed: unit.priceAED || (unit.price * 3.673), // Convert if not provided
-                },
-            }));
+            return property.units.map(unit => {
+                const sizeSqft = unit.totalSizeSqft || unit.totalSize || 0;
+                return {
+                    bedrooms: parseInt(unit.bedrooms || '0', 10),
+                    bathrooms: 0,
+                    size: {
+                        sqm: sizeSqft > 0 ? sizeSqft / 10.7639 : 0,
+                        sqft: sizeSqft,
+                    },
+                    price: {
+                        aed: unit.priceAED || (unit.price * 3.673),
+                    },
+                };
+            });
         }
         return undefined;
     };

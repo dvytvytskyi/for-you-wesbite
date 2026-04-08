@@ -7,6 +7,10 @@ export default function robots(): MetadataRoute.Robots {
             allow: '/',
             disallow: ['/admin', '/api/private/'],
         },
-        sitemap: 'https://foryou-realestate.com/sitemap.xml',
+        sitemap: [
+            'https://www.foryou-realestate.com/sitemap/main.xml',
+            'https://www.foryou-realestate.com/sitemap/projects.xml',
+            'https://www.foryou-realestate.com/sitemap/news.xml',
+        ],
     };
 }

@@ -111,7 +111,7 @@ export default function Footer() {
             <h3 className={styles.sectionTitle}>{t('contactUs')}</h3>
             <div className={styles.contactInfo}>
               <p className={styles.contactAddress}>
-                Onyx Tower 2, Level 9, office 910<br />
+                Onyx Tower 2, Level 5, office 505<br />
                 Dubai, United Arab Emirates
               </p>
               <a href="mailto:info@foryou-realestate.com" className={styles.contactLink}>

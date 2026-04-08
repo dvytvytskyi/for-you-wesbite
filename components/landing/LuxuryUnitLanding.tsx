@@ -31,45 +31,8 @@ interface LuxuryUnitProps {
 export default function LuxuryUnitLanding({ unit, locale }: LuxuryUnitProps) {
   const isRu = locale === 'ru';
   
-  const structuredData = {
-    "@context": "https://schema.org",
-    "@type": "RealEstateListing",
-    "name": `Apartment ${unit.projectName} - ${unit.type}`,
-    "description": `Luxury ${unit.type} for sale in ${unit.projectName}. Size: ${unit.totalSize}, View: ${unit.view}.`,
-    "url": typeof window !== 'undefined' ? window.location.href : '',
-    "image": [
-       "https://reelly-backend.s3.amazonaws.com/projects/3310/images/d62fe4e00e2747e384ad03b7a8c5af10.webp"
-    ],
-    "item": {
-      "@type": "Accommodation",
-      "address": {
-        "@type": "PostalAddress",
-        "addressLocality": "Abu Dhabi",
-        "addressRegion": "Reem Island",
-        "addressCountry": "AE"
-      },
-      "floorSize": {
-        "@type": "QuantitativeValue",
-        "value": unit.totalSize.split(' ')[0],
-        "unitCode": "MTK"
-      },
-      "numberOfRooms": "1"
-    },
-    "offers": {
-      "@type": "Offer",
-      "price": unit.price.replace(/,/g, ''),
-      "priceCurrency": "AED",
-      "availability": "https://schema.org/InStock"
-    }
-  };
-
   return (
     <div className={styles.luxuryBody}>
-      {/* 0. SCHEMA.ORG JSON-LD */}
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
-      />
       
       {/* Reusable Landing Header */}
       <LandingHeader isRu={isRu} projectName={unit.projectName} />

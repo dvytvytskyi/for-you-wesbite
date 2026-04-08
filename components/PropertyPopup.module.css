@@ -254,7 +254,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
   gap: 12px;
 }
 
@@ -270,7 +270,8 @@
 }
 
 .priceRow {
-  margin-bottom: 12px;
+  margin-top: 0;
+  margin-bottom: 8px;
 }
 
 .priceAmount {
@@ -291,17 +292,10 @@
 .location {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 0;
   font-family: 'Inter', sans-serif;
   font-size: 12px;
   /* Reduced from 13px */
-  color: #888;
-}
-
-.location svg {
-  width: 14px;
-  height: 14px;
-  flex-shrink: 0;
   color: #888;
 }
 
@@ -420,8 +414,7 @@
 
 .description p {
   font-family: 'Inter', sans-serif;
-  font-size: 13px;
-  /* Reduced from 14px */
+  font-size: 14px;
   color: #666;
   line-height: 1.5;
   margin: 0;
@@ -683,7 +676,7 @@
   }
 
   .description p {
-    font-size: 12px;
+    font-size: 14px;
   }
 
   .bottomActions {

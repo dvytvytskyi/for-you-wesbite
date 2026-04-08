@@ -6,7 +6,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Property } from '@/lib/api';
 import { getOptimizedImageUrl } from '@/lib/images';
-import { formatNumber } from '@/lib/utils';
+import { formatNumber, getDisplayPrice, getDisplaySize, sqftToSqm, AED_USD_RATE, SQFT_SQM_RATE } from '@/lib/utils';
 import { saveScrollState } from '@/lib/scrollRestoration';
 import { useFavorites } from '@/lib/favoritesContext';
 import styles from './PropertyCard.module.css';
@@ -145,66 +145,58 @@ function PropertyCard({ property, currentPage = 1, index = 10, isSelected = fals
 
   const getSize = () => {
     if (property.propertyType === 'off-plan') {
-      const sizeFrom = property.sizeFrom;
-      const sizeTo = property.sizeTo;
-      const sizeFromSqft = property.sizeFromSqft;
-      const sizeToSqft = property.sizeToSqft;
-      const propSize = property.size;
-      const propSizeSqft = property.sizeSqft;
+      // Backend sends: size/sizeFrom in sq.m, sizeSqft/sizeFromSqft in sq.ft
+      const fromSqm = property.sizeFrom || property.size || 0;
+      const toSqm = property.sizeTo || 0;
+      const fromSqft = property.sizeFromSqft || property.sizeSqft || (fromSqm > 0 ? Math.round(fromSqm * SQFT_SQM_RATE) : 0);
+      const toSqft = property.sizeToSqft || (toSqm > 0 ? Math.round(toSqm * SQFT_SQM_RATE) : 0);
 
-      const hasSizeFrom = (sizeFrom !== null && sizeFrom !== undefined && sizeFrom > 0) || 
-                          (sizeFromSqft !== null && sizeFromSqft !== undefined && sizeFromSqft > 0) ||
-                          (propSize !== null && propSize !== undefined && propSize > 0) ||
-                          (propSizeSqft !== null && propSizeSqft !== undefined && propSizeSqft > 0);
-
-      if (hasSizeFrom) {
-        const hasSizeTo = (sizeTo !== null && sizeTo !== undefined && sizeTo > 0 && sizeTo !== sizeFrom) ||
-                          (sizeToSqft !== null && sizeToSqft !== undefined && sizeToSqft > 0 && sizeToSqft !== sizeFromSqft);
-
-        if (hasSizeTo) {
-          let from: number;
-          let to: number;
-          if (locale === 'ru') {
-            from = sizeFrom || propSize || Math.round((sizeFromSqft || propSizeSqft || 0) / 10.764);
-            to = sizeTo || Math.round((sizeToSqft || 0) / 10.764);
-          } else {
-            from = sizeFromSqft || propSizeSqft || Math.round((sizeFrom || propSize || 0) * 10.764);
-            to = sizeToSqft || Math.round((sizeTo || 0) * 10.764);
+      if (locale === 'ru') {
+        if (fromSqm > 0) {
+          if (toSqm > 0 && toSqm !== fromSqm) {
+            return `${formatNumber(Math.round(fromSqm))} - ${formatNumber(Math.round(toSqm))} м²`;
           }
-          const unit = locale === 'ru' ? 'м²' : 'sq.ft';
-          return `${formatNumber(from)} - ${formatNumber(to)} ${unit}`;
-        } else {
-          let sizeVal: number;
-          if (locale === 'ru') {
-            sizeVal = sizeFrom || propSize || Math.round((sizeFromSqft || propSizeSqft || 0) / 10.764);
-          } else {
-            sizeVal = sizeFromSqft || propSizeSqft || Math.round((sizeFrom || propSize || 0) * 10.764);
-          }
-          const unit = locale === 'ru' ? 'м²' : 'sq.ft';
-          return `${formatNumber(sizeVal)} ${unit}`;
+          return `${formatNumber(Math.round(fromSqm))} м²`;
         }
+        if (fromSqft > 0) {
+          const convertedFromSqm = Math.round(fromSqft / SQFT_SQM_RATE);
+          if (toSqft > 0 && toSqft !== fromSqft) {
+            return `${formatNumber(convertedFromSqm)} - ${formatNumber(Math.round(toSqft / SQFT_SQM_RATE))} м²`;
+          }
+          return `${formatNumber(convertedFromSqm)} м²`;
+        }
+        return '';
+      }
+
+      // EN: show sq.ft
+      if (fromSqft > 0) {
+        if (toSqft > 0 && toSqft !== fromSqft) {
+          return `${formatNumber(Math.round(fromSqft))} - ${formatNumber(Math.round(toSqft))} sq.ft`;
+        }
+        return `${formatNumber(Math.round(fromSqft))} sq.ft`;
+      }
+      if (fromSqm > 0) {
+        const convertedFromSqft = Math.round(fromSqm * SQFT_SQM_RATE);
+        if (toSqm > 0 && toSqm !== fromSqm) {
+          return `${formatNumber(convertedFromSqft)} - ${formatNumber(Math.round(toSqm * SQFT_SQM_RATE))} sq.ft`;
+        }
+        return `${formatNumber(convertedFromSqft)} sq.ft`;
       }
       return '';
     } else {
-      const size = property.size;
-      const sizeSqft = property.sizeSqft;
-      if (size !== null && size !== undefined && size > 0) {
-        let displaySize: number;
+      const sizeSqft = property.sizeSqft || property.size || 0;
+      if (sizeSqft > 0) {
         if (locale === 'ru') {
-          displaySize = size;
-        } else {
-          displaySize = sizeSqft !== null && sizeSqft !== undefined && sizeSqft > 0
-            ? sizeSqft
-            : Math.round(size * 10.764);
+          const sqm = Math.round(sizeSqft / 10.7639);
+          return `${formatNumber(sqm)} м²`;
         }
-        const unit = locale === 'ru' ? 'м²' : 'sq.ft';
-        return `${formatNumber(displaySize)} ${unit}`;
+        return `${formatNumber(Math.round(sizeSqft))} sq.ft`;
       }
       return '';
     }
   };
 
-  const getPricePerSqm = () => {
+  const getPricePerUnitText = () => {
     let price: number | null = null;
     if (property.propertyType === 'off-plan') {
       price = (property.priceFromAED && property.priceFromAED > 0) ? property.priceFromAED : null;
@@ -213,17 +205,24 @@ function PropertyCard({ property, currentPage = 1, index = 10, isSelected = fals
     }
     if (!price || price === 0) return 'N/A';
 
-    let size: number;
+    let sizeSqft: number;
     if (property.propertyType === 'off-plan') {
-      size = property.sizeFrom || 0;
+      const sizeSqm = property.sizeFrom || property.size || 0;
+      sizeSqft = property.sizeFromSqft || property.sizeSqft || (sizeSqm > 0 ? sizeSqm * SQFT_SQM_RATE : 0);
     } else {
-      size = property.size || 0;
+      sizeSqft = property.sizeSqft || property.size || 0;
     }
-    if (!size || size === 0) return 'N/A';
+    if (!sizeSqft || sizeSqft === 0) return 'N/A';
 
-    const pricePerSqm = price / size;
-    if (isNaN(pricePerSqm) || !isFinite(pricePerSqm)) return 'N/A';
-    return formatNumber(Math.round(pricePerSqm));
+    if (locale === 'ru') {
+      const priceUSD = price / 3.6725;
+      const sizeSqm = sizeSqft / 10.7639;
+      const pricePerSqm = priceUSD / sizeSqm;
+      return `${formatNumber(Math.round(pricePerSqm))} USD/м²`;
+    } else {
+      const pricePerSqft = price / sizeSqft;
+      return `${formatNumber(Math.round(pricePerSqft))} AED/sq.ft`;
+    }
   };
 
   const getUnitsText = () => {
@@ -514,14 +513,14 @@ function PropertyCard({ property, currentPage = 1, index = 10, isSelected = fals
                     return count === 1 ? `${bedsText} bed` : `${bedsText} beds`;
                   }
                   const nums = bedsText.match(/\d+/g);
-                  if (!nums || nums.length === 0) return `${bedsText} спален`;
+                  if (!nums || nums.length === 0) return `${bedsText} комнат`;
                   const count = parseInt(nums[nums.length - 1], 10);
-                  let suffix = 'спален';
+                  let suffix = 'комнат';
                   const n = Math.abs(count) % 100;
                   const n1 = n % 10;
-                  if (n > 10 && n < 20) suffix = 'спален';
-                  else if (n1 > 1 && n1 < 5) suffix = 'спальни';
-                  else if (n1 === 1) suffix = 'спальня';
+                  if (n > 10 && n < 20) suffix = 'комнат';
+                  else if (n1 > 1 && n1 < 5) suffix = 'комнаты';
+                  else if (n1 === 1) suffix = 'комната';
                   return `${bedsText} ${suffix}`;
                 })()}
               </span>
@@ -556,14 +555,15 @@ function PropertyCard({ property, currentPage = 1, index = 10, isSelected = fals
               {(() => {
                 const price = getPrice();
                 if (!price || price === 0) return t('priceOnRequest');
-                if (property.propertyType === 'off-plan') return `From ${formatNumber(price)} AED`;
-                return `${formatNumber(price)} AED`;
+                const base = getDisplayPrice(price, locale);
+                if (property.propertyType === 'off-plan') return `${locale === 'ru' ? 'От' : 'From'} ${base}`;
+                return base;
               })()}
             </span>
           </div>
           {(() => {
-            const pricePerSqm = getPricePerSqm();
-            if (pricePerSqm !== 'N/A') return <div className={styles.pricePerSqm}>{pricePerSqm} AED/sq.m</div>;
+            const pricePerUnit = getPricePerUnitText();
+            if (pricePerUnit !== 'N/A') return <div className={styles.pricePerSqm}>{pricePerUnit}</div>;
             return null;
           })()}
         </div>

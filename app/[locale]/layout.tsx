@@ -40,6 +40,7 @@ export async function generateMetadata({ params: { locale } }: { params: { local
       languages: {
         'en': '/en',
         'ru': '/ru',
+        'x-default': '/en',
       },
     },
   };

@@ -146,7 +146,7 @@ export default function CareersPageContent() {
             <div className={styles.careersWrapper}>
                 <section className={styles.heroSection}>
                     <h1>{t('pageTitle')}</h1>
-                    <p>{vacancies.length > 0 ? `Join our team of professionals and build the future of real estate with us.` : t('noVacancies')}</p>
+                    <p>{vacancies.length > 0 ? t('bannerText') : t('noVacancies')}</p>
                 </section>
 
                 <div className={styles.container} ref={containerRef}>
@@ -187,13 +187,6 @@ export default function CareersPageContent() {
                                         </div>
 
                                         <div className={styles.cardBottom}>
-                                            <div className={styles.statGroup}>
-                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                                                    <circle cx="12" cy="12" r="3" />
-                                                </svg>
-                                                <span>{vacancy.viewsCount || 0} {t('views')}</span>
-                                            </div>
                                             <div className={styles.publishDate}>
                                                 {t('publishedAt')}: {new Date(vacancy.createdAt).toLocaleDateString()}
                                             </div>
@@ -223,7 +216,7 @@ export default function CareersPageContent() {
                                                     className={`${styles.applyButton} ${isFormOpen ? styles.applyActive : ''}`}
                                                     onClick={() => setIsFormOpen(!isFormOpen)}
                                                 >
-                                                    {isFormOpen ? 'Close' : t('applyButton')}
+                                                    {isFormOpen ? t('form.close') : t('applyButton')}
                                                 </button>
                                             </div>
                                         </div>
@@ -251,7 +244,7 @@ export default function CareersPageContent() {
                                                                 name="name"
                                                                 value={formData.name}
                                                                 onChange={handleInputChange}
-                                                                placeholder="John Doe"
+                                                                placeholder={t('form.namePlaceholder')}
                                                                 required
                                                             />
                                                         </div>
@@ -262,7 +255,7 @@ export default function CareersPageContent() {
                                                                 name="email"
                                                                 value={formData.email}
                                                                 onChange={handleInputChange}
-                                                                placeholder="john@example.com"
+                                                                placeholder={t('form.emailPlaceholder')}
                                                                 required
                                                             />
                                                         </div>
@@ -273,7 +266,7 @@ export default function CareersPageContent() {
                                                                 name="phone"
                                                                 value={formData.phone}
                                                                 onChange={handleInputChange}
-                                                                placeholder="+971 ..."
+                                                                placeholder={t('form.phonePlaceholder')}
                                                                 required
                                                             />
                                                         </div>
@@ -284,7 +277,7 @@ export default function CareersPageContent() {
                                                                 name="cvUrl"
                                                                 value={formData.cvUrl || ''}
                                                                 onChange={handleInputChange}
-                                                                placeholder="Link to your CV"
+                                                                placeholder={t('form.cvUrlPlaceholder')}
                                                             />
                                                         </div>
                                                     </div>
@@ -294,7 +287,7 @@ export default function CareersPageContent() {
                                                             name="message"
                                                             value={formData.message || ''}
                                                             onChange={handleInputChange}
-                                                            placeholder="Tell us a bit about yourself..."
+                                                            placeholder={t('form.messagePlaceholder')}
                                                             rows={3}
                                                         />
                                                     </div>
@@ -371,7 +364,7 @@ export default function CareersPageContent() {
                 <button 
                   className={styles.goTopButton} 
                   onClick={scrollToTop}
-                  aria-label="Go to Top"
+                  aria-label={t('goTop')}
                 >
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M18 15l-6-6-6 6" />

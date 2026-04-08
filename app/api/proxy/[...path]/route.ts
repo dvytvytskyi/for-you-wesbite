@@ -44,9 +44,10 @@ async function handleProxy(request: NextRequest, path: string[]) {
   const targetUrl = `${TARGET_BASE_URL}/${fullPath}${searchParams ? `?${searchParams}` : ''}`;
 
   try {
-    const headers: any = {
+    const headers: Record<string, string> = {
       'x-api-key': API_KEY,
       'x-api-secret': API_SECRET,
+      'Content-Type': 'application/json',
     };
 
     // Forward auth header if present
@@ -55,34 +56,40 @@ async function handleProxy(request: NextRequest, path: string[]) {
       headers['Authorization'] = authHeader;
     }
 
-    const body = request.method !== 'GET' ? await request.json().catch(() => null) : undefined;
-
-    if (fullPath.includes('investments')) {
-      console.log('[PROXY-INVEST] Route:', fullPath);
-      console.log('[PROXY-INVEST] Target:', targetUrl);
-      console.log('[PROXY-INVEST] Body Snippet:', JSON.stringify(body).substring(0, 200));
+    const method = request.method;
+    let body = undefined;
+    
+    if (method !== 'GET' && method !== 'HEAD') {
+      try {
+        body = await request.text();
+      } catch (err) {
+        // Fallback for empty/invalid body
+      }
     }
 
-    const response = await axios({
-       method: request.method,
-       url: targetUrl,
-       data: body,
-       headers,
-       validateStatus: () => true, // Don't throw on error statuses
+    console.log(`[PROXY] ${method} ${fullPath} -> ${targetUrl.substring(0, 100)}...`);
+
+    const response = await fetch(targetUrl, {
+      method,
+      headers,
+      body,
+      cache: 'no-store'
     });
 
-    if (response.status >= 400) {
-      console.error(`[PROXY-ERROR] ${request.method} ${fullPath} returned ${response.status}`);
-      console.error(`[PROXY-ERROR] Response body:`, JSON.stringify(response.data).substring(0, 500));
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      console.error(`[PROXY-ERROR] ${method} ${fullPath} returned ${response.status}`);
+      console.error(`[PROXY-ERROR] Response:`, JSON.stringify(data).substring(0, 200));
     } else {
-      console.log(`[PROXY-SUCCESS] ${request.method} ${fullPath} returned ${response.status}`);
+      console.log(`[PROXY-SUCCESS] ${method} ${fullPath} returned ${response.status}`);
     }
 
-    return NextResponse.json(response.data, { status: response.status });
+    return NextResponse.json(data, { status: response.status });
   } catch (error: any) {
-    console.error('Proxy Error:', error.message);
+    console.error(`[PROXY-CRITICAL-ERROR] ${request.method} ${path.join('/')}:`, error.message);
     return NextResponse.json(
-      { success: false, error: 'Proxy failed to connect to backend' },
+      { success: false, error: 'Proxy failed to connect to backend', details: error.message },
       { status: 500 }
     );
   }

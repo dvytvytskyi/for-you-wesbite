@@ -729,6 +729,7 @@
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 30px;
+  align-items: start; /* Prevents siblings from stretching and jumping when one expands */
 }
 
 .leaderCard {
@@ -778,31 +779,26 @@
 }
 
 .leaderDescription {
-  flex: 1;
-  margin-bottom: 16px;
-}
-
-.leaderDescription .shortText {
-  font-family: 'Inter', sans-serif;
-  font-size: 14px;
-  font-weight: 400;
-  color: rgb(93 93 93 / 80%);
-  line-height: 1.6;
-  margin: 0;
-  display: -webkit-box;
-  -webkit-line-clamp: 4;
-  line-clamp: 4;
-  -webkit-box-orient: vertical;
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.4s ease-in-out, opacity 0.4s ease-in-out, margin 0.4s ease-in-out;
+  opacity: 0;
+  margin-bottom: 20px;
   overflow: hidden;
 }
 
-.leaderDescription .fullText {
+.leaderDescription.expanded {
+  grid-template-rows: 1fr;
+  opacity: 1;
+  margin-bottom: 30px;
+}
+
+.descriptionInner {
+  min-height: 0;
   font-family: 'Inter', sans-serif;
   font-size: 14px;
-  font-weight: 400;
-  color: rgb(93 93 93 / 80%);
   line-height: 1.6;
-  margin: 0;
+  color: #444;
 }
 
 .leaderToggle {
@@ -1434,6 +1430,27 @@
 
 .faqItem.open .faqIcon {
   transform: rotate(180deg);
+}
+
+.leaderDescription {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.4s ease-in-out, opacity 0.4s ease-in-out, margin 0.4s ease-in-out;
+  opacity: 0;
+  margin: 0;
+}
+
+.leaderDescription.expanded {
+  grid-template-rows: 1fr;
+  opacity: 1;
+  margin-top: 15px;
+}
+
+.descriptionInner {
+  overflow: hidden;
+  font-size: 15px;
+  line-height: 1.6;
+  color: #444;
 }
 
 .faqAnswer {

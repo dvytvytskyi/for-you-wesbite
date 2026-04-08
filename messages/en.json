@@ -138,6 +138,8 @@
         "description": "3.5+ years of experience in the Dubai real estate market, with a strong focus on client relations and strategic partnerships. Successfully worked with high-net-worth individuals, international investors, and key business partners to facilitate property transactions, provide tailored investment solutions, and build long-term trust-based relationships."
       }
     },
+    "readMore": "Read more",
+    "readLess": "Read less",
     "faqTitle": "Frequently Asked Questions",
     "faq": [
       {
@@ -371,10 +373,21 @@
     "from": "From",
     "sqm": "sqm",
     "sqft": "sq.ft",
-    "beds": "beds",
-    "baths": "baths",
+    "beds": "{count, plural, one {bed} other {beds}}",
+    "baths": "{count, plural, one {bath} other {baths}}",
     "balcony": "balcony",
-    "similarProperties": "Similar Properties"
+    "similarProperties": "Similar Properties",
+    "paymentPlan": "Payment Plan",
+    "readiness": "Readiness",
+    "aboutDeveloper": "About Developer",
+    "developerPhotos": "Developer Photos",
+    "aboutArea": "About Area",
+    "areaPhotos": "Area Photos",
+    "paymentTimes": {
+      "onBooking": "On Booking",
+      "duringConstruction": "During Construction",
+      "uponHandover": "Upon Handover"
+    }
   },
   "investment": {
     "title": "Submit Investment Request",
@@ -421,7 +434,9 @@
   },
   "news": {
     "pageTitle": "News",
-    "loading": "Loading news..."
+    "loading": "Loading news...",
+    "latestNews": "Latest News",
+    "viewAll": "View All"
   },
   "newsDetail": {
     "loading": "Loading news article...",
@@ -520,16 +535,23 @@
   },
   "careers": {
     "pageTitle": "Careers",
+    "bannerText": "Join our team of professionals and build the future of real estate with us.",
     "loading": "Loading vacancies...",
     "noVacancies": "No vacancies found at the moment.",
     "applyButton": "Apply Now",
     "form": {
       "title": "Apply for this position",
+      "close": "Close",
       "name": "Full Name",
       "email": "Email Address",
       "phone": "Phone Number",
       "message": "Cover Letter (Optional)",
       "cvUrl": "Link to CV or Portfolio (Optional)",
+      "namePlaceholder": "John Doe",
+      "emailPlaceholder": "john@example.com",
+      "phonePlaceholder": "+971 ...",
+      "cvUrlPlaceholder": "Link to your CV",
+      "messagePlaceholder": "Tell us a bit about yourself...",
       "submit": "Submit Application",
       "success": "Your application has been submitted successfully!",
       "error": "Failed to submit application. Please try again."
@@ -541,7 +563,8 @@
       "offers": "What We Offer"
     },
     "views": "Views",
-    "publishedAt": "Published"
+    "publishedAt": "Published",
+    "goTop": "Go to top"
   },
   "metadata": {
     "home": "Buy Property in Dubai | ForYou Real Estate | 0% Commission & High ROI",
@@ -549,11 +572,17 @@
     "properties": "Dubai Properties for Sale | Best Prices & Luxury Listings | ForYou",
     "propertiesDescription": "Explore our curated catalog of Dubai real estate. From affordable studios to premium penthouses. Daily updates, direct prices from developers, and virtual tours.",
     "map": "Interactive Dubai Map",
+    "mapDescription": "Use an interactive Dubai real estate map to find properties by area, price, bedrooms, and type. Compare listings visually and discover investment hotspots faster.",
     "areas": "Best Areas to Live in Dubai",
+    "areasDescription": "Explore Dubai areas for living and investment, with district insights, lifestyle highlights, and market context to help you choose locations with strong growth potential.",
     "developers": "Top Dubai Developers",
+    "developersDescription": "Browse top Dubai developers, compare their projects, track delivery reputation, and find trusted off-plan and ready properties for secure long-term investment.",
     "about": "ForYou Real Estate",
+    "aboutDescription": "Learn about ForYou Real Estate in Dubai, our expert team, transaction support, and investment approach focused on transparent guidance and strong client outcomes.",
     "news": "Dubai Real Estate News",
+    "newsDescription": "Read timely Dubai real estate news, market analysis, legal updates, and investment insights to make informed property decisions in a rapidly changing market.",
     "careers": "Real Estate Jobs in Dubai"
+    ,"careersDescription": "Explore real estate careers in Dubai at ForYou: broker roles, growth opportunities, training, and a performance-focused team working with premium properties and investors."
   },
   "developerDetail": {
     "aboutTitle": "About Developer",

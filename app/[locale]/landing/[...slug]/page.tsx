@@ -1,5 +1,6 @@
 import React from 'react';
-import { getPropertyBySlug } from '@/lib/api';
+import { getPropertyBySlug, Property } from '@/lib/api';
+import { createBreadcrumbSchema, createRealEstateListingSchema } from '@/lib/schema';
 import { notFound } from 'next/navigation';
 import dynamic from 'next/dynamic';
 
@@ -76,6 +77,7 @@ export async function generateMetadata({
         languages: {
           en: `https://foryou-realestate.com/en/${path}`,
           ru: `https://foryou-realestate.com/ru/${path}`,
+          'x-default': `https://foryou-realestate.com/en/${path}`,
         },
       },
       openGraph: {
@@ -129,6 +131,8 @@ export default async function LandingDispatchPage({
   const areaName: string = areaObj
     ? (isRu ? areaObj.nameRu : areaObj.nameEn) || 'Dubai'
     : property.area || 'Dubai';
+
+  const canonicalUrl = `https://foryou-realestate.com/${locale}/landing/${slug.join('/')}`;
 
   // ── Shared project data (used across multiple templates)
   const projectData = {
@@ -240,12 +244,34 @@ export default async function LandingDispatchPage({
       updatedAt: property.updatedAt,
     };
 
-    const canonicalUrl = `https://foryou-realestate.com/${locale}/landing/${slug.join('/')}`;
+    const schema = createRealEstateListingSchema(
+      property as Property,
+      locale,
+      canonicalUrl,
+      `${unitData.type} in ${property.name}`
+    );
 
     if (template === 'luxury') {
-      return <LuxuryUnitLanding unit={unitData as any} locale={locale} />;
+      return (
+        <>
+          <script
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+          />
+          <LuxuryUnitLanding unit={unitData as any} locale={locale} />
+        </>
+      );
     }
-    return <UnitLanding unit={unitData} locale={locale} canonicalUrl={canonicalUrl} />;
+
+    return (
+      <>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+        />
+        <UnitLanding unit={unitData} locale={locale} canonicalUrl={canonicalUrl} />
+      </>
+    );
   }
 
   // ── PROPERTY
@@ -271,7 +297,18 @@ export default async function LandingDispatchPage({
       amenities:
         property.facilities?.map((f: any) => (isRu ? f.nameRu || f.nameEn : f.nameEn)) || [],
     };
-    return <PropertyLanding project={propertyData as any} locale={locale} />;
+
+    const schema = createRealEstateListingSchema(property as Property, locale, canonicalUrl, property.name);
+
+    return (
+      <>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+        />
+        <PropertyLanding project={propertyData as any} locale={locale} />
+      </>
+    );
   }
 
   // ── PREMIUM
@@ -292,9 +329,30 @@ export default async function LandingDispatchPage({
       },
       developerStats: { completedProjects: 10, ongoingProjects: 2, trustScore: '95%' },
     };
-    return <PremiumPropertyLanding data={premiumData as any} locale={locale} />;
+
+    const schema = createRealEstateListingSchema(property as Property, locale, canonicalUrl, property.name);
+
+    return (
+      <>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+        />
+        <PremiumPropertyLanding data={premiumData as any} locale={locale} />
+      </>
+    );
   }
 
   // ── Default: PROJECT
-  return <ProjectLanding project={projectData as any} locale={locale} />;
+  const schema = createRealEstateListingSchema(property as Property, locale, canonicalUrl, property.name);
+
+  return (
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+      />
+      <ProjectLanding project={projectData as any} locale={locale} />
+    </>
+  );
 }

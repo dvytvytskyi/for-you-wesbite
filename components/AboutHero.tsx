@@ -779,8 +779,8 @@ function FAQContactModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => 
 export function LeadershipSection({ t }: { t: any }) {
   const [expandedCard, setExpandedCard] = useState<string | null>(null);
 
-  const handleToggle = (name: string) => {
-    setExpandedCard(expandedCard === name ? null : name);
+  const handleToggle = (id: string) => {
+    setExpandedCard(expandedCard === id ? null : id);
   };
 
   return (
@@ -792,29 +792,37 @@ export function LeadershipSection({ t }: { t: any }) {
             name={t('leaders.artem.name')}
             description={t('leaders.artem.description')}
             photo="/Screenshot-2025-06-29-at-16.28.29.png"
-            isExpanded={expandedCard === t('leaders.artem.name')}
-            onToggle={() => handleToggle(t('leaders.artem.name'))}
+            isExpanded={expandedCard === 'artem'}
+            onToggle={() => handleToggle('artem')}
+            readMore={t('readMore')}
+            readLess={t('readLess')}
           />
           <LeaderCard
             name={t('leaders.nikita.name')}
             description={t('leaders.nikita.description')}
             photo="/Screenshot-2025-06-29-at-13.30.47.png"
-            isExpanded={expandedCard === t('leaders.nikita.name')}
-            onToggle={() => handleToggle(t('leaders.nikita.name'))}
+            isExpanded={expandedCard === 'nikita'}
+            onToggle={() => handleToggle('nikita')}
+            readMore={t('readMore')}
+            readLess={t('readLess')}
           />
           <LeaderCard
             name={t('leaders.antony.name')}
             description={t('leaders.antony.description')}
             photo="/photo_2024-09-23_15-49-10.webp"
-            isExpanded={expandedCard === t('leaders.antony.name')}
-            onToggle={() => handleToggle(t('leaders.antony.name'))}
+            isExpanded={expandedCard === 'antony'}
+            onToggle={() => handleToggle('antony')}
+            readMore={t('readMore')}
+            readLess={t('readLess')}
           />
           <LeaderCard
             name={t('leaders.gulnoza.name')}
             description={t('leaders.gulnoza.description')}
             photo="/IMG_4539-1-scaled.webp"
-            isExpanded={expandedCard === t('leaders.gulnoza.name')}
-            onToggle={() => handleToggle(t('leaders.gulnoza.name'))}
+            isExpanded={expandedCard === 'gulnoza'}
+            onToggle={() => handleToggle('gulnoza')}
+            readMore={t('readMore')}
+            readLess={t('readLess')}
           />
         </div>
       </div>
@@ -822,10 +830,13 @@ export function LeadershipSection({ t }: { t: any }) {
   );
 }
 
-function LeaderCard({ name, description, photo, isExpanded, onToggle }: Leader & { isExpanded: boolean; onToggle: () => void }) {
+function LeaderCard({ name, description, photo, isExpanded, onToggle, readMore, readLess }: Leader & { isExpanded: boolean; onToggle: () => void; readMore: string; readLess: string }) {
   return (
     <div
       className={`${styles.leaderCard} ${isExpanded ? styles.expanded : ''}`}
+      onClick={(e) => {
+        onToggle();
+      }}
     >
       <div className={styles.leaderPhoto}>
         <Image
@@ -841,15 +852,18 @@ function LeaderCard({ name, description, photo, isExpanded, onToggle }: Leader &
       <div className={styles.leaderContent}>
         <h3 className={styles.leaderName}>{name}</h3>
         <div className={styles.leaderDescription}>
-          <p className={isExpanded ? styles.fullText : styles.shortText}>
+          <div className={`${styles.descriptionInner} ${isExpanded ? styles.fullText : styles.shortText}`}>
             {description}
-          </p>
+          </div>
         </div>
         <button
           className={styles.leaderToggle}
-          onClick={onToggle}
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggle();
+          }}
         >
-          {isExpanded ? 'Read Less' : 'Read More'}
+          {isExpanded ? readLess : readMore}
         </button>
       </div>
     </div>

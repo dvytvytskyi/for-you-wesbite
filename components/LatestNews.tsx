@@ -85,8 +85,31 @@ export default function LatestNews() {
         };
     }, []);
 
-    if (loading || news.length === 0) {
-        return null; // Don't show section if loading or empty
+    if (loading) {
+        return (
+            <section className={styles.latestNews}>
+                <div className={styles.container}>
+                    <div className={styles.header}>
+                        <div className={styles.skeletonTitle} />
+                    </div>
+                    <div className={styles.newsGrid}>
+                        {[1, 2, 3].map((i) => (
+                            <div key={i} className={styles.skeletonCard}>
+                                <div className={styles.skeletonImage} />
+                                <div className={styles.skeletonContent}>
+                                    <div className={styles.skeletonLine} />
+                                    <div className={styles.skeletonLineShort} />
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </section>
+        );
+    }
+
+    if (news.length === 0) {
+        return null;
     }
 
     return (

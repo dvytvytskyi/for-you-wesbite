@@ -8,7 +8,7 @@ import styles from './MapFilters.module.css';
 interface Filters {
     type: 'new' | 'secondary';
     search: string;
-    location: string[]; // areaId[]
+    location: string[]; // areaSlug[]
     bedrooms: number[];
     sizeFrom: string;
     sizeTo: string;
@@ -144,11 +144,11 @@ export default function MapFilters({ filters, onFilterChange }: MapFiltersProps)
 
     const parseNumber = (value: string): string => value.replace(/\D/g, '');
 
-    const handleLocationToggle = (areaId: string) => {
-        const isSelected = localFilters.location.includes(areaId);
+    const handleLocationToggle = (areaSlug: string) => {
+        const isSelected = localFilters.location.includes(areaSlug);
         const newLocations = isSelected
-            ? localFilters.location.filter((l) => l !== areaId)
-            : [...localFilters.location, areaId];
+            ? localFilters.location.filter((l) => l !== areaSlug)
+            : [...localFilters.location, areaSlug];
         handleChange('location', newLocations);
     };
 
@@ -180,7 +180,7 @@ export default function MapFilters({ filters, onFilterChange }: MapFiltersProps)
     const getLocationLabel = () => {
         if (localFilters.location.length === 0) return t('location.placeholder');
         if (localFilters.location.length === 1) {
-            const area = areas.find((a) => a.id === localFilters.location[0]);
+            const area = areas.find((a) => (a.slug || a.id) === localFilters.location[0]);
             return locale === 'ru' ? area?.nameRu || area?.nameEn : area?.nameEn || '';
         }
         return `${localFilters.location.length} ${t('location.selected')}`;
@@ -204,14 +204,16 @@ export default function MapFilters({ filters, onFilterChange }: MapFiltersProps)
         if (!localFilters.priceFrom && !localFilters.priceTo) return t('price.placeholder');
         const from = localFilters.priceFrom ? formatNumber(localFilters.priceFrom) : '0';
         const to = localFilters.priceTo ? formatNumber(localFilters.priceTo) : '∞';
-        return `${from} - ${to} AED`;
+        const currency = locale === 'ru' ? 'USD' : 'AED';
+        return `${from} - ${to} ${currency}`;
     };
 
     const getSizeLabel = () => {
         if (!localFilters.sizeFrom && !localFilters.sizeTo) return t('size.placeholder');
         const from = localFilters.sizeFrom ? formatNumber(localFilters.sizeFrom) : '0';
         const to = localFilters.sizeTo ? formatNumber(localFilters.sizeTo) : '∞';
-        return `${from} - ${to} sq. ft.`;
+        const unit = locale === 'ru' ? 'м²' : 'sq.ft';
+        return `${from} - ${to} ${unit}`;
     };
 
     const hasOpenDropdown = isLocationOpen || isBedroomsOpen || isSizeOpen || isPriceOpen || isDeveloperOpen;
@@ -261,12 +263,14 @@ export default function MapFilters({ filters, onFilterChange }: MapFiltersProps)
 
                                         if (filtered.length === 0) return <div className={styles.dropdownItem}>No areas found</div>;
 
-                                        return filtered.map((area) => (
+                                        return filtered.map((area) => {
+                                            const areaSlug = area.slug || area.id;
+                                            return (
                                             <label key={area.id} className={styles.checkboxItem}>
-                                                <input type="checkbox" checked={localFilters.location.includes(area.id)} onChange={() => handleLocationToggle(area.id)} />
+                                                <input type="checkbox" checked={localFilters.location.includes(areaSlug)} onChange={() => handleLocationToggle(areaSlug)} />
                                                 <span>{locale === 'ru' ? area.nameRu : area.nameEn}</span>
                                             </label>
-                                        ));
+                                        )});
                                     })()
                             }
                         </div>

@@ -115,12 +115,25 @@ export default function DeveloperDetail({ id }: DeveloperDetailProps) {
                 developerId: developer.id,
                 propertyType: currentFilters.type === 'new' ? 'off-plan' : 'secondary',
                 search: currentFilters.search || undefined,
-                priceMin: currentFilters.priceFrom || undefined,
-                priceMax: currentFilters.priceTo || undefined,
-                sizeMin: currentFilters.sizeFrom || undefined,
-                sizeMax: currentFilters.sizeTo || undefined,
                 limit: 100
             };
+
+            if (currentFilters.priceFrom) {
+                const val = parseFloat(currentFilters.priceFrom);
+                apiFilters.priceMin = locale === 'ru' ? Math.round(val * 3.6725) : val;
+            }
+            if (currentFilters.priceTo) {
+                const val = parseFloat(currentFilters.priceTo);
+                apiFilters.priceMax = locale === 'ru' ? Math.round(val * 3.6725) : val;
+            }
+            if (currentFilters.sizeFrom) {
+                const val = parseFloat(currentFilters.sizeFrom);
+                apiFilters.sizeMin = locale === 'ru' ? Math.round(val * 10.7639) : val;
+            }
+            if (currentFilters.sizeTo) {
+                const val = parseFloat(currentFilters.sizeTo);
+                apiFilters.sizeMax = locale === 'ru' ? Math.round(val * 10.7639) : val;
+            }
 
             const result = await getProperties(apiFilters, true);
             setProperties(result.properties || []);
@@ -170,11 +183,11 @@ export default function DeveloperDetail({ id }: DeveloperDetailProps) {
 
         // Size filtering (sqft)
         const size = prop.propertyType === 'off-plan'
-            ? (prop.sizeFromSqft || (prop.sizeFrom ? Math.round(prop.sizeFrom * 10.764) : 0))
-            : (prop.sizeSqft || (prop.size ? Math.round(prop.size * 10.764) : 0));
+            ? (prop.sizeFromSqft || prop.sizeFrom || 0)
+            : (prop.sizeSqft || prop.size || 0);
 
-        const sFrom = filters.sizeFrom ? parseInt(filters.sizeFrom, 10) : 0;
-        const sTo = filters.sizeTo ? parseInt(filters.sizeTo, 10) : Infinity;
+        const sFrom = filters.sizeFrom ? (locale === 'ru' ? parseFloat(filters.sizeFrom) * 10.7639 : parseFloat(filters.sizeFrom)) : 0;
+        const sTo = filters.sizeTo ? (locale === 'ru' ? parseFloat(filters.sizeTo) * 10.7639 : parseFloat(filters.sizeTo)) : Infinity;
         if (size < sFrom || (sTo !== Infinity && size > sTo)) return false;
 
         return true;
@@ -184,7 +197,12 @@ export default function DeveloperDetail({ id }: DeveloperDetailProps) {
         return (
             <section className={styles.developerDetail}>
                 <div className={styles.container}>
-                    <div className={styles.loading}>{locale === 'ru' ? 'Загрузка...' : 'Loading...'}</div>
+                    <div className={styles.loadingSkeleton}>
+                        <div className={styles.skeletonHero} />
+                        <div className={styles.skeletonTitleLine} />
+                        <div className={styles.skeletonParagraph} />
+                        <div className={styles.skeletonParagraphShort} />
+                    </div>
                 </div>
             </section>
         );
@@ -250,12 +268,16 @@ export default function DeveloperDetail({ id }: DeveloperDetailProps) {
                     <div className={styles.descriptionSection}>
                         <h2 className={styles.sectionTitle}>{t('aboutTitle')}</h2>
                         <div className={styles.descriptionText}>
-                            {locale === 'ar' && developer.descriptionAr
-                                ? developer.descriptionAr
-                                : locale === 'ru'
-                                ? (developer.descriptionRu || developer.description?.description || developer.description?.title)
-                                : (developer.descriptionEn || developer.description?.description || developer.description?.title)
-                            }
+                            {(
+                                (locale === 'ar' && developer?.descriptionAr
+                                    ? developer?.descriptionAr
+                                    : locale === 'ru'
+                                    ? (developer?.descriptionRu || developer?.description?.description || developer?.description?.title)
+                                    : (developer?.descriptionEn || developer?.description?.description || developer?.description?.title)
+                                ) || ''
+                            ).split('\n').filter(p => p.trim() !== '').map((paragraph, idx) => (
+                                <p key={idx}>{paragraph}</p>
+                            ))}
                         </div>
                     </div>
                 )}
@@ -315,7 +337,10 @@ export default function DeveloperDetail({ id }: DeveloperDetailProps) {
                                         <div className={styles.communityArea}>{locale === 'ru' ? (community.area?.nameRu || community.area?.nameEn) : community.area?.nameEn}</div>
                                         {community.priceRange && (
                                             <div className={styles.communityPrice}>
-                                                {community.priceRange.from?.toLocaleString()} - {community.priceRange.to?.toLocaleString()} AED
+                                                {locale === 'ru' 
+                                                  ? `${Math.round((community.priceRange.from || 0) / 3.6725).toLocaleString()} - ${Math.round((community.priceRange.to || 0) / 3.6725).toLocaleString()} USD`
+                                                  : `${community.priceRange.from?.toLocaleString()} - ${community.priceRange.to?.toLocaleString()} AED`
+                                                }
                                             </div>
                                         )}
                                         <p className={styles.communityDesc}>{community.description?.substring(0, 150)}...</p>
@@ -360,109 +385,30 @@ export default function DeveloperDetail({ id }: DeveloperDetailProps) {
                     </div>
                 )}
 
-                {/* Filters and Projects - only show if there are properties or if filtered */}
-                {(!loadingProperties && (totalProperties > 0 || filters.search || filters.priceFrom || filters.priceTo || filters.sizeFrom || filters.sizeTo)) && (
-                    <>
-                        {/* Filters */}
-                        <div className={styles.localFilters}>
-                            <div className={styles.filterColumn}>
-                                <div className={styles.filterRow}>
-                                    <div className={styles.typeToggle}>
-                                        <button
-                                            className={`${styles.typeButton} ${filters.type === 'new' ? styles.active : ''}`}
-                                            onClick={() => handleFilterChange('type', 'new')}
-                                        >
-                                            {t('offPlan')}
-                                        </button>
-                                        <button
-                                            className={`${styles.typeButton} ${filters.type === 'secondary' ? styles.active : ''}`}
-                                            onClick={() => handleFilterChange('type', 'secondary')}
-                                        >
-                                            {t('secondary')}
-                                        </button>
-                                    </div>
-
-                                    <div className={styles.searchBox}>
-                                        <input
-                                            type="text"
-                                            placeholder={locale === 'ru' ? 'Поиск проекта...' : 'Search project...'}
-                                            value={filters.search}
-                                            onChange={(e) => handleFilterChange('search', e.target.value)}
-                                            className={styles.filterInput}
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className={styles.filterRow}>
-                                    <div className={styles.priceSizeBox}>
-                                        <div className={styles.rangeGroup}>
-                                            <div className={styles.inputWrapper}>
-                                                <span className={styles.inputLabel}>AED</span>
-                                                <input
-                                                    type="text"
-                                                    placeholder={locale === 'ru' ? 'от' : 'from'}
-                                                    value={formatNumberWithCommas(filters.priceFrom)}
-                                                    onChange={(e) => handleFilterChange('priceFrom', e.target.value.replace(/\D/g, ''))}
-                                                    className={styles.filterInputWithLabel}
-                                                />
-                                            </div>
-                                            <div className={styles.inputWrapper}>
-                                                <span className={styles.inputLabel}>AED</span>
-                                                <input
-                                                    type="text"
-                                                    placeholder={locale === 'ru' ? 'до' : 'to'}
-                                                    value={formatNumberWithCommas(filters.priceTo)}
-                                                    onChange={(e) => handleFilterChange('priceTo', e.target.value.replace(/\D/g, ''))}
-                                                    className={styles.filterInputWithLabel}
-                                                />
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className={styles.priceSizeBox}>
-                                        <div className={styles.rangeGroup}>
-                                            <div className={styles.inputWrapper}>
-                                                <span className={styles.inputLabel}>sqft</span>
-                                                <input
-                                                    type="text"
-                                                    placeholder={locale === 'ru' ? 'от' : 'from'}
-                                                    value={formatNumberWithCommas(filters.sizeFrom)}
-                                                    onChange={(e) => handleFilterChange('sizeFrom', e.target.value.replace(/\D/g, ''))}
-                                                    className={styles.filterInputWithLabel}
-                                                />
-                                            </div>
-                                            <div className={styles.inputWrapper}>
-                                                <span className={styles.inputLabel}>sqft</span>
-                                                <input
-                                                    type="text"
-                                                    placeholder={locale === 'ru' ? 'до' : 'to'}
-                                                    value={formatNumberWithCommas(filters.sizeTo)}
-                                                    onChange={(e) => handleFilterChange('sizeTo', e.target.value.replace(/\D/g, ''))}
-                                                    className={styles.filterInputWithLabel}
-                                                />
-                                            </div>
-                                        </div>
-                                    </div>
+                {/* Projects Grid */}
+                {loadingProperties ? (
+                    <div className={styles.propertiesSkeletonGrid}>
+                        {Array.from({ length: 3 }).map((_, idx) => (
+                            <div key={idx} className={styles.propertySkeletonCard}>
+                                <div className={styles.propertySkeletonImage} />
+                                <div className={styles.propertySkeletonInfo}>
+                                    <div className={styles.propertySkeletonLine} />
+                                    <div className={styles.propertySkeletonLineShort} />
                                 </div>
                             </div>
+                        ))}
+                    </div>
+                ) : filteredProperties.length > 0 ? (
+                    <div className={styles.propertiesSection}>
+                        <h2 className={styles.sectionTitle}>{t('projectsTitle')}</h2>
+                        <div className={styles.propertiesGrid}>
+                            {filteredProperties.map((property) => (
+                                <PropertyCard key={property.id} property={property} />
+                            ))}
                         </div>
-
-                        {/* Projects Grid */}
-                        {loadingProperties ? (
-                            <div className={styles.propertiesLoading}>{locale === 'ru' ? 'Загрузка...' : 'Loading...'}</div>
-                        ) : filteredProperties.length > 0 ? (
-                            <div className={styles.propertiesSection}>
-                                <h2 className={styles.sectionTitle}>{t('projectsTitle')}</h2>
-                                <div className={styles.propertiesGrid}>
-                                    {filteredProperties.map((property) => (
-                                        <PropertyCard key={property.id} property={property} />
-                                    ))}
-                                </div>
-                            </div>
-                        ) : (
-                            <div className={styles.noProperties}>{locale === 'ru' ? 'Проектов не найдено' : 'No properties found'}</div>
-                        )}
-                    </>
+                    </div>
+                ) : (
+                    <div className={styles.noProperties}>{locale === 'ru' ? 'Проектов не найдено' : 'No properties found'}</div>
                 )}
 
                 {/* Image Modal */}

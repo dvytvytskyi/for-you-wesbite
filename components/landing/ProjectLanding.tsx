@@ -25,25 +25,6 @@ export default function ProjectLanding({ project, locale }: ProjectProps) {
   const [showPopup, setShowPopup] = useState(false);
   const isEn = locale !== 'ru';
 
-  const jsonLd = {
-    "@context": "https://schema.org",
-    "@type": "Accommodation",
-    "name": project.name,
-    "description": project.about.replace(/<[^>]*>?/gm, ''),
-    "address": {
-      "@type": "PostalAddress",
-      "addressLocality": "Dubai",
-      "addressRegion": project.location
-    },
-    "image": project.images,
-    "offers": {
-      "@type": "Offer",
-      "priceCurrency": "AED",
-      "price": project.priceFrom.replace(/,/g, ''),
-      "availability": "https://schema.org/InStock"
-    }
-  };
-
   useEffect(() => {
     const timer = setTimeout(() => setShowPopup(true), 45000);
     return () => clearTimeout(timer);
@@ -51,10 +32,6 @@ export default function ProjectLanding({ project, locale }: ProjectProps) {
 
   return (
     <article className={styles.container}>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-      />
 
       {/* Breadcrumbs for SEO */}
       <nav className={styles.breadcrumbs} aria-label="Breadcrumb">

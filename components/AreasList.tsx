@@ -146,7 +146,12 @@ export default function AreasList() {
           };
         });
 
-        setAllAreas(convertedAreas);
+        setAllAreas(
+          convertedAreas.sort((a, b) => {
+            if (b.projectsCount !== a.projectsCount) return b.projectsCount - a.projectsCount;
+            return a.name.localeCompare(b.name);
+          })
+        );
 
         // REMOVED: Too much logging slows down the site
       } catch (err: any) {

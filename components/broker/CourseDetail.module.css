@@ -13,6 +13,45 @@
   color: #003077;
 }
 
+.loadingSkeleton {
+  display: grid;
+  gap: 28px;
+  padding: 40px 0;
+}
+
+.skeletonHeader,
+.skeletonParagraph,
+.skeletonBlock {
+  background: linear-gradient(90deg, #f3f3f3 0%, #e9e9e9 50%, #f3f3f3 100%);
+  background-size: 200% 100%;
+  animation: skeletonPulse 1.4s infinite ease-in-out;
+  border-radius: 18px;
+}
+
+.skeletonHeader {
+  height: 48px;
+  width: 70%;
+}
+
+.skeletonParagraph {
+  height: 18px;
+  width: 90%;
+}
+
+.skeletonBlock {
+  height: 220px;
+  width: 100%;
+}
+
+@keyframes skeletonPulse {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
 .backButton {
   display: flex;
   align-items: center;

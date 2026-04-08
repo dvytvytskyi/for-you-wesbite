@@ -26,16 +26,6 @@ interface NewsDetailProps {
   slug: string;
 }
 
-// Deterministic random for views/shares
-const getDeterministicValue = (seed: string, min: number, max: number) => {
-  let hash = 0;
-  for (let i = 0; i < seed.length; i++) {
-    hash = seed.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  const factor = (Math.abs(hash) % 1000) / 1000;
-  return Math.floor(min + factor * (max - min));
-};
-
 export default function NewsDetail({ slug }: NewsDetailProps) {
   const t = useTranslations('newsDetail');
   const locale = useLocale();
@@ -102,19 +92,27 @@ export default function NewsDetail({ slug }: NewsDetailProps) {
     return locale === 'ru' ? news.titleRu : news.title;
   };
 
-  const formatDate = (date: Date) => {
-    return new Intl.DateTimeFormat(locale === 'ru' ? 'ru-RU' : 'en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    }).format(date);
-  };
+  if (loading) {
+    return (
+      <div className={styles.newsDetail}>
+        <div className={styles.container}>
+          <div className={styles.loadingSkeleton}>
+            <div className={styles.skeletonHero} />
+            <div className={styles.skeletonTitle} />
+            <div className={styles.skeletonMetaRow}>
+              <div className={styles.skeletonMetaItem} />
+              <div className={styles.skeletonMetaItem} />
+            </div>
+            <div className={styles.skeletonParagraph} />
+            <div className={styles.skeletonParagraphShort} />
+            <div className={styles.skeletonParagraphShort} />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
-  if (loading) return <div className={styles.loading}>{t('loading')}</div>;
   if (error || !news) return <div className={styles.notFound}>{t('notFound')}</div>;
-
-  const views = getDeterministicValue(news.id, 1200, 1800);
-  const shares = getDeterministicValue(news.id, 8, 25);
 
   const sortedContents = [...news.contents].sort((a, b) => a.order - b.order);
 
@@ -162,22 +160,54 @@ export default function NewsDetail({ slug }: NewsDetailProps) {
               
               <div className={styles.headerTop}>
                 <h1 className={styles.title}>{getTitle()}</h1>
-                <div className={styles.metrics}>
-                  <div className={styles.metric}>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                    <span>{views}</span>
-                  </div>
-                  <div className={styles.metric}>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
-                    <span>{shares}</span>
-                  </div>
-                </div>
               </div>
 
               <div className={styles.articleMetaActions}>
-                <div className={styles.authorDate}>
-                  <span className={styles.byAuthor}>{t('by')} <span className={styles.authorNameBold}>{news.author?.name || "Ruslan K."}</span></span>
-                  <span className={styles.publishDate}>{formatDate(news.publishedAt)}</span>
+                <div className={styles.authorSection}>
+                  <div className={styles.authorSectionHeader}>
+                    <div className={styles.authorLabelUnderline}>{t('author.writtenBy')}</div>
+                  </div>
+
+                  <div className={styles.authorCard}>
+                    <div className={styles.authorPhotoWrapper}>
+                      <Image
+                        src={news.author?.photo || "https://res.cloudinary.com/dgv0rxd60/image/upload/v1765715854/photo_2025-12-14_15-36-43_jn55hm.jpg"}
+                        alt={news.author?.name || "Ruslan"}
+                        fill
+                        style={{ objectFit: 'cover', objectPosition: 'top' }}
+                        unoptimized
+                      />
+                    </div>
+                    <div className={styles.authorInfo}>
+                      <h3 className={styles.authorName}>{news.author ? (locale === 'ru' ? news.author.nameRu : news.author.name) : "Ruslan K."}</h3>
+                      <div className={styles.authorRole}>{news.author ? (locale === 'ru' ? news.author.roleRu : news.author.role) : t('author.role')}</div>
+                      <div className={styles.authorDetails}>
+                        <div>{news.author ? (locale === 'ru' ? news.author.specializationRu : news.author.specialization) : t('author.specialization')}</div>
+                        <div>{news.author?.languages || t('author.languages')}</div>
+                      </div>
+                    </div>
+                    <div className={styles.authorButtons}>
+                      <a
+                        href={generateWhatsAppLink({
+                          phone: '971501769699',
+                          locale,
+                          contextType: 'general',
+                          contextName: `News Author: ${news.author?.name || 'Ruslan'}`
+                        })}
+                        className={styles.whatsappButton}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <span>{t('author.whatsapp', { name: news.author?.name || 'Ruslan' })}</span>
+                      </a>
+                      <button
+                        className={styles.bookCallButton}
+                        onClick={() => setIsModalOpen(true)}
+                      >
+                        <span>{t('author.bookCall')}</span>
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -226,54 +256,6 @@ export default function NewsDetail({ slug }: NewsDetailProps) {
               ))}
             </div>
 
-
-            {/* Author Card at the bottom of left column */}
-            <div className={styles.authorSection}>
-              <div className={styles.authorSectionHeader}>
-                <div className={styles.authorLabelUnderline}>{t('author.writtenBy')}</div>
-              </div>
-
-              <div className={styles.authorCard}>
-                <div className={styles.authorPhotoWrapper}>
-                  <Image
-                    src={news.author?.photo || "https://res.cloudinary.com/dgv0rxd60/image/upload/v1765715854/photo_2025-12-14_15-36-43_jn55hm.jpg"}
-                    alt={news.author?.name || "Ruslan"}
-                    fill
-                    style={{ objectFit: 'cover', objectPosition: 'top' }}
-                    unoptimized
-                  />
-                </div>
-                <div className={styles.authorInfo}>
-                  <h3 className={styles.authorName}>{news.author ? (locale === 'ru' ? news.author.nameRu : news.author.name) : "Ruslan K."}</h3>
-                  <div className={styles.authorRole}>{news.author ? (locale === 'ru' ? news.author.roleRu : news.author.role) : t('author.role')}</div>
-                  <div className={styles.authorDetails}>
-                    <div>{news.author ? (locale === 'ru' ? news.author.specializationRu : news.author.specialization) : t('author.specialization')}</div>
-                    <div>{news.author?.languages || t('author.languages')}</div>
-                  </div>
-                </div>
-                <div className={styles.authorButtons}>
-                  <a
-                    href={generateWhatsAppLink({
-                      phone: '971501769699',
-                      locale,
-                      contextType: 'general',
-                      contextName: `News Author: ${news.author?.name || 'Ruslan'}`
-                    })}
-                    className={styles.whatsappButton}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    <span>{t('author.whatsapp', { name: news.author?.name || 'Ruslan' })}</span>
-                  </a>
-                  <button
-                    className={styles.bookCallButton}
-                    onClick={() => setIsModalOpen(true)}
-                  >
-                    <span>{t('author.bookCall')}</span>
-                  </button>
-                </div>
-              </div>
-            </div>
           </div>
 
           {/* Right Column: Sidebar */}
@@ -298,10 +280,6 @@ export default function NewsDetail({ slug }: NewsDetailProps) {
                   <div className={styles.smallCardContent}>
                     <div className={styles.smallCardHeader}>
                       <span className={styles.categoryBadgeSmall}>{t('category')}</span>
-                      <div className={styles.smallMetric}>
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                        <span>{getDeterministicValue(item.id, 1200, 1800)}</span>
-                      </div>
                     </div>
                     <h3 className={styles.smallCardTitle}>
                       {locale === 'ru' ? item.titleRu : item.title}

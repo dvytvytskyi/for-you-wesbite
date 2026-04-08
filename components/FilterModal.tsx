@@ -239,7 +239,7 @@ export default function FilterModal({ isOpen, onClose, filters, onApply, onReset
           </div>
           {isDeveloperOpen && (
             <div className={styles.dropList}>
-              <div className={styles.dropItem} onClick={() => { updateFilter('developerId', undefined); setIsDeveloperOpen(false); }}>All Developers</div>
+              <div className={styles.dropItem} onClick={() => { updateFilter('developerId', undefined); setIsDeveloperOpen(false); }}>{locale === 'ru' ? 'Все застройщики' : 'All Developers'}</div>
               {developers.map(dev => (
                 <div
                   key={dev.id}
@@ -281,7 +281,7 @@ export default function FilterModal({ isOpen, onClose, filters, onApply, onReset
                 value={formatWithCommas(tempFilters.sizeFrom)}
                 onChange={(e) => handleNumInput('sizeFrom', e.target.value)}
               />
-              <span className={styles.inputUnit}>sq.ft</span>
+              <span className={styles.inputUnit}>{locale === 'ru' ? 'м²' : 'sq.ft'}</span>
             </div>
             <div className={styles.inputWrapper}>
               <input
@@ -291,7 +291,7 @@ export default function FilterModal({ isOpen, onClose, filters, onApply, onReset
                 value={formatWithCommas(tempFilters.sizeTo)}
                 onChange={(e) => handleNumInput('sizeTo', e.target.value)}
               />
-              <span className={styles.inputUnit}>sq.ft</span>
+              <span className={styles.inputUnit}>{locale === 'ru' ? 'м²' : 'sq.ft'}</span>
             </div>
           </div>
         </div>
@@ -301,7 +301,7 @@ export default function FilterModal({ isOpen, onClose, filters, onApply, onReset
           <h3 className={styles.sectionTitle}>{t('status.placeholder') || 'Status'}</h3>
           <div className={styles.btnScroll}>
             {[
-              { value: 'under-construction', label: locale === 'ru' ? 'В процессе' : 'Under Construction' },
+              { value: 'under-construction', label: locale === 'ru' ? 'В процессе строительства' : 'Under Construction' },
               { value: 'completed', label: locale === 'ru' ? 'Завершен' : 'Completed' },
               { value: 'ready', label: locale === 'ru' ? 'Готов' : 'Ready' },
               { value: 'on-sale', label: locale === 'ru' ? 'В продаже' : 'On Sale' },
@@ -352,7 +352,7 @@ export default function FilterModal({ isOpen, onClose, filters, onApply, onReset
                 value={formatWithCommas(tempFilters.priceFrom)}
                 onChange={(e) => handleNumInput('priceFrom', e.target.value)}
               />
-              <span className={styles.inputUnit}>AED</span>
+              <span className={styles.inputUnit}>{locale === 'ru' ? 'USD' : 'AED'}</span>
             </div>
             <div className={styles.inputWrapper}>
               <input
@@ -362,7 +362,7 @@ export default function FilterModal({ isOpen, onClose, filters, onApply, onReset
                 value={formatWithCommas(tempFilters.priceTo)}
                 onChange={(e) => handleNumInput('priceTo', e.target.value)}
               />
-              <span className={styles.inputUnit}>AED</span>
+              <span className={styles.inputUnit}>{locale === 'ru' ? 'USD' : 'AED'}</span>
             </div>
           </div>
         </div>
@@ -370,7 +370,7 @@ export default function FilterModal({ isOpen, onClose, filters, onApply, onReset
 
       <div className={styles.footer}>
         <button className={styles.applyBtn} onClick={handleApply}>
-          Show results
+          {locale === 'ru' ? 'Показать результаты' : 'Show results'}
         </button>
         <button className={styles.resetIconBtn} onClick={handleReset} aria-label="Reset">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

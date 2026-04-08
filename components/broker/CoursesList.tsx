@@ -101,7 +101,15 @@ export default function CoursesList() {
   if (loading) {
     return (
       <div className={styles.coursesList}>
-        <div className={styles.loading}>{t('loading')}</div>
+        <div className={styles.skeletonGrid}>
+          {Array.from({ length: 2 }).map((_, idx) => (
+            <div key={idx} className={styles.skeletonCourseCard}>
+              <div className={styles.skeletonTextLine} />
+              <div className={styles.skeletonTextLineShort} />
+              <div className={styles.skeletonMetaLine} />
+            </div>
+          ))}
+        </div>
       </div>
     );
   }

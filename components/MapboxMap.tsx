@@ -67,23 +67,27 @@ interface MapboxMapProps {
 }
 
 // Format price for marker display (e.g., 132000 -> "AED 132K")
-function formatPriceForMarker(priceAED: number): string {
+function formatPriceForMarker(priceAED: number, locale: string): string {
   if (!priceAED || priceAED === 0) return 'On request';
 
-  if (priceAED >= 1000000) {
-    const millions = priceAED / 1000000;
+  // Apply conversion for Russian locale
+  const price = locale === 'ru' ? priceAED / 3.6725 : priceAED;
+  const symbol = locale === 'ru' ? 'USD' : 'AED';
+
+  if (price >= 1000000) {
+    const millions = price / 1000000;
     if (millions % 1 === 0) {
-      return `AED ${millions}M`;
+      return `${symbol} ${millions}M`;
     }
-    return `AED ${millions.toFixed(1)}M`;
-  } else if (priceAED >= 1000) {
-    const thousands = priceAED / 1000;
+    return `${symbol} ${millions.toFixed(1)}M`;
+  } else if (price >= 1000) {
+    const thousands = price / 1000;
     if (thousands % 1 === 0) {
-      return `AED ${thousands}K`;
+      return `${symbol} ${thousands}K`;
     }
-    return `AED ${thousands.toFixed(1)}K`;
+    return `${symbol} ${thousands.toFixed(1)}K`;
   } else {
-    return `AED ${priceAED}`;
+    return `${symbol} ${Math.round(price)}`;
   }
 }
 
@@ -359,7 +363,7 @@ export default function MapboxMap({ accessToken, properties = [], selectedId, on
                   properties: {
                     id: p.id,
                     price: priceAED,
-                    priceFormatted: formatPriceForMarker(priceAED),
+                    priceFormatted: formatPriceForMarker(priceAED, locale),
                     type: p.type === 'rent' ? 'rent' : 'sale'
                   }
                 };
@@ -516,8 +520,8 @@ export default function MapboxMap({ accessToken, properties = [], selectedId, on
                     bedrooms: pf.bedrooms || prev.bedrooms,
                     bathrooms: pf.bathrooms || prev.bathrooms,
                     size: {
-                      sqm: pf.size || prev.size.sqm,
-                      sqft: (pf.size || 0) * 10.764 || prev.size.sqft,
+                      sqm: (pf.size || 0) > 0 ? (Number(pf.size) / 10.764) : prev.size.sqm,
+                      sqft: (pf.size || prev.size.sqft || 0),
                     },
                     propertyType: pf.propertyType || pf.status?.includes('off-plan') || pf.projectStatus === 'off-plan' ? 'off-plan' : 'secondary',
                     isPartial: false
@@ -579,7 +583,7 @@ export default function MapboxMap({ accessToken, properties = [], selectedId, on
             properties: {
               id: p.id,
               price: priceAED,
-              priceFormatted: formatPriceForMarker(priceAED),
+              priceFormatted: formatPriceForMarker(priceAED, locale),
               type: p.type === 'rent' ? 'rent' : 'sale'
             }
           };

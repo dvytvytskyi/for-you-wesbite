@@ -97,7 +97,21 @@ export default function NewsList() {
     return (
       <section className={styles.newsList}>
         <div className={styles.container}>
-          <div className={styles.loading}>{t('loading')}</div>
+          <div className={styles.loadingSkeleton}>
+            <div className={styles.skeletonHero} />
+            <div className={styles.skeletonTopRow}>
+              <div className={styles.skeletonLargeCard} />
+              <div className={styles.skeletonSmallCards}>
+                <div className={styles.skeletonSmallCard} />
+                <div className={styles.skeletonSmallCard} />
+              </div>
+            </div>
+            <div className={styles.skeletonBottomRow}>
+              {Array.from({ length: 4 }).map((_, idx) => (
+                <div key={idx} className={styles.skeletonBottomCard} />
+              ))}
+            </div>
+          </div>
         </div>
       </section>
     );

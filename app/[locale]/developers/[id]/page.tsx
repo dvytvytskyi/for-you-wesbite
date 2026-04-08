@@ -7,14 +7,19 @@ export async function generateMetadata({ params: { locale, id } }: { params: { l
     const t = await getTranslations({ locale, namespace: 'metadata' });
     const baseUrl = 'https://foryou-realestate.com';
     const canonical = `${baseUrl}/${locale}/developers/${id}`;
+    const description = locale === 'ru'
+        ? 'Профиль застройщика в Дубае: проекты, направление, рыночное позиционирование и возможности для инвестиций.'
+        : 'Dubai developer profile with projects, market positioning, and investment opportunities across off-plan and ready properties.';
 
     return {
         title: `${t('developers')} | ForYou`,
+        description: description,
         alternates: {
             canonical: canonical,
         },
         openGraph: {
             title: t('developers'),
+            description: description,
             siteName: 'ForYou Real Estate',
             type: 'website',
             url: canonical,

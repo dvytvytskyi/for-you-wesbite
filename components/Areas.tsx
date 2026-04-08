@@ -163,7 +163,17 @@ export default function Areas() {
           <div className={styles.scrollContainer} ref={scrollRef}>
             <div className={styles.cardsWrapper} ref={cardsWrapperRef}>
               {loading ? (
-                <div className={styles.loading}>Loading areas...</div>
+                <div className={styles.loadingAreas}>
+                  {Array.from({ length: 3 }).map((_, idx) => (
+                    <div key={idx} className={styles.areaSkeletonCard}>
+                      <div className={styles.areaSkeletonImage} />
+                      <div className={styles.areaSkeletonInfo}>
+                        <div className={styles.areaSkeletonLineShort} />
+                        <div className={styles.areaSkeletonLine} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
               ) : areas.length === 0 ? (
                 <div className={styles.noAreas}>No areas found</div>
               ) : (

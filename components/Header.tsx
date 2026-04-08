@@ -113,6 +113,10 @@ function HeaderContent() {
 
   const toggleMobileMenu = () => setIsMobileMenuOpen(!isMobileMenuOpen);
 
+  const mobileMenuAriaLabel = locale === 'ru'
+    ? (isMobileMenuOpen ? 'Закрыть меню' : 'Открыть меню')
+    : (isMobileMenuOpen ? 'Close menu' : 'Open menu');
+
   const getLocalizedPath = (path: string) => locale === 'en' ? path : `/${locale}${path}`;
 
   const switchLanguage = (newLocale: string) => {
@@ -147,6 +151,7 @@ function HeaderContent() {
             <button
               className={`${styles.hamburger} ${styles.hamburgerLeft} ${isMobileMenuOpen ? styles.hamburgerOpen : ''}`}
               onClick={toggleMobileMenu}
+              aria-label={mobileMenuAriaLabel}
             >
               <span></span><span></span><span></span>
             </button>
@@ -287,6 +292,7 @@ function HeaderContent() {
         <button
           className={`${styles.hamburger} ${isMobileMenuOpen ? styles.hamburgerOpen : ''}`}
           onClick={toggleMobileMenu}
+          aria-label={mobileMenuAriaLabel}
         >
           <span></span><span></span><span></span>
         </button>

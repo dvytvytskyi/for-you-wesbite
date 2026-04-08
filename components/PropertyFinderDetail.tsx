@@ -5,6 +5,7 @@ import { useTranslations, useLocale } from 'next-intl';
 import Image from 'next/image';
 import Link from 'next/link';
 import { getPropertyFinderProject, PropertyFinderProject, getPriceDisplay } from '@/lib/api';
+import { formatNumber, getDisplaySize } from '@/lib/utils';
 import styles from './PropertyDetail.module.css';
 import InvestmentForm from './investment/InvestmentForm';
 import Lightbox from './Lightbox';
@@ -266,12 +267,12 @@ export default function PropertyFinderDetail({ project, anonymous = false }: Pro
                   color: fullData.projectStatus === 'completed' ? '#059669' : '#ea580c',
                   border: `1px solid ${fullData.projectStatus === 'completed' ? '#10b98133' : '#f9731633'}`
                 }}>
-                  {fullData.projectStatus === 'completed' && (
+                  {fullData.projectStatus === 'completed' ? (
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
                       <polyline points="20 6 9 17 4 12" />
                     </svg>
-                  )}
-                  {fullData.projectStatus === 'completed' ? (locale === 'ru' ? 'Сдан в эксплуатацию' : 'Completed') : (locale === 'ru' ? 'В процессе строительства' : 'Under construction')}
+                  ) : null}
+                  {fullData.projectStatus === 'completed' ? (locale === 'ru' ? 'Завершено' : 'Completed') : t('paymentTimes.duringConstruction')}
                 </div>
               </div>
 
@@ -386,7 +387,7 @@ export default function PropertyFinderDetail({ project, anonymous = false }: Pro
                     </div>
                     <div className={styles.techContent}>
                       <span className={styles.techLabel}>{locale === 'ru' ? 'Площадь' : 'Area'}</span>
-                      <span className={styles.techValue}>{fullData.size || fullData.area_size} {locale === 'ru' ? 'кв. футов' : 'sq. ft.'}</span>
+                      <span className={styles.techValue}>{getDisplaySize(Number(fullData.size || fullData.area_size || 0), locale)}</span>
                     </div>
                   </div>
                 )}
@@ -429,7 +430,7 @@ export default function PropertyFinderDetail({ project, anonymous = false }: Pro
                       </svg>
                     </div>
                     <div className={styles.techContent}>
-                      <span className={styles.techLabel}>{locale === 'ru' ? 'Сдача' : 'Completion'}</span>
+                      <span className={styles.techLabel}>{t('completionDate.placeholder')}</span>
                       <span className={styles.techValue}>
                         {project.completionDatetime 
                           ? new Date(project.completionDatetime).toLocaleDateString(locale === 'ru' ? 'ru-RU' : 'en-US', { year: 'numeric', month: 'long' })
@@ -447,8 +448,19 @@ export default function PropertyFinderDetail({ project, anonymous = false }: Pro
                       </svg>
                     </div>
                     <div className={styles.techContent}>
-                      <span className={styles.techLabel}>{locale === 'ru' ? 'Готовность' : 'Readiness'}</span>
-                      <span className={styles.techValue}>{project.readiness}</span>
+                      <span className={styles.techLabel}>{t('readiness')}</span>
+                      <span className={styles.techValue}>{(() => {
+                        const readinessLabels: Record<string, { en: string; ru: string }> = {
+                          'under-construction': { en: 'Under Construction', ru: 'Строится' },
+                          'ready': { en: 'Ready', ru: 'Готово' },
+                          'on-sale': { en: 'On Sale', ru: 'В продаже' },
+                          'sold-out': { en: 'Sold Out', ru: 'Продано' },
+                          'presale': { en: 'Presale', ru: 'Предпродажа' },
+                        };
+                        const key = project.readiness.toLowerCase().replace(/\s+/g, '-');
+                        const labels = readinessLabels[key];
+                        return labels ? (locale === 'ru' ? labels.ru : labels.en) : project.readiness;
+                      })()}</span>
                     </div>
                   </div>
                 )}

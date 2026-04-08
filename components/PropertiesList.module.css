@@ -651,7 +651,7 @@
 
 .mapCloseButton {
   position: absolute;
-  top: 20px;
+  top: 32px;
   left: 20px;
   z-index: 10;
   width: 40px;
@@ -981,4 +981,12 @@
   100% {
     background-color: #f2f4f7;
   }
+}
+
+.loaderSpinner {
+  width: 48px;
+  height: 48px;
+  background-color: #f2f4f7;
+  border-radius: 50%;
+  animation: skeleton-pulse 1.8s infinite ease-in-out;
 }

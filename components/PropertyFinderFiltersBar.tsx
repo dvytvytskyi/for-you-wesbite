@@ -328,9 +328,10 @@ export default function PropertyFinderFiltersBar({ filters, onFilterChange, isMo
     if (!localFilters.priceFrom && !localFilters.priceTo) return t('price.placeholder');
     const from = localFilters.priceFrom ? formatNumber(localFilters.priceFrom) : '0';
     const to = localFilters.priceTo ? formatNumber(localFilters.priceTo) : '∞';
+    const currency = locale === 'ru' ? 'USD' : 'AED';
     return (
       <>
-        {from} - {to} <span className={styles.unitInLabel}>AED</span>
+        {from} - {to} <span className={styles.unitInLabel}>{currency}</span>
       </>
     );
   };
@@ -535,7 +536,7 @@ export default function PropertyFinderFiltersBar({ filters, onFilterChange, isMo
                   onChange={(e) => handleNumberChange('priceTo', e.target.value)}
                   className={styles.rangeInput}
                 />
-                <span className={styles.rangeUnit}>AED</span>
+                <span className={styles.rangeUnit}>{locale === 'ru' ? 'USD' : 'AED'}</span>
               </div>
             </div>
           )}

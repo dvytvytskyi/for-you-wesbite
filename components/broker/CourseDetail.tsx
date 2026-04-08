@@ -145,7 +145,12 @@ export default function CourseDetail({ courseId }: CourseDetailProps) {
   if (loading) {
     return (
       <div className={styles.courseDetail}>
-        <div className={styles.loading}>{t('loading')}</div>
+        <div className={styles.loadingSkeleton}>
+          <div className={styles.skeletonHeader} />
+          <div className={styles.skeletonParagraph} />
+          <div className={styles.skeletonBlock} />
+          <div className={styles.skeletonBlock} />
+        </div>
       </div>
     );
   }

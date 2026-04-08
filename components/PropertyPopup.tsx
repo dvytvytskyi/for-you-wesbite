@@ -9,7 +9,7 @@ import styles from './PropertyPopup.module.css';
 import { useFavorites } from '@/lib/favoritesContext';
 import { Property as ApiProperty } from '@/lib/api';
 import { getOptimizedImageUrl } from '@/lib/images';
-import { formatNumber, generateWhatsAppLink, getLeadReference } from '@/lib/utils';
+import { formatNumber, generateWhatsAppLink, getLeadReference, getDisplayPrice, getDisplaySize } from '@/lib/utils';
 
 interface Property {
   id: string;
@@ -75,6 +75,14 @@ export default function PropertyPopup({ property, onClose, onRequestCallback }: 
 
   if (!property) return null;
 
+  const popupImages = (Array.isArray(property.images) ? property.images : [])
+    .map((img: any) => {
+      if (typeof img === 'string') return img;
+      if (img && typeof img === 'object') return img.full || img.small || img.url || '';
+      return '';
+    })
+    .filter((url: string) => typeof url === 'string' && /^https?:\/\//.test(url) && url.length > 12);
+
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const scrollLeft = e.currentTarget.scrollLeft;
     const width = e.currentTarget.offsetWidth;
@@ -107,7 +115,7 @@ export default function PropertyPopup({ property, onClose, onRequestCallback }: 
       return `${localePrefix}/${base}/${property.id}`;
     }
     
-    return `${localePrefix}/properties/${property.slug}`;
+    return `${localePrefix}/properties/${property.slug || property.id}`;
   };
 
   const handleClose = () => {
@@ -167,7 +175,7 @@ export default function PropertyPopup({ property, onClose, onRequestCallback }: 
               onScroll={handleScroll}
               ref={imageScrollRef}
             >
-              {property.images.map((src, idx) => (
+              {popupImages.map((src, idx) => (
                 <div key={`${property.id}-img-${idx}`} className={styles.imageSlide}>
                   <Image
                     src={getOptimizedImageUrl(src, 800)}
@@ -180,14 +188,14 @@ export default function PropertyPopup({ property, onClose, onRequestCallback }: 
                   />
                 </div>
               ))}
-              {property.images.length === 0 && (
+              {popupImages.length === 0 && (
                 <div className={styles.imageSlide}>
                   <div className={styles.placeholderImage}>No images available</div>
                 </div>
               )}
             </div>
 
-            {property.images.length > 1 && (
+            {popupImages.length > 1 && (
               <>
                 <button
                   className={`${styles.imageNav} ${styles.prev}`}
@@ -208,7 +216,7 @@ export default function PropertyPopup({ property, onClose, onRequestCallback }: 
                   </svg>
                 </button>
                 <div className={styles.imageDots}>
-                  {property.images.map((_, idx) => (
+                  {popupImages.map((_, idx) => (
                     <div
                       key={`dot-${idx}`}
                       className={`${styles.dot} ${idx === activeImageIndex ? styles.activeDot : ''}`}
@@ -242,17 +250,14 @@ export default function PropertyPopup({ property, onClose, onRequestCallback }: 
 
             <div className={styles.priceRow}>
               <span className={styles.priceAmount}>
-                {property.propertyType === 'off-plan' ? `${tDetail('from')} ` : ''}
-                {formatPrice(property.priceAED || property.priceFromAED || property.price.aed)} AED
+                {property.propertyType === 'off-plan' ? `${locale === 'ru' ? 'От' : 'From'} ` : ''}
+                {getDisplayPrice(property.priceAED || property.priceFromAED || property.price.aed, locale)}
               </span>
             </div>
 
             {/* Location and Developer */}
             <div className={styles.locationRow}>
               <div className={styles.location}>
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                  <path d="M8 0C4.7 0 2 2.7 2 6c0 4.5 6 10 6 10s6-5.5 6-10c0-3.3-2.7-6-6-6zm0 8c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z" fill="currentColor" />
-                </svg>
                 <span>{getLocation()}</span>
               </div>
               {property.developer?.logo && (
@@ -290,10 +295,16 @@ export default function PropertyPopup({ property, onClose, onRequestCallback }: 
                     <div key={index} className={styles.unitItem}>
                       <span>{unit.bedrooms} {tDetail('beds')}</span>
                       <span>{unit.bathrooms} {tDetail('baths')}</span>
-                      <span>{formatPrice(unit.size.sqft)} {tDetail('sqft')}</span>
+                      <span>
+                        {locale === 'ru'
+                          ? `${formatNumber(Math.round(unit.size.sqft / 10.7639))} м²`
+                          : `${formatNumber(Math.round(unit.size.sqft))} sq.ft`}
+                      </span>
                       <span className={styles.unitPrice}>
                         {unit.price.aed && unit.price.aed > 0
-                          ? `${formatPrice(unit.price.aed)} AED`
+                          ? (locale === 'ru'
+                              ? `${formatNumber(Math.round(unit.price.aed / 3.6725))} USD`
+                              : `${formatNumber(Math.round(unit.price.aed))} AED`)
                           : tDetail('priceOnRequest')}
                       </span>
                     </div>

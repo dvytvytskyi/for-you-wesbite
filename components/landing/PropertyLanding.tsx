@@ -28,25 +28,6 @@ interface LandingProps {
 export default function PropertyLanding({ project, locale }: LandingProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   
-  // JSON-LD Schema for Google Rich Snippets
-  const schemaMarkup = {
-    "@context": "https://schema.org/",
-    "@type": "Accommodation",
-    "name": project.name,
-    "description": project.description,
-    "address": {
-        "@type": "PostalAddress",
-        "addressLocality": project.location,
-        "addressCountry": "AE"
-    },
-    "amenityFeature": project.amenities.map(a => ({ "@type": "LocationFeatureSpecification", "name": a, "value": "true" })),
-    "offers": {
-        "@type": "AggregateOffer",
-        "priceCurrency": "AED",
-        "lowPrice": project.priceFrom.replace(/[^0-9]/g, ''),
-        "offerCount": project.units.length
-    }
-  };
 
   const faqSchema = {
     "@context": "https://schema.org",
@@ -63,16 +44,6 @@ export default function PropertyLanding({ project, locale }: LandingProps) {
 
   return (
     <>
-      {/* Schema Injection */}
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(schemaMarkup) }}
-      />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
-      />
-
       {/* Internal Navigation Bar */}
       <nav className={styles.nav}>
         <a href="#overview" className={styles.navLink}>Overview</a>

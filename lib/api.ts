@@ -123,9 +123,11 @@ export interface ApiError {
 export interface PropertyFilters {
   propertyType?: 'off-plan' | 'secondary';
   developerId?: string;
+  developerIds?: string[];
   cityId?: string;
   areaId?: string;
   areaSlug?: string;
+  areaSlugs?: string[];
   areaIds?: string[]; // For client-side filtering with multiple areas
   bedrooms?: string; // Comma-separated: "1,2,3"
   sizeFrom?: number;
@@ -436,6 +438,11 @@ export interface Investment {
 export interface GetPropertiesResult {
   properties: Property[];
   total: number;
+  meta?: {
+    seo?: {
+      canonicalUrl?: string;
+    };
+  };
 }
 
 export interface GetDevelopersResult {
@@ -445,6 +452,9 @@ export interface GetDevelopersResult {
 
 export interface MapMarker {
   id: string;
+  name?: string;
+  image?: string;
+  area?: string;
   lat: number | string;
   lng: number | string;
   priceAED: number | string;
@@ -465,7 +475,43 @@ const MARKERS_CACHE_DURATION = 60 * 1000; // 1 minute
 
 export async function getMapMarkers(filters?: PropertyFilters): Promise<MapMarker[]> {
   try {
-    const cacheKey = filters ? JSON.stringify(filters) : 'all';
+    const normalizedParams: Record<string, any> = {};
+
+    if (filters?.propertyType) normalizedParams.propertyType = filters.propertyType;
+    if (filters?.search) normalizedParams.search = filters.search;
+    if (filters?.bedrooms) normalizedParams.bedrooms = filters.bedrooms;
+    if (filters?.priceFrom !== undefined && filters?.priceFrom !== '') normalizedParams.priceFrom = filters.priceFrom;
+    if (filters?.priceTo !== undefined && filters?.priceTo !== '') normalizedParams.priceTo = filters.priceTo;
+
+    if (filters?.areaSlug) {
+      normalizedParams.areaSlug = filters.areaSlug;
+    } else if (Array.isArray(filters?.areaSlugs) && filters.areaSlugs.length > 1) {
+      normalizedParams.areaSlugs = filters.areaSlugs.join(',');
+    } else if (Array.isArray(filters?.areaSlugs) && filters.areaSlugs.length === 1) {
+      normalizedParams.areaSlug = filters.areaSlugs[0];
+    } else if (Array.isArray(filters?.areaIds) && filters!.areaIds.length > 1) {
+      normalizedParams.areaIds = filters!.areaIds.join(',');
+    } else if (Array.isArray(filters?.areaIds) && filters!.areaIds.length === 1) {
+      normalizedParams.areaId = filters!.areaIds[0];
+    } else if (typeof filters?.areaId === 'string' && filters.areaId) {
+      normalizedParams.areaId = filters.areaId;
+    }
+
+    if (Array.isArray(filters?.locationIds) && filters.locationIds.length > 0) {
+      normalizedParams.locationId = filters.locationIds.join(',');
+    }
+
+    if (filters?.cityId) normalizedParams.cityId = filters.cityId;
+
+    if (filters?.developerId) {
+      normalizedParams.developerId = filters.developerId;
+    } else if (Array.isArray(filters?.developerIds) && filters.developerIds.length > 1) {
+      normalizedParams.developerIds = filters.developerIds.join(',');
+    } else if (Array.isArray(filters?.developerIds) && filters.developerIds.length === 1) {
+      normalizedParams.developerId = filters.developerIds[0];
+    }
+
+    const cacheKey = filters ? JSON.stringify(normalizedParams) : 'all';
 
     // Check cache
     const cached = markersCache.get(cacheKey);
@@ -473,7 +519,7 @@ export async function getMapMarkers(filters?: PropertyFilters): Promise<MapMarke
       return cached.data;
     }
 
-    const response = await apiClient.get<any>('/public/map-markers', { params: filters });
+    const response = await apiClient.get<any>('/public/map', { params: normalizedParams });
 
     let data: MapMarker[] = [];
     if (Array.isArray(response.data)) {
@@ -481,6 +527,14 @@ export async function getMapMarkers(filters?: PropertyFilters): Promise<MapMarke
     } else if (response.data && response.data.success && Array.isArray(response.data.data)) {
       data = response.data.data;
     }
+
+    data = (Array.isArray(data) ? data : []).map((item: any) => {
+      const resolvedImage = ensureAbsoluteUrl(item?.image || item?.mainImage || item?.previewImage || item?.photo || item?.thumbnail);
+      return {
+        ...item,
+        image: resolvedImage || item?.image,
+      } as MapMarker;
+    });
 
     if (data.length > 0 || Array.isArray(data)) {
       markersCache.set(cacheKey, {
@@ -685,13 +739,21 @@ export async function getProperties(filters?: PropertyFilters, useCache: boolean
         }
       }
 
-      const result = { properties: finalData, total: totalCount || normalizedData.length };
+      const canonicalUrl = apiResponse?.meta?.seo?.canonicalUrl
+        || apiResponse?.data?.meta?.seo?.canonicalUrl
+        || apiResponse?.seo?.canonicalUrl;
+
+      const result: GetPropertiesResult = {
+        properties: finalData,
+        total: totalCount || normalizedData.length,
+        meta: canonicalUrl ? { seo: { canonicalUrl } } : undefined,
+      };
       if (useCache) propertiesCache.set(cacheKey, { result, timestamp: Date.now() });
       return result;
     } catch (error: any) {
       console.error('[API] getProperties error:', error.message);
       // Return empty result instead of trying to load and filter 24k properties in browser memory
-      return { properties: [], total: 0 };
+      return { properties: [], total: 0, meta: undefined };
     }
   } catch (error: any) {
     console.error('[API] getProperties failed completely:', error);
@@ -1348,12 +1410,12 @@ export function normalizeProperty(property: any): Property {
     // Calculate sizeFromSqft/sizeToSqft if missing but sizeFrom/sizeTo exists (m² to sqft: 1 m² = 10.764 sqft)
     if (property.sizeFrom !== null && property.sizeFrom !== undefined && property.sizeFrom > 0) {
       if (property.sizeFromSqft === null || property.sizeFromSqft === undefined || property.sizeFromSqft === 0) {
-        property.sizeFromSqft = Math.round(property.sizeFrom * 10.764 * 100) / 100;
+        property.sizeFromSqft = property.sizeFrom;
       }
     }
     if (property.sizeTo !== null && property.sizeTo !== undefined && property.sizeTo > 0) {
       if (property.sizeToSqft === null || property.sizeToSqft === undefined || property.sizeToSqft === 0) {
-        property.sizeToSqft = Math.round(property.sizeTo * 10.764 * 100) / 100;
+        property.sizeToSqft = property.sizeTo;
       }
     }
   } else {
@@ -1371,7 +1433,7 @@ export function normalizeProperty(property: any): Property {
     // Calculate sizeSqft if missing but size exists
     if (property.size !== null && property.size !== undefined && property.size > 0) {
       if (property.sizeSqft === null || property.sizeSqft === undefined || property.sizeSqft === 0) {
-        property.sizeSqft = Math.round(property.size * 10.764 * 100) / 100;
+        property.sizeSqft = property.size;
       }
     }
   }
@@ -1834,6 +1896,7 @@ export interface Area {
   nameEn: string;
   nameRu: string;
   nameAr: string;
+  mainImage?: string | null;
   cityId: string;
   city: {
     id: string;
@@ -1858,11 +1921,90 @@ export interface Area {
     title: string;
     description: string;
   } | null;
+  descriptionRu?: {
+    title?: string;
+    description?: string;
+  } | null;
   infrastructure: {
     title: string;
     description: string;
+  } | {
+    en?: {
+      title?: string;
+      description?: string;
+    };
+    ru?: {
+      title?: string;
+      description?: string;
+    };
   } | null;
+  content?: {
+    generalInformation?: {
+      en?: string;
+      ru?: string;
+    };
+    quickAccessDescription?: {
+      en?: string;
+      ru?: string;
+    };
+  } | null;
+  proximityPoints?: Array<{
+    id: string;
+    titleEn: string;
+    titleRu: string;
+    coordinates: [number, number];
+  }>;
   images: string[] | null;
+}
+
+function normalizeArea(item: any): Area {
+  // Prioritize mainImage from admin, then fallback to images array.
+  const areaImages: string[] = [];
+  if (item?.mainImage && typeof item.mainImage === 'string') {
+    areaImages.push(item.mainImage);
+  }
+
+  if (Array.isArray(item?.images)) {
+    item.images.forEach((img: any) => {
+      const value = typeof img === 'string' ? img : (img?.full || img?.small || '');
+      if (value && value !== item?.mainImage) areaImages.push(value);
+    });
+  }
+
+  const rawPoints = Array.isArray(item?.proximityPoints) ? item.proximityPoints : [];
+  const proximityPoints = rawPoints
+    .map((point: any) => {
+      const lng = Number(point?.coordinates?.[0]);
+      const lat = Number(point?.coordinates?.[1]);
+      if (!Number.isFinite(lng) || !Number.isFinite(lat)) return null;
+      return {
+        id: String(point?.id || ''),
+        titleEn: String(point?.titleEn || ''),
+        titleRu: String(point?.titleRu || ''),
+        coordinates: [lng, lat] as [number, number],
+      };
+    })
+    .filter((point): point is { id: string; titleEn: string; titleRu: string; coordinates: [number, number] } => Boolean(point));
+
+  return {
+    id: item?.id,
+    nameEn: item?.nameEn,
+    nameRu: item?.nameRu,
+    nameAr: item?.nameAr || item?.nameEn,
+    cityId: item?.cityId || (item?.city?.id) || '',
+    city: item?.city || {
+      id: '', nameEn: '', nameRu: '', nameAr: '', countryId: '', country: null
+    },
+    projectsCount: item?.projectsCount || { total: 0, offPlan: 0, secondary: 0 },
+    description: item?.description || (item?.descriptionEn ? { title: item?.nameEn, description: item?.descriptionEn } : null),
+    descriptionRu: item?.descriptionRu || null,
+    infrastructure: item?.infrastructure || null,
+    content: item?.content || null,
+    proximityPoints,
+    mainImage: item?.mainImage || null,
+    images: areaImages.length > 0 ? areaImages.map(ensureAbsoluteUrl) : null,
+    slug: item?.slug,
+  };
 }
 
 /**
@@ -1943,34 +2085,7 @@ export async function getAreas(cityId?: string, useCache: boolean = true): Promi
       }
     }
 
-    let areas: Area[] = rawAreas.map(item => {
-      // Prioritize mainImage from admin, then fallback to images array
-      let areaImages: string[] = [];
-      if (item.mainImage) {
-        areaImages.push(item.mainImage);
-      }
-      if (Array.isArray(item.images)) {
-        item.images.forEach((img: string) => {
-          if (img && img !== item.mainImage) areaImages.push(img);
-        });
-      }
-
-      return {
-        id: item.id,
-        nameEn: item.nameEn,
-        nameRu: item.nameRu,
-        nameAr: item.nameAr || item.nameEn,
-        cityId: item.cityId || (item.city?.id) || '',
-        city: item.city || {
-          id: '', nameEn: '', nameRu: '', nameAr: '', countryId: '', country: null
-        },
-        projectsCount: item.projectsCount || { total: 0, offPlan: 0, secondary: 0 },
-        description: item.description || (item.descriptionEn ? { title: item.nameEn, description: item.descriptionEn } : null),
-        infrastructure: item.infrastructure || null,
-        images: areaImages.length > 0 ? areaImages.map(ensureAbsoluteUrl) : null,
-        slug: item.slug
-      };
-    });
+    let areas: Area[] = rawAreas.map((item) => normalizeArea(item));
 
     // FORCE WEBP: Backend converted images to webp but database might still have old extensions
     areas = areas.map(area => {
@@ -2015,6 +2130,17 @@ export async function getAreas(cityId?: string, useCache: boolean = true): Promi
 
 export async function getAreaById(areaIdOrSlug: string): Promise<Area | null> {
   try {
+    // Prefer detail endpoint because it contains full area payload (content/proximity/localized fields).
+    try {
+      const response = await apiClient.get<ApiResponse<any>>(`/public/areas/${areaIdOrSlug}`);
+      const raw = response?.data?.data;
+      if (raw && typeof raw === 'object') {
+        return normalizeArea(raw);
+      }
+    } catch {
+      // Fallback to list lookup below.
+    }
+
     const areas = await getAreas();
     // Try to find by slug first
     let area = areas.find(a => a.slug === areaIdOrSlug);

@@ -4,6 +4,7 @@ import Footer from '@/components/Footer';
 import PropertyDetail from '@/components/PropertyDetail';
 import PropertyDetailSkeleton from '@/components/PropertyDetailSkeleton';
 import { getPropertyBySlug, Property } from '@/lib/api';
+import { createBreadcrumbSchema, createRealEstateListingSchema } from '@/lib/schema';
 import { notFound } from 'next/navigation';
 import { unstable_setRequestLocale } from 'next-intl/server';
 import { getTranslations } from 'next-intl/server';
@@ -100,6 +101,8 @@ export async function generateMetadata({ params }: PropertyDetailPageProps): Pro
       ? property.photos[0]
       : 'https://foryou-realestate.com/images/main-preview.jpg';
 
+    const canonical = (property as any).canonicalUrl || `https://foryou-realestate.com/properties/${slug}`;
+
     return {
       title: title,
       description: description,
@@ -107,7 +110,7 @@ export async function generateMetadata({ params }: PropertyDetailPageProps): Pro
         title: title,
         description: description,
         type: 'website',
-        url: `https://foryou-realestate.com/${locale}/properties/${slug}`,
+        url: canonical,
         images: [
           {
             url: imageUrl,
@@ -119,10 +122,11 @@ export async function generateMetadata({ params }: PropertyDetailPageProps): Pro
         siteName: 'ForYou Real Estate',
       },
       alternates: {
-        canonical: `https://foryou-realestate.com/${locale}/properties/${slug}`,
+        canonical: canonical,
         languages: {
           'en': `https://foryou-realestate.com/properties/${slug}`,
           'ru': `https://foryou-realestate.com/ru/properties/${slug}`,
+          'x-default': `https://foryou-realestate.com/properties/${slug}`,
         },
       }
     };
@@ -152,64 +156,32 @@ export default async function PropertyDetailPage({ params }: PropertyDetailPageP
   }
 
   // Structured Data (JSON-LD) - RealEstateListing
-  const jsonLd = {
-    "@context": "https://schema.org",
-    "@type": "RealEstateListing",
-    "name": property.name,
-    "image": property.photos || [],
-    "description": property.description ? property.description.replace(/<[^>]*>?/gm, '') : "",
-    "url": `https://foryou-realestate.com/${locale}/properties/${slug}`,
-    "dateModified": property.updatedAt || new Date().toISOString(),
-    "address": {
-      "@type": "PostalAddress",
-      "addressLocality": "Dubai",
-      "addressCountry": "AE"
-    },
-    "geo": {
-      "@type": "GeoCoordinates",
-      "latitude": property.latitude,
-      "longitude": property.longitude
-    },
-    "offers": {
-      "@type": "Offer",
-      "priceCurrency": "AED",
-      "price": property.priceFromAED || property.priceFrom || 0,
-      "availability": "https://schema.org/InStock",
-      "url": `https://foryou-realestate.com/${locale}/properties/${slug}`,
-      "seller": {
-        "@type": "RealEstateAgent",
-        "name": "ForYou Real Estate"
-      }
-    }
-  };
+  const jsonLd = createRealEstateListingSchema(
+    property as Property,
+    locale,
+    `https://foryou-realestate.com/${locale}/properties/${slug}`
+  );
 
   // Structured Data (JSON-LD) - BreadcrumbList
-  const breadcrumbLd = {
-    "@context": "https://schema.org",
-    "@type": "BreadcrumbList",
-    "itemListElement": [
-      {
-        "@type": "ListItem",
-        "position": 1,
-        "name": locale === 'ru' ? "Недвижимость" : "Properties",
-        "item": `https://foryou-realestate.com/${locale}/properties`
-      },
-      {
-        "@type": "ListItem",
-        "position": 2,
-        "name": property.propertyType === 'off-plan' 
-          ? (locale === 'ru' ? "Off-plan" : "Off-plan") 
-          : (locale === 'ru' ? "Вторичная" : "Secondary"),
-        "item": `https://foryou-realestate.com/${locale}/properties?type=${property.propertyType === 'off-plan' ? 'offPlan' : 'secondary'}`
-      },
-      {
-         "@type": "ListItem",
-         "position": 3,
-         "name": property.name,
-         "item": `https://foryou-realestate.com/${locale}/properties/${slug}`
-      }
-    ]
-  };
+  const breadcrumbLd = createBreadcrumbSchema([
+    {
+      position: 1,
+      name: locale === 'ru' ? 'Недвижимость' : 'Properties',
+      item: `https://foryou-realestate.com/${locale}/properties`,
+    },
+    {
+      position: 2,
+      name: property.propertyType === 'off-plan'
+        ? (locale === 'ru' ? 'Off-plan' : 'Off-plan')
+        : (locale === 'ru' ? 'Вторичная' : 'Secondary'),
+      item: `https://foryou-realestate.com/${locale}/properties?type=${property.propertyType === 'off-plan' ? 'offPlan' : 'secondary'}`,
+    },
+    {
+      position: 3,
+      name: property.name,
+      item: `https://foryou-realestate.com/${locale}/properties/${slug}`,
+    },
+  ]);
 
   return (
     <>

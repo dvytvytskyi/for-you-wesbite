@@ -265,7 +265,7 @@ export default function PropertyFinderList({ initialData }: Props) {
                   onBlur={handlePriceSubmit}
                   className={styles.rangeInput}
                 />
-                <span className={styles.unit}>AED</span>
+                <span className={styles.unit}>{locale === 'ru' ? 'USD' : 'AED'}</span>
               </div>
               <span className={styles.separator}>—</span>
               <div className={styles.inputWithUnit}>
@@ -277,7 +277,7 @@ export default function PropertyFinderList({ initialData }: Props) {
                   onBlur={handlePriceSubmit}
                   className={styles.rangeInput}
                 />
-                <span className={styles.unit}>AED</span>
+                <span className={styles.unit}>{locale === 'ru' ? 'USD' : 'AED'}</span>
               </div>
             </div>
           </div>
@@ -309,7 +309,13 @@ export default function PropertyFinderList({ initialData }: Props) {
             <h2 className={styles.listTitle}>
               {pathname.includes('/app') ? 'Real Estate' : 'ForYou Real Estate'}
             </h2>
-            <span className={styles.listCount}>{total} properties found</span>
+            <span className={styles.listCount}>
+              {total} {locale === 'ru' ? (
+                total % 10 === 1 && total % 100 !== 11 ? 'юнит найден' :
+                [2, 3, 4].includes(total % 10) && ![12, 13, 14].includes(total % 100) ? 'юнита найдено' :
+                'юнитов найдено'
+              ) : 'properties found'}
+            </span>
           </div>
         </div>
       </div>
@@ -328,11 +334,10 @@ export default function PropertyFinderList({ initialData }: Props) {
       </div>
 
       {/* Infinite Scroll / Lazy Load Observer */}
-      {visibleCount < projects.length && (
-         <div ref={loadMoreRef} className={styles.loadMoreTrigger}>
-            <div className={styles.loader}></div>
-            <span>Loading more properties...</span>
-         </div>
+      {visibleCount < (projects?.length || 0) && (
+          <div ref={loadMoreRef} className={styles.loadMoreTrigger}>
+             <div className={styles.skeletonPulse}></div>
+          </div>
       )}
 
       {total > 100 && visibleCount >= projects.length && (

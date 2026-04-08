@@ -1,6 +1,7 @@
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import PropertiesList from '@/components/PropertiesList';
+import { getProperties } from '@/lib/api';
 
 import { unstable_setRequestLocale, getTranslations } from 'next-intl/server';
 
@@ -13,8 +14,15 @@ type Props = {
 export async function generateMetadata({ params: { locale }, searchParams }: Props) {
   const t = await getTranslations({ locale, namespace: 'metadata' });
   const baseUrl = 'https://foryou-realestate.com';
-  // Handle pagination in canonical if needed, but usually just the base is enough for listing root
-  const canonical = locale === 'en' ? `${baseUrl}/properties` : `${baseUrl}/${locale}/properties`;
+  const fallbackCanonical = `${baseUrl}/properties`;
+
+  let canonical = fallbackCanonical;
+  try {
+    const listingMeta = await getProperties({ page: 1, limit: 1, summary: true }, true);
+    canonical = listingMeta.meta?.seo?.canonicalUrl || fallbackCanonical;
+  } catch {
+    canonical = fallbackCanonical;
+  }
 
   return {
     title: t('properties'),
@@ -24,6 +32,7 @@ export async function generateMetadata({ params: { locale }, searchParams }: Pro
       languages: {
         'en': `${baseUrl}/properties`,
         'ru': `${baseUrl}/ru/properties`,
+        'x-default': `${baseUrl}/properties`,
       },
     },
     openGraph: {

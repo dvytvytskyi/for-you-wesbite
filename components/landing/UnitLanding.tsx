@@ -84,15 +84,6 @@ export default function UnitLanding({ unit, locale, canonicalUrl }: UnitLandingP
 
   return (
     <div className={styles.unitLanding}>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(schemaMarkup) }}
-      />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
-      />
-
       {/* 1. UNIT HERO - LCP Priority Image */}
       <section className={styles.heroSection}>
         <div className={styles.heroGrid}>

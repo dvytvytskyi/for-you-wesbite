@@ -8,7 +8,7 @@ import Image from 'next/image';
 import type { Map, Marker } from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { getProperty, Property, getProperties, getPropertyUnits, getNews } from '@/lib/api';
-import { formatNumber } from '@/lib/utils';
+import { formatNumber, getDisplayPrice, getDisplaySize, aedToUsd, sqftToSqm } from '@/lib/utils';
 import { getOptimizedImageUrl } from '@/lib/images';
 import InvestmentForm from '@/components/investment/InvestmentForm';
 import PropertyDetailSkeleton from '@/components/PropertyDetailSkeleton';
@@ -624,9 +624,21 @@ export default function PropertyDetail({ propertyId, initialProperty = null }: P
     }
   };
 
+  const readinessLabels: Record<string, { en: string; ru: string }> = {
+    'under-construction': { en: 'Under Construction', ru: 'Строится' },
+    'ready': { en: 'Ready', ru: 'Готово' },
+    'on-sale': { en: 'On Sale', ru: 'В продаже' },
+    'sold-out': { en: 'Sold Out', ru: 'Продано' },
+    'presale': { en: 'Presale', ru: 'Предпродажа' },
+  };
+
   const getReadiness = () => {
     if (property.propertyType !== 'off-plan') return null;
-    return property.readiness || property.status || null;
+    const raw = property.readiness || property.status || null;
+    if (!raw) return null;
+    const key = raw.toLowerCase().replace(/\s+/g, '-');
+    const labels = readinessLabels[key];
+    return labels ? (locale === 'ru' ? labels.ru : labels.en) : raw;
   };
 
   // For off-plan properties: area is a string "areaName, cityName" or null
@@ -672,7 +684,7 @@ export default function PropertyDetail({ propertyId, initialProperty = null }: P
     locale === 'ru' && facility.nameRu ? facility.nameRu : facility.nameEn;
   // Formatting functions are now imported from utils
   const formatPrice = formatNumber;
-  const formatSize = (size: number) => formatNumber(Math.round(size * 100) / 100);
+  const formatSize = (size: number) => formatNumber(size);
 
   const handleImageChange = (dir: 'prev' | 'next') => {
     if (!imageScrollRef.current || displayImages.length <= 1) return;
@@ -704,92 +716,56 @@ export default function PropertyDetail({ propertyId, initialProperty = null }: P
   };
 
   const getPriceDisplay = () => {
+    let priceAED: number | null | undefined = null;
+    
     if (property.propertyType === 'off-plan') {
-      // For off-plan: use priceFromAED
-      const priceFromAED = property.priceFromAED;
-      // Check if priceFromAED exists and is valid
-      if (priceFromAED !== null && priceFromAED !== undefined) {
-        const priceValue = typeof priceFromAED === 'string' ? parseFloat(priceFromAED) : Number(priceFromAED);
-        if (!isNaN(priceValue) && priceValue > 0) {
-          return `${t('from')} ${formatPrice(priceValue)} AED`;
-        }
-      }
-
-      // Fallback: check if priceFrom exists and calculate priceFromAED
-      if (property.priceFrom !== null && property.priceFrom !== undefined) {
-        const priceFrom = typeof property.priceFrom === 'string' ? parseFloat(property.priceFrom) : Number(property.priceFrom);
-        if (!isNaN(priceFrom) && priceFrom > 0) {
-          const calculatedPriceFromAED = Math.round(priceFrom * 3.673);
-          return `${t('from')} ${formatPrice(calculatedPriceFromAED)} AED`;
+      priceAED = property.priceFromAED;
+      if (priceAED === null || priceAED === undefined || priceAED === 0) {
+        if (property.priceFrom && property.priceFrom > 0) {
+          priceAED = Math.round(property.priceFrom * 3.6725);
         }
       }
     } else {
-      // For secondary: use priceAED
-      const priceAED = property.priceAED;
-      // Check if priceAED exists and is valid
-      if (priceAED !== null && priceAED !== undefined) {
-        const priceValue = typeof priceAED === 'string' ? parseFloat(priceAED) : Number(priceAED);
-        if (!isNaN(priceValue) && priceValue > 0) {
-          return `${formatPrice(priceValue)} AED`;
-        }
-      }
-
-      // Fallback: check if price exists and calculate priceAED
-      if (property.price !== null && property.price !== undefined) {
-        const price = typeof property.price === 'string' ? parseFloat(property.price) : Number(property.price);
-        if (!isNaN(price) && price > 0) {
-          const calculatedPriceAED = Math.round(price * 3.673);
-          return `${formatPrice(calculatedPriceAED)} AED`;
+      priceAED = property.priceAED;
+      if (priceAED === null || priceAED === undefined || priceAED === 0) {
+        if (property.price && property.price > 0) {
+          priceAED = Math.round(property.price * 3.6725);
         }
       }
     }
 
-    return t('priceOnRequest') || 'On request';
+    if (!priceAED || priceAED === 0) return t('priceOnRequest') || 'On request';
+    
+    const displayPrice = locale === 'ru' 
+      ? `${formatNumber(Math.round(priceAED / 3.6725))} USD`
+      : `${formatNumber(Math.round(priceAED))} AED`;
+
+    if (property.propertyType === 'off-plan') {
+      return `${locale === 'ru' ? 'От' : 'From'} ${displayPrice}`;
+    }
+    return displayPrice;
   };
 
   const getSizeDisplay = () => {
-    if (property.propertyType === 'off-plan') {
-      // For off-plan: use sizeFrom/sizeTo
-      if (property.sizeFromSqft && property.sizeToSqft) {
-        return `${formatSize(property.sizeFromSqft)} - ${formatSize(property.sizeToSqft)} ${t('sqft')}`;
-      } else if (property.sizeFromSqft) {
-        return `${formatSize(property.sizeFromSqft)} ${t('sqft')}`;
+    const sizeSqftFrom = property.sizeFromSqft || property.sizeFrom || property.sizeSqft || property.size || 0;
+    const sizeSqftTo = property.sizeToSqft || property.sizeTo || 0;
+
+    if (sizeSqftFrom <= 0) return t('sizeOnRequest') || 'On request';
+
+    if (sizeSqftTo > 0 && sizeSqftTo !== sizeSqftFrom) {
+      if (locale === 'ru') {
+        const fromSqm = Math.round(sizeSqftFrom / 10.7639);
+        const toSqm = Math.round(sizeSqftTo / 10.7639);
+        return `${formatNumber(fromSqm)} - ${formatNumber(toSqm)} м²`;
       }
-      // Try m² if sqft not available
-      if (property.sizeFrom && property.sizeTo) {
-        const unit = locale === 'ru' ? 'м²' : 'sq.ft';
-        if (locale === 'ru') {
-          return `${formatSize(property.sizeFrom)} - ${formatSize(property.sizeTo)} ${unit}`;
-        } else {
-          // Convert to sqft
-          const fromSqft = property.sizeFrom * 10.764;
-          const toSqft = property.sizeTo * 10.764;
-          return `${formatSize(fromSqft)} - ${formatSize(toSqft)} ${unit}`;
-        }
-      } else if (property.sizeFrom) {
-        const unit = locale === 'ru' ? 'м²' : 'sq.ft';
-        if (locale === 'ru') {
-          return `${formatSize(property.sizeFrom)} ${unit}`;
-        } else {
-          const fromSqft = property.sizeFrom * 10.764;
-          return `${formatSize(fromSqft)} ${unit}`;
-        }
-      }
-    } else {
-      // For secondary: use size/sizeSqft
-      if (property.sizeSqft) {
-        return `${formatSize(property.sizeSqft)} ${t('sqft')}`;
-      } else if (property.size) {
-        const unit = locale === 'ru' ? 'м²' : 'sq.ft';
-        if (locale === 'ru') {
-          return `${formatSize(property.size)} ${unit}`;
-        } else {
-          const sizeSqft = property.size * 10.764;
-          return `${formatSize(sizeSqft)} ${unit}`;
-        }
-      }
+      return `${formatNumber(Math.round(sizeSqftFrom))} - ${formatNumber(Math.round(sizeSqftTo))} sq.ft`;
     }
-    return t('sizeOnRequest');
+
+    if (locale === 'ru') {
+      const sqm = Math.round(sizeSqftFrom / 10.7639);
+      return `${formatNumber(sqm)} м²`;
+    }
+    return `${formatNumber(Math.round(sizeSqftFrom))} sq.ft`;
   };
 
   const getBedroomsDisplay = () => {
@@ -815,41 +791,83 @@ export default function PropertyDetail({ propertyId, initialProperty = null }: P
 
     if (!text) return '';
 
-    if (locale !== 'ru') {
-      return `${text} ${t('beds')}`; // 'beds' usually 'beds' in EN
-    }
-
-    // Russian pluralization
-    let suffix = 'спален';
-    const n = Math.abs(countForSuffix) % 100;
-    const n1 = n % 10;
-
-    if (n > 10 && n < 20) {
-      suffix = 'спален';
-    } else if (n1 > 1 && n1 < 5) {
-      suffix = 'спальни';
-    } else if (n1 === 1) {
-      suffix = 'спальня';
-    }
-
-    return `${text} ${suffix}`;
+    return `${text} ${t('beds', { count: countForSuffix })}`;
   };
 
   const getBathroomsDisplay = () => {
     if (property.propertyType === 'off-plan') {
-      // For off-plan properties, bathroomsFrom/To are always null
       return '';
-    } else {
-      // For secondary properties
-      if (property.bathrooms) {
-        return `${property.bathrooms} ${t('baths')}`;
-      }
+    } else if (property.bathrooms) {
+      return `${property.bathrooms} ${t('baths', { count: property.bathrooms })}`;
     }
     return '';
   };
 
+  const getPaymentPlanDisplay = () => {
+    if (property.propertyType !== 'off-plan') return '';
+    if (property.paymentPlansJson && property.paymentPlansJson.length > 0) {
+      const planName = property.paymentPlansJson[0].Plan_name;
+      if (planName === 'Payment Plan' && locale === 'ru') {
+        return t('paymentPlan');
+      }
+      return planName;
+    }
+    return property.paymentPlan || '';
+  };
+
+  const slugify = (value: string) => value
+    .toLowerCase()
+    .trim()
+    .replace(/[^ -\w\s-]/g, '')
+    .replace(/[^\w\s-]/g, '')
+    .replace(/[\s_-]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+
+  const propertyTypeLabel = property.propertyType === 'off-plan' ? 'Off plan' : 'Secondary';
+  const propertyTypePath = getLocalizedPath(`/properties?type=${property.propertyType === 'off-plan' ? 'new' : 'secondary'}`);
+  const areaName = getAreaName();
+  const areaSlug = typeof property.area === 'object' && property.area?.slug
+    ? property.area.slug
+    : (areaName ? slugify(areaName) : '');
+  const areaPath = areaSlug ? getLocalizedPath(`/areas/${areaSlug}`) : null;
+
+  const apartmentName = property.name || getName();
+  const projectName = (() => {
+    if (property.propertyType === 'secondary') {
+      const candidate = property.buildingName || property.communityName || '';
+      return candidate && candidate !== apartmentName ? candidate : '';
+    }
+    return '';
+  })();
+
+  const propertyDetailPath = getLocalizedPath(`/properties/${property.slug || property.id}`);
+
   return (
     <div className={styles.container}>
+
+      <nav className={styles.breadcrumb} aria-label="Breadcrumb">
+        <Link href={getLocalizedPath('/')} className={styles.breadcrumbLink}>Home</Link>
+        <span className={styles.breadcrumbSeparator}>/</span>
+
+        <Link href={propertyTypePath} className={styles.breadcrumbLink}>{propertyTypeLabel}</Link>
+
+        {areaName && areaPath && (
+          <>
+            <span className={styles.breadcrumbSeparator}>/</span>
+            <Link href={areaPath} className={styles.breadcrumbLink}>{areaName}</Link>
+          </>
+        )}
+
+        {projectName && (
+          <>
+            <span className={styles.breadcrumbSeparator}>/</span>
+            <Link href={propertyDetailPath} className={styles.breadcrumbLink}>{projectName}</Link>
+          </>
+        )}
+
+        <span className={styles.breadcrumbSeparator}>/</span>
+        <Link href={propertyDetailPath} className={styles.breadcrumbCurrent} aria-current="page">{apartmentName}</Link>
+      </nav>
 
 
       {/* Hero Image Section - New Grid Layout */}
@@ -978,37 +996,15 @@ export default function PropertyDetail({ propertyId, initialProperty = null }: P
                   )}
                 </div>
                 <div className={styles.location}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-                    <circle cx="12" cy="10" r="3"></circle>
-                  </svg>
-                  <span>{getLocation()}</span>
+                  <span>{locale === 'ru' ? 'Находится в' : 'Located in'} {getLocation()}</span>
                 </div>
               </div>
 
               <div className={styles.priceSection}>
                 <div className={styles.price}>{getPriceDisplay()}</div>
-                {property.propertyType === 'off-plan' && property.paymentPlansJson && property.paymentPlansJson.length > 0 && (
-                  <div className={styles.paymentPlanLabel}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                       <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-                       <line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" />
-                    </svg>
-                    {property.paymentPlansJson[0].Plan_name}
-                  </div>
-                )}
-                {property.propertyType === 'off-plan' && (!property.paymentPlansJson || property.paymentPlansJson.length === 0) && property.paymentPlan && (
-                  <div className={styles.paymentPlanLabel}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                       <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-                       <line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" />
-                    </svg>
-                    {property.paymentPlan}
-                  </div>
-                )}
                 {property.propertyType === 'off-plan' && getReadiness() && (
                   <div className={styles.readinessBadge}>
-                    <span className={styles.readinessLabel}>{locale === 'ru' ? 'Завершение: ' : 'Readiness: '}</span>
+                    <span className={styles.readinessLabel}>{t('readiness')}: </span>
                     <span className={styles.readinessValue}>{getReadiness()}</span>
                   </div>
                 )}
@@ -1017,29 +1013,51 @@ export default function PropertyDetail({ propertyId, initialProperty = null }: P
               <div className={styles.details}>
                 {getBedroomsDisplay() && (
                   <div className={styles.detailItem}>
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-                      <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M3 12v7"></path>
+                      <path d="M21 12v7"></path>
+                      <path d="M3 16h18"></path>
+                      <path d="M5 12V9a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v3"></path>
+                      <path d="M12 12V8a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v4"></path>
                     </svg>
                     <span>{getBedroomsDisplay()}</span>
                   </div>
                 )}
                 {getBathroomsDisplay() && (
                   <div className={styles.detailItem}>
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M9 2L7 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-3l-2-2H9z"></path>
-                      <circle cx="12" cy="13" r="3"></circle>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M4 11h16"></path>
+                      <path d="M6 11V8a3 3 0 0 1 6 0"></path>
+                      <path d="M4 11v4a4 4 0 0 0 4 4h8a4 4 0 0 0 4-4v-4"></path>
+                      <line x1="18" y1="7" x2="18.01" y2="7"></line>
                     </svg>
                     <span>{getBathroomsDisplay()}</span>
                   </div>
                 )}
                 {getSizeDisplay() && (
                   <div className={styles.detailItem}>
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                      <line x1="9" y1="3" x2="9" y2="21"></line>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M4 9V4h5"></path>
+                      <path d="M20 9V4h-5"></path>
+                      <path d="M4 15v5h5"></path>
+                      <path d="M20 15v5h-5"></path>
+                      <path d="M9 4L4 9"></path>
+                      <path d="M15 4l5 5"></path>
+                      <path d="M9 20l-5-5"></path>
+                      <path d="M15 20l5-5"></path>
                     </svg>
                     <span>{getSizeDisplay()}</span>
+                  </div>
+                )}
+                {getPaymentPlanDisplay() && (
+                  <div className={styles.detailItem}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                      <line x1="16" y1="2" x2="16" y2="6"></line>
+                      <line x1="8" y1="2" x2="8" y2="6"></line>
+                      <line x1="3" y1="10" x2="21" y2="10"></line>
+                    </svg>
+                    <span>{getPaymentPlanDisplay()}</span>
                   </div>
                 )}
                 {property.propertyType === 'secondary' && property.furnishing && (
@@ -1160,7 +1178,7 @@ export default function PropertyDetail({ propertyId, initialProperty = null }: P
             {property.developer && (property.developer.description || property.developer.descriptionEn || property.developer.descriptionRu) && (
               <div className={styles.descriptionSection}>
                 <h2 className={styles.sectionTitle}>
-                  {locale === 'ru' ? 'О девелопере' : 'About Developer'}
+                  {t('aboutDeveloper')}
                 </h2>
                 <p className={styles.description}>
                   {locale === 'ru'
@@ -1289,10 +1307,31 @@ export default function PropertyDetail({ propertyId, initialProperty = null }: P
                           >
                             <div className={styles.accordionMain}>
                               <div className={styles.accordionTitle}>
-                                {beds === 'Studio' ? beds : `${Math.round(Number(beds))} ${locale === 'ru' ? 'Сп.' : 'BR'}`}
+                                {(() => {
+                                  if (beds === 'Studio') return beds;
+                                  const count = Math.round(Number(beds));
+                                  if (locale !== 'ru') return `${count} BR`;
+                                  const n = Math.abs(count) % 100;
+                                  const n1 = n % 10;
+                                  let suffix = 'комнат';
+                                  if (n > 10 && n < 20) suffix = 'комнат';
+                                  else if (n1 > 1 && n1 < 5) suffix = 'комнаты';
+                                  else if (n1 === 1) suffix = 'комната';
+                                  return `${count} ${suffix}`;
+                                })()}
                               </div>
                               <div className={styles.accordionStats}>
-                                {units.length} {locale === 'ru' ? 'Юнита' : 'Units'}
+                                {(() => {
+                                  const count = units.length;
+                                  if (locale !== 'ru') return `${count} ${count === 1 ? 'Unit' : 'Units'}`;
+                                  const n = Math.abs(count) % 100;
+                                  const n1 = n % 10;
+                                  let suffix = 'юнитов';
+                                  if (n > 10 && n < 20) suffix = 'юнитов';
+                                  else if (n1 > 1 && n1 < 5) suffix = 'юнита';
+                                  else if (n1 === 1) suffix = 'юнит';
+                                  return `${count} ${suffix}`;
+                                })()}
                               </div>
                             </div>
                             {!isExpanded && (
@@ -1354,20 +1393,45 @@ export default function PropertyDetail({ propertyId, initialProperty = null }: P
                                         <td><div className={styles.floorText}>{unit.floor || '-'}</div></td>
                                         <td>
                                           <div className={styles.areaInfo}>
-                                            <div className={styles.primaryArea}>{Math.round(unit.totalSize)} {locale === 'ru' ? 'м²' : 'sqm'}</div>
-                                            <div className={styles.secondaryArea}>{Math.round(unit.totalSizeSqft || Number(unit.totalSize) * 10.764)} {locale === 'ru' ? 'фт²' : 'sqft'}</div>
+                                            <div className={styles.primaryArea}>
+                                              {locale === 'ru' 
+                                                ? `${formatNumber(Math.round((unit.totalSizeSqft || Number(unit.totalSize)) / 10.7639))} м²`
+                                                : `${formatNumber(Math.round(unit.totalSizeSqft || Number(unit.totalSize)))} sq.ft`
+                                              }
+                                            </div>
+                                            <div className={styles.secondaryArea}>
+                                              {locale === 'ru'
+                                                ? `${formatNumber(Math.round(unit.totalSizeSqft || Number(unit.totalSize)))} фт²`
+                                                : `${formatNumber(Math.round((unit.totalSizeSqft || Number(unit.totalSize)) / 10.7639))} sqm`
+                                              }
+                                            </div>
                                           </div>
                                         </td>
                                         <td>
                                           <div className={styles.priceInfo}>
                                             <div className={styles.primaryPrice}>
-                                              {unit.priceAED ? `${formatPrice(Math.round(unit.priceAED))} AED` : (unit.price > 0 ? `${formatPrice(Math.round(unit.price))} AED` : 'P.O.A')}
+                                              {(() => {
+                                                const priceAED = unit.priceAED || (unit.price > 0 ? unit.price : 0);
+                                                if (!priceAED) return locale === 'ru' ? 'Цена по запросу' : 'P.O.A';
+                                                return locale === 'ru'
+                                                  ? `${formatNumber(Math.round(priceAED / 3.6725))} USD`
+                                                  : `${formatNumber(Math.round(priceAED))} AED`;
+                                              })()}
                                             </div>
-                                            {unit.priceAED && unit.totalSize > 0 && (
-                                              <div className={styles.secondaryPrice}>
-                                                {formatPrice(Math.round(unit.primaryPriceAEDPerSqm || (unit.priceAED / unit.totalSize)))} {locale === 'ru' ? 'AED/м²' : 'AED/sqm'}
-                                              </div>
-                                            )}
+                                            {(() => {
+                                              const priceAED = unit.priceAED || (unit.price > 0 ? unit.price : 0);
+                                              const sizeSqft = unit.totalSizeSqft || Number(unit.totalSize);
+                                              if (priceAED && sizeSqft > 0) {
+                                                if (locale === 'ru') {
+                                                  const priceUSD = priceAED / 3.6725;
+                                                  const sizeSqm = sizeSqft / 10.7639;
+                                                  return <div className={styles.secondaryPrice}>{formatNumber(Math.round(priceUSD / sizeSqm))} USD/м²</div>;
+                                                } else {
+                                                  return <div className={styles.secondaryPrice}>{formatNumber(Math.round(priceAED / sizeSqft))} AED/sq.ft</div>;
+                                                }
+                                              }
+                                              return null;
+                                            })()}
                                           </div>
                                         </td>
                                       </tr>
@@ -1441,7 +1505,11 @@ export default function PropertyDetail({ propertyId, initialProperty = null }: P
                         )}
                         <div className={styles.unitBody}>
                           <div className={styles.unitPrice}>
-                            {unit.priceAED ? `${formatPrice(unit.priceAED)} AED` : (Number(unit.price) > 0 ? `${formatPrice(Math.round(Number(unit.price)))} AED` : (t('priceOnRequest') || 'On request'))}
+                            {(() => {
+                              const priceAED = unit.priceAED || (Number(unit.price) > 0 ? Number(unit.price) : 0);
+                              if (!priceAED) return t('priceOnRequest') || 'On request';
+                              return getDisplayPrice(priceAED, locale);
+                            })()}
                           </div>
                           <div className={styles.unitInfo}>
                             {(unit.bedrooms !== undefined && unit.bedrooms !== null) && (
@@ -1457,7 +1525,12 @@ export default function PropertyDetail({ propertyId, initialProperty = null }: P
                                 <rect x="3" y="3" width="18" height="18" rx="2" />
                                 <path d="M9 3V21M15 3V21M3 9H21M3 15H21" />
                               </svg>
-                              <span>{Math.round(unit.totalSizeSqft || (Number(unit.totalSize) * 10.764))} {locale === 'ru' ? 'фт²' : 'sqft'}</span>
+                              <span>
+                                {locale === 'ru'
+                                  ? `${formatNumber(Math.round(sqftToSqm(unit.totalSizeSqft || Number(unit.totalSize))))} м²`
+                                  : `${formatNumber(Math.round(unit.totalSizeSqft || Number(unit.totalSize)))} sq.ft`
+                                }
+                              </span>
                             </div>
                           </div>
                           <button 
@@ -1481,7 +1554,7 @@ export default function PropertyDetail({ propertyId, initialProperty = null }: P
           {/* Detailed Payment Plan Section */}
           {property.propertyType === 'off-plan' && property.paymentPlansJson && property.paymentPlansJson.length > 0 && (
             <div className={styles.descriptionSection} style={{ marginTop: '48px' }}>
-              <h2 className={styles.sectionTitle}>{locale === 'ru' ? 'Пеймент план' : 'Payment Plan'}</h2>
+              <h2 className={styles.sectionTitle}>{t('paymentPlan')}</h2>
               <div className={styles.paymentPlanPremiumBox}>
                 {/* Segmented Progress Bar */}
                 <div className={styles.paymentBarContainer}>
@@ -1527,7 +1600,16 @@ export default function PropertyDetail({ propertyId, initialProperty = null }: P
                     const percent = parseInt(p.Percent_of_payment);
                     return (
                       <div key={`milestone-${idx}`} className={styles.milestoneRow}>
-                        <div className={styles.milestoneTitle}>{p.Payment_time}</div>
+                        <div className={styles.milestoneTitle}>
+                          {(() => {
+                            const time = p.Payment_time;
+                            if (locale !== 'ru') return time;
+                            if (time === 'Upon Handover') return t('paymentTimes.uponHandover');
+                            if (time === 'During construction') return t('paymentTimes.duringConstruction');
+                            if (time === 'On booking') return t('paymentTimes.onBooking');
+                            return time;
+                          })()}
+                        </div>
                         <div className={styles.milestoneValue}>{percent}%</div>
                       </div>
                     );

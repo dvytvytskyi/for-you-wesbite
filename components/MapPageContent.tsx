@@ -5,7 +5,7 @@ import { useLocale } from 'next-intl';
 import dynamic from 'next/dynamic';
 import Header from '@/components/Header';
 import MapFilters from '@/components/MapFilters';
-import { getMapMarkers, getPropertyFinderMapMarkers } from '@/lib/api';
+import { getMapMarkers, ensureAbsoluteUrl } from '@/lib/api';
 import styles from '@/app/[locale]/map/page.module.css';
 
 // Lazily load MapboxMap as it's a heavy client component
@@ -57,36 +57,50 @@ export default function MapPageContent() {
         sort: 'newest'
     });
 
+    const toImageUrls = (value: any): string[] => {
+        if (!value) return [];
+
+        const arr = Array.isArray(value) ? value : [value];
+        return arr
+            .map((item: any) => {
+                if (typeof item === 'string') {
+                    const normalized = item.includes(',') ? item.split(',')[0].trim() : item.trim();
+                    return normalized;
+                }
+                if (item && typeof item === 'object') {
+                    const raw = item.full || item.small || item.url || item.link || '';
+                    if (typeof raw === 'string') {
+                        return raw.includes(',') ? raw.split(',')[0].trim() : raw.trim();
+                    }
+                }
+                return '';
+            })
+            .filter((url: string) => typeof url === 'string' && /^https?:\/\//.test(url) && url.length > 12);
+    };
+
     const loadProperties = useCallback(async (currentFilters: Filters) => {
         try {
             setLoading(true);
             setError(null);
 
             // Format filters for the API
+            const propertyType = currentFilters.type === 'secondary' ? 'secondary' : 'off-plan';
             const apiFilters: any = {
-                propertyType: 'off-plan',
+                propertyType,
                 search: currentFilters.search || undefined,
                 priceFrom: currentFilters.priceFrom || undefined,
                 priceTo: currentFilters.priceTo || undefined,
                 bedrooms: currentFilters.bedrooms.length > 0 ? currentFilters.bedrooms.join(',') : undefined,
-                areaIds: currentFilters.location.length > 0 ? currentFilters.location.join(',') : undefined,
+                areaSlug: currentFilters.location.length === 1 ? currentFilters.location[0] : undefined,
+                areaSlugs: currentFilters.location.length > 1 ? currentFilters.location : undefined,
                 developerId: currentFilters.developerId || undefined,
             };
 
-            // Fetch both in parallel
-            // Determine property type and status for API
-            const propertyType = 'off-plan';
-            const pfStatus = 'off-plan';
-
-            // Fetch both in parallel
-            const [offPlanMarkers, pfMarkers] = await Promise.all([
-                getMapMarkers({ ...apiFilters, propertyType }),
-                getPropertyFinderMapMarkers(pfStatus)
-            ]);
+            const mapMarkers = await getMapMarkers(apiFilters);
 
             // Convert off-plan markers with strict filtering
-            const mappedOffPlan = offPlanMarkers
-                .filter(m => m.propertyType === 'off-plan')
+            const mappedOffPlan = mapMarkers
+                .filter(m => m.propertyType === propertyType)
                 .map(m => ({
                 id: m.id,
                 slug: (m as any).slug || '',
@@ -110,9 +124,18 @@ export default function MapPageContent() {
                 bedrooms: (m as any).bedrooms || 0,
                 bathrooms: (m as any).bathrooms || 0,
                 size: { sqm: (m as any).size || 0, sqft: ((m as any).size || 0) * 10.764 },
-                images: (m as any).mainImage ? [(m as any).mainImage] : ((m as any).image ? [(m as any).image] : ((m as any).images || [])),
+                images: (() => {
+                    const fromMain = toImageUrls((m as any).mainImage);
+                    if (fromMain.length > 0) return fromMain;
+                    const fromSingle = toImageUrls((m as any).image);
+                    if (fromSingle.length > 0) return fromSingle;
+                    const fromList = toImageUrls((m as any).images);
+                    if (fromList.length > 0) return fromList;
+                    const directImage = ensureAbsoluteUrl((m as any).image);
+                    return directImage ? [directImage] : [];
+                })(),
                 type: 'sale' as const, 
-                propertyType: 'off-plan',
+                propertyType,
                 coordinates: [
                     typeof m.lng === 'string' ? parseFloat(m.lng) : Number(m.lng),
                     typeof m.lat === 'string' ? parseFloat(m.lat) : Number(m.lat)
@@ -122,46 +145,7 @@ export default function MapPageContent() {
                 priceFromAED: typeof m.priceAED === 'string' ? parseFloat(m.priceAED) : Number(m.priceAED)
             }));
 
-            // Convert PF markers
-            const mappedPF = (pfMarkers || []).map(m => ({
-                id: m.id,
-                slug: m.slug || m.id,
-                name: m.name || m.title || '',
-                nameRu: m.nameRu || m.name || m.title || '',
-                location: { 
-                    area: m.area || m.district || m.location || '', 
-                    areaRu: m.areaRu || m.area || m.district || m.location || '', 
-                    city: m.city || 'Dubai', 
-                    cityRu: m.cityRu || m.city || 'Дубай' 
-                },
-                price: {
-                    usd: 0,
-                    aed: typeof m.price === 'string' ? parseFloat(m.price) : Number(m.price || 0),
-                    eur: 0
-                },
-                developer: { 
-                    name: m.developer || '', 
-                    nameRu: m.developer || '' 
-                },
-                bedrooms: m.bedrooms || 0,
-                bathrooms: m.bathrooms || 0,
-                size: { sqm: m.size || 0, sqft: (m.size || 0) * 10.764 },
-                images: (m as any).mainImage ? [(m as any).mainImage] : (m.image ? [m.image] : (m.images || [])),
-                type: m.type === 'rent' ? 'rent' as const : 'sale' as const,
-                propertyType: pfStatus === 'off-plan' ? 'off-plan' : 'secondary',
-                coordinates: [
-                    typeof m.lng === 'string' ? parseFloat(m.lng) : Number(m.lng),
-                    typeof m.lat === 'string' ? parseFloat(m.lat) : Number(m.lat)
-                ] as [number, number],
-                isPartial: true,
-                isPropertyFinder: true,
-                priceAED: typeof m.price === 'string' ? parseFloat(m.price) : Number(m.price || 0),
-                priceFromAED: typeof m.price === 'string' ? parseFloat(m.price) : Number(m.price || 0)
-            }));
-
-            const mapProperties = [...mappedOffPlan, ...mappedPF];
-
-            setProperties(mapProperties);
+            setProperties(mappedOffPlan);
             setIsInitialLoad(false);
         } catch (err: any) {
             console.error('Failed to load map markers:', err);
@@ -189,22 +173,46 @@ export default function MapPageContent() {
                         left: '50%',
                         transform: 'translate(-50%, -50%)',
                         zIndex: 1000,
-                        background: 'rgba(255, 255, 255, 0.9)',
-                        backdropFilter: 'blur(5px)',
+                        background: 'rgba(255, 255, 255, 0.95)',
+                        backdropFilter: 'blur(8px)',
                         color: '#003077',
-                        padding: '16px 32px',
-                        borderRadius: '12px',
+                        padding: '20px 40px',
+                        borderRadius: '16px',
                         fontSize: '16px',
                         fontWeight: '600',
-                        boxShadow: '0 8px 32px rgba(0, 48, 119, 0.2)',
+                        boxShadow: '0 20px 50px rgba(0, 48, 119, 0.15)',
                         pointerEvents: 'none',
                         display: 'flex',
+                        flexDirection: 'column',
                         alignItems: 'center',
-                        gap: '12px',
-                        border: '1px solid rgba(0, 48, 119, 0.1)'
+                        gap: '16px',
+                        border: '1px solid rgba(0, 48, 119, 0.1)',
+                        minWidth: '240px'
                     }}>
-                        <div className={styles.loaderSpinner}></div>
-                        Loading properties...
+                        <div style={{
+                            width: '100%',
+                            height: '4px',
+                            background: '#f0f0f0',
+                            borderRadius: '2px',
+                            overflow: 'hidden',
+                            position: 'relative'
+                        }}>
+                            <div style={{
+                                position: 'absolute',
+                                width: '40%',
+                                height: '100%',
+                                background: '#003077',
+                                borderRadius: '2px',
+                                animation: 'shimmerHorizontal 1.5s infinite ease-in-out'
+                            }} />
+                        </div>
+                        <style>{`
+                            @keyframes shimmerHorizontal {
+                                0% { left: -40%; }
+                                100% { left: 100%; }
+                            }
+                        `}</style>
+                        {locale === 'en' ? 'Updating map...' : 'Обновление карты...'}
                     </div>
                 )}
                 {error && (

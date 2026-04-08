@@ -20,31 +20,69 @@ export function useDebounce<T>(value: T, delay: number): T {
 }
 
 /**
+ * Constants for conversion
+ * 1 USD = 3.6725 AED (Pegged rate)
+ * 1 SQM = 10.7639 SQFT
+ */
+export const AED_USD_RATE = 3.6725;
+export const SQFT_SQM_RATE = 10.7639;
+
+/**
  * Convert AED to USD
  */
 export function aedToUsd(aed: number): number {
-  return Math.round(aed / 3.67);
+  return Math.round(aed / AED_USD_RATE);
 }
 
 /**
  * Convert USD to AED
  */
 export function usdToAed(usd: number): number {
-  return Math.round(usd * 3.67);
+  return Math.round(usd * AED_USD_RATE);
 }
 
 /**
  * Convert m² to sqft
  */
 export function sqmToSqft(sqm: number): number {
-  return Math.round(sqm * 10.764 * 100) / 100;
+  return Math.round(sqm * SQFT_SQM_RATE * 100) / 100;
 }
 
 /**
  * Convert sqft to m²
  */
 export function sqftToSqm(sqft: number): number {
-  return Math.round(sqft / 10.764 * 100) / 100;
+  return Math.round(sqft / 10.7639 * 100) / 100;
+}
+
+/**
+ * Get display price based on locale
+ * Russian: USD
+ * English: AED
+ */
+export function getDisplayPrice(priceAED: number | null | undefined, locale: string): string {
+  if (!priceAED || priceAED === 0) return '';
+  
+  if (locale === 'ru') {
+    const usd = Math.round(priceAED / 3.6725);
+    return `${formatNumber(usd)} USD`;
+  }
+  return `${formatNumber(Math.round(priceAED))} AED`;
+}
+
+/**
+ * Get display size based on locale
+ * Russian: m²
+ * English: sq.ft
+ */
+export function getDisplaySize(sizeSqFt: number | null | undefined, locale: string): string {
+  if (!sizeSqFt || sizeSqFt === 0) return '';
+  
+  if (locale === 'ru') {
+    const sqm = Math.round(sizeSqFt / 10.7639);
+    return `${formatNumber(sqm)} м²`;
+  }
+  return `${formatNumber(Math.round(sizeSqFt))} sq.ft`;
 }
 
 /**
