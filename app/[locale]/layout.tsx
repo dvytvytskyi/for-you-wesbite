@@ -9,6 +9,7 @@ import FloatingSocial from '@/components/FloatingSocial';
 import CookieConsent from '@/components/CookieConsent';
 import { Inter, Cormorant_Garamond } from 'next/font/google';
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import { Analytics } from '@vercel/analytics/next';
 
 const inter = Inter({
   subsets: ['latin', 'cyrillic'],
@@ -103,6 +104,7 @@ export default async function LocaleLayout({
           </NextIntlClientProvider>
         </FavoritesProvider>
         <SpeedInsights />
+        <Analytics />
       </body>
     </html>
   );
