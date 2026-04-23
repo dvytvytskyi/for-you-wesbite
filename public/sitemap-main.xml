@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://foryou-realestate.com/en</loc>
+    <loc>https://foryou-realestate.com</loc>
     <lastmod>2026-04-07</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
@@ -13,7 +13,7 @@
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://foryou-realestate.com/en/properties</loc>
+    <loc>https://foryou-realestate.com/properties</loc>
     <lastmod>2026-04-07</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
@@ -25,7 +25,7 @@
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://foryou-realestate.com/en/map</loc>
+    <loc>https://foryou-realestate.com/map</loc>
     <lastmod>2026-04-07</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
@@ -37,7 +37,7 @@
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://foryou-realestate.com/en/areas</loc>
+    <loc>https://foryou-realestate.com/areas</loc>
     <lastmod>2026-04-07</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
@@ -49,7 +49,7 @@
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://foryou-realestate.com/en/developers</loc>
+    <loc>https://foryou-realestate.com/developers</loc>
     <lastmod>2026-04-07</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
@@ -61,7 +61,7 @@
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://foryou-realestate.com/en/about</loc>
+    <loc>https://foryou-realestate.com/about</loc>
     <lastmod>2026-04-07</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
@@ -73,7 +73,7 @@
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://foryou-realestate.com/en/news</loc>
+    <loc>https://foryou-realestate.com/news</loc>
     <lastmod>2026-04-07</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
@@ -85,7 +85,7 @@
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://foryou-realestate.com/en/areas/al-barari</loc>
+    <loc>https://foryou-realestate.com/areas/al-barari</loc>
     <lastmod>2026-04-07</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -97,7 +97,7 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://foryou-realestate.com/en/areas/al-safa</loc>
+    <loc>https://foryou-realestate.com/areas/al-safa</loc>
     <lastmod>2026-04-07</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -109,7 +109,7 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://foryou-realestate.com/en/areas/arabian-ranches-3</loc>
+    <loc>https://foryou-realestate.com/areas/arabian-ranches-3</loc>
     <lastmod>2026-04-07</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -121,7 +121,7 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://foryou-realestate.com/en/areas/arjan</loc>
+    <loc>https://foryou-realestate.com/areas/arjan</loc>
     <lastmod>2026-04-07</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -133,7 +133,7 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://foryou-realestate.com/en/areas/barsha-south</loc>
+    <loc>https://foryou-realestate.com/areas/barsha-south</loc>
     <lastmod>2026-04-07</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -145,7 +145,7 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://foryou-realestate.com/en/areas/bluewaters-island</loc>
+    <loc>https://foryou-realestate.com/areas/bluewaters-island</loc>
     <lastmod>2026-04-07</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -157,7 +157,7 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://foryou-realestate.com/en/areas/business-bay</loc>
+    <loc>https://foryou-realestate.com/areas/business-bay</loc>
     <lastmod>2026-04-07</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -169,7 +169,7 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://foryou-realestate.com/en/areas/cherrywoods</loc>
+    <loc>https://foryou-realestate.com/areas/cherrywoods</loc>
     <lastmod>2026-04-07</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -181,7 +181,7 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://foryou-realestate.com/en/areas/city-of-arabia</loc>
+    <loc>https://foryou-realestate.com/areas/city-of-arabia</loc>
     <lastmod>2026-04-07</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -193,7 +193,7 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://foryou-realestate.com/en/areas/damac-hills-2</loc>
+    <loc>https://foryou-realestate.com/areas/damac-hills-2</loc>
     <lastmod>2026-04-07</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -205,7 +205,7 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://foryou-realestate.com/en/areas/damac-lagoons</loc>
+    <loc>https://foryou-realestate.com/areas/damac-lagoons</loc>
     <lastmod>2026-04-07</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -217,7 +217,7 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://foryou-realestate.com/en/areas/discovery-gardens</loc>
+    <loc>https://foryou-realestate.com/areas/discovery-gardens</loc>
     <lastmod>2026-04-07</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -229,7 +229,7 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://foryou-realestate.com/en/areas/downtown-dubai</loc>
+    <loc>https://foryou-realestate.com/areas/downtown-dubai</loc>
     <lastmod>2026-04-07</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -241,7 +241,7 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://foryou-realestate.com/en/areas/dubai-creek-harbour</loc>
+    <loc>https://foryou-realestate.com/areas/dubai-creek-harbour</loc>
     <lastmod>2026-04-07</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -253,7 +253,7 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://foryou-realestate.com/en/areas/dubai-design-district</loc>
+    <loc>https://foryou-realestate.com/areas/dubai-design-district</loc>
     <lastmod>2026-04-07</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -265,7 +265,7 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://foryou-realestate.com/en/areas/dubai-harbour</loc>
+    <loc>https://foryou-realestate.com/areas/dubai-harbour</loc>
     <lastmod>2026-04-07</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -277,7 +277,7 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://foryou-realestate.com/en/areas/dubai-healthcare-city</loc>
+    <loc>https://foryou-realestate.com/areas/dubai-healthcare-city</loc>
     <lastmod>2026-04-07</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -289,7 +289,7 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://foryou-realestate.com/en/areas/dubai-hills</loc>
+    <loc>https://foryou-realestate.com/areas/dubai-hills</loc>
     <lastmod>2026-04-07</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -301,7 +301,7 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://foryou-realestate.com/en/areas/dubai-industrial-city</loc>
+    <loc>https://foryou-realestate.com/areas/dubai-industrial-city</loc>
     <lastmod>2026-04-07</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -313,7 +313,7 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://foryou-realestate.com/en/areas/dubai-international-financial-centre-difc</loc>
+    <loc>https://foryou-realestate.com/areas/dubai-international-financial-centre-difc</loc>
     <lastmod>2026-04-07</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -325,7 +325,7 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://foryou-realestate.com/en/areas/dubai-internet-city</loc>
+    <loc>https://foryou-realestate.com/areas/dubai-internet-city</loc>
     <lastmod>2026-04-07</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -337,7 +337,7 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://foryou-realestate.com/en/areas/dubai-investment-park</loc>
+    <loc>https://foryou-realestate.com/areas/dubai-investment-park</loc>
     <lastmod>2026-04-07</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -349,7 +349,7 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://foryou-realestate.com/en/areas/dubailand</loc>
+    <loc>https://foryou-realestate.com/areas/dubailand</loc>
     <lastmod>2026-04-07</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -361,7 +361,7 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://foryou-realestate.com/en/areas/dubai-marina</loc>
+    <loc>https://foryou-realestate.com/areas/dubai-marina</loc>
     <lastmod>2026-04-07</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -373,7 +373,7 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://foryou-realestate.com/en/areas/dubai-maritime-city</loc>
+    <loc>https://foryou-realestate.com/areas/dubai-maritime-city</loc>
     <lastmod>2026-04-07</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -385,7 +385,7 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://foryou-realestate.com/en/areas/dubai-production-city</loc>
+    <loc>https://foryou-realestate.com/areas/dubai-production-city</loc>
     <lastmod>2026-04-07</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -397,7 +397,7 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://foryou-realestate.com/en/areas/dubai-silicon-oasis</loc>
+    <loc>https://foryou-realestate.com/areas/dubai-silicon-oasis</loc>
     <lastmod>2026-04-07</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -409,7 +409,7 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://foryou-realestate.com/en/areas/dubai-sports-city</loc>
+    <loc>https://foryou-realestate.com/areas/dubai-sports-city</loc>
     <lastmod>2026-04-07</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -421,7 +421,7 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://foryou-realestate.com/en/areas/dubai-studio-city</loc>
+    <loc>https://foryou-realestate.com/areas/dubai-studio-city</loc>
     <lastmod>2026-04-07</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -433,7 +433,7 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://foryou-realestate.com/en/areas/international-city</loc>
+    <loc>https://foryou-realestate.com/areas/international-city</loc>
     <lastmod>2026-04-07</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -445,7 +445,7 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://foryou-realestate.com/en/areas/jumeirah-lake-towers-jlt</loc>
+    <loc>https://foryou-realestate.com/areas/jumeirah-lake-towers-jlt</loc>
     <lastmod>2026-04-07</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -457,7 +457,7 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://foryou-realestate.com/en/areas/jumeirah-village-triangle-jvt</loc>
+    <loc>https://foryou-realestate.com/areas/jumeirah-village-triangle-jvt</loc>
     <lastmod>2026-04-07</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -469,7 +469,7 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://foryou-realestate.com/en/areas/la-mer</loc>
+    <loc>https://foryou-realestate.com/areas/la-mer</loc>
     <lastmod>2026-04-07</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -481,7 +481,7 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://foryou-realestate.com/en/areas/madinat-jumeirah-living</loc>
+    <loc>https://foryou-realestate.com/areas/madinat-jumeirah-living</loc>
     <lastmod>2026-04-07</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -493,7 +493,7 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://foryou-realestate.com/en/areas/mina-rashid</loc>
+    <loc>https://foryou-realestate.com/areas/mina-rashid</loc>
     <lastmod>2026-04-07</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -505,7 +505,7 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://foryou-realestate.com/en/areas/mirdif-hills</loc>
+    <loc>https://foryou-realestate.com/areas/mirdif-hills</loc>
     <lastmod>2026-04-07</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -517,7 +517,7 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://foryou-realestate.com/en/areas/mohammed-bin-rashid-city-mbr</loc>
+    <loc>https://foryou-realestate.com/areas/mohammed-bin-rashid-city-mbr</loc>
     <lastmod>2026-04-07</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -529,7 +529,7 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://foryou-realestate.com/en/areas/motor-city</loc>
+    <loc>https://foryou-realestate.com/areas/motor-city</loc>
     <lastmod>2026-04-07</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -541,7 +541,7 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://foryou-realestate.com/en/areas/sobha-hartland</loc>
+    <loc>https://foryou-realestate.com/areas/sobha-hartland</loc>
     <lastmod>2026-04-07</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -553,7 +553,7 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://foryou-realestate.com/en/areas/tilal-al-ghaf</loc>
+    <loc>https://foryou-realestate.com/areas/tilal-al-ghaf</loc>
     <lastmod>2026-04-07</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -565,7 +565,7 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://foryou-realestate.com/en/areas/town-square</loc>
+    <loc>https://foryou-realestate.com/areas/town-square</loc>
     <lastmod>2026-04-07</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -577,7 +577,7 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://foryou-realestate.com/en/areas/uptown-dubai</loc>
+    <loc>https://foryou-realestate.com/areas/uptown-dubai</loc>
     <lastmod>2026-04-07</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -589,7 +589,7 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://foryou-realestate.com/en/areas/wadi-al-safa-4</loc>
+    <loc>https://foryou-realestate.com/areas/wadi-al-safa-4</loc>
     <lastmod>2026-04-07</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>

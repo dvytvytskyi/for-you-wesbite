@@ -63,17 +63,22 @@ def make_url(loc, lastmod=None, changefreq=None, priority=None):
     el += '  </url>\n'
     return el
 
+
+def with_locale(path, locale):
+    # EN URLs are canonical without /en in this project.
+    return f'{base}{path}' if locale == 'en' else f'{base}/ru{path}'
+
 static_routes = ['', '/properties', '/map', '/areas', '/developers', '/about', '/news']
 locales = ['en', 'ru']
 main_urls = []
 for route in static_routes:
     for locale in locales:
-        main_urls.append(make_url(f'{base}/{locale}{route}', datetime.date.today().isoformat(), 'daily', 1.0))
+        main_urls.append(make_url(with_locale(route, locale), datetime.date.today().isoformat(), 'daily', 1.0))
 for area in areas:
     slug = area.get('slug')
     if slug:
         for locale in locales:
-            main_urls.append(make_url(f'{base}/{locale}/areas/{slug}', datetime.date.today().isoformat(), 'weekly', 0.8))
+            main_urls.append(make_url(with_locale(f'/areas/{slug}', locale), datetime.date.today().isoformat(), 'weekly', 0.8))
 
 projects_urls = []
 for prop in properties:
@@ -86,7 +91,7 @@ for prop in properties:
         areaSlug = 'dubai'
     lastmod = fmtdate(prop.get('updatedAt') or prop.get('updated_at') or prop.get('createdAt') or prop.get('created_at')) or datetime.date.today().isoformat()
     for locale in locales:
-        projects_urls.append(make_url(f'{base}/{locale}/properties/{slug}', lastmod, 'daily', 0.9))
+        projects_urls.append(make_url(with_locale(f'/properties/{slug}', locale), lastmod, 'daily', 0.9))
 
 news_urls = []
 for item in news:
@@ -95,7 +100,7 @@ for item in news:
         continue
     lastmod = fmtdate(item.get('updatedAt') or item.get('publishedAt') or item.get('createdAt') or item.get('created_at')) or datetime.date.today().isoformat()
     for locale in locales:
-        news_urls.append(make_url(f'{base}/{locale}/news/{slug}', lastmod, 'weekly', 0.5))
+        news_urls.append(make_url(with_locale(f'/news/{slug}', locale), lastmod, 'weekly', 0.5))
 
 
 def write_sitemap(path, urls):
