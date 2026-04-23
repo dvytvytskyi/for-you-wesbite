@@ -230,5 +230,5 @@ export default async function PropertyDetailPage({ params }: PropertyDetailPageP
 
 // Force dynamic rendering to ensure property data is fetched at request time,
 // preventing stale/fallback metadata from being served
-export const dynamic = 'force-dynamic';
+export const revalidate = 3600; // ISR: Revalidate every hour
 
