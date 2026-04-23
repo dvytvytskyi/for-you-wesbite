@@ -268,11 +268,15 @@ export default function AreaDetail({ slug }: AreaDetailProps) {
       }
       if (currentFilters.sizeFrom) {
         const val = parseFloat(currentFilters.sizeFrom);
-        apiFilters.sizeFrom = locale === 'ru' ? Math.round(val * 10.7639) : val;
+        apiFilters.sizeFrom = currentFilters.type === 'new'
+          ? val
+          : (locale === 'ru' ? Math.round(val * 10.7639) : val);
       }
       if (currentFilters.sizeTo) {
         const val = parseFloat(currentFilters.sizeTo);
-        apiFilters.sizeTo = locale === 'ru' ? Math.round(val * 10.7639) : val;
+        apiFilters.sizeTo = currentFilters.type === 'new'
+          ? val
+          : (locale === 'ru' ? Math.round(val * 10.7639) : val);
       }
       if (currentFilters.developerId) apiFilters.developerId = currentFilters.developerId;
 
@@ -338,13 +342,13 @@ export default function AreaDetail({ slug }: AreaDetailProps) {
 
     if (price < pFrom || (pTo !== Infinity && price > pTo)) return false;
 
-    // Size filtering (sqft)
+    // Size filtering
     const size = prop.propertyType === 'off-plan'
-      ? (prop.sizeFromSqft || prop.sizeFrom || 0)
+      ? (locale === 'ru' ? (prop.sizeFrom || 0) : (prop.sizeFromSqft || 0))
       : (prop.sizeSqft || prop.size || 0);
 
-    const sFrom = filters.sizeFrom ? (locale === 'ru' ? parseFloat(filters.sizeFrom) * 10.7639 : parseFloat(filters.sizeFrom)) : 0;
-    const sTo = filters.sizeTo ? (locale === 'ru' ? parseFloat(filters.sizeTo) * 10.7639 : parseFloat(filters.sizeTo)) : Infinity;
+    const sFrom = filters.sizeFrom ? parseFloat(filters.sizeFrom) : 0;
+    const sTo = filters.sizeTo ? parseFloat(filters.sizeTo) : Infinity;
 
     if (size < sFrom || (sTo !== Infinity && size > sTo)) return false;
 
@@ -641,9 +645,15 @@ export default function AreaDetail({ slug }: AreaDetailProps) {
   };
 
   const getSizeLabel = (property: Property) => {
-    const sizeSqft = property.propertyType === 'off-plan'
-      ? (property.sizeFromSqft || property.sizeFrom || 0)
-      : (property.sizeSqft || property.size || 0);
+    if (property.propertyType === 'off-plan') {
+      const sizeValue = locale === 'ru' ? (property.sizeFrom || 0) : (property.sizeFromSqft || 0);
+      if (!sizeValue) return locale === 'ru' ? 'Размер по запросу' : 'Size on request';
+      return locale === 'ru'
+        ? `${Math.round(sizeValue).toLocaleString('en-US')} м²`
+        : `${Math.round(sizeValue).toLocaleString('en-US')} sqft`;
+    }
+
+    const sizeSqft = property.sizeSqft || property.size || 0;
     if (!sizeSqft) return locale === 'ru' ? 'Размер по запросу' : 'Size on request';
     return `${Math.round(sizeSqft).toLocaleString('en-US')} sqft`;
   };

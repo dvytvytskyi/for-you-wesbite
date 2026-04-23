@@ -115,9 +115,10 @@ export function convertPropertyToMapFormat(property: ApiProperty, locale: string
     // Get size
     const getSize = () => {
         if (property.propertyType === 'off-plan') {
-            const sizeSqft = property.sizeFromSqft || property.sizeFrom || 0;
+            const sizeSqm = property.sizeFrom || 0;
+            const sizeSqft = property.sizeFromSqft || 0;
             return {
-                sqm: sizeSqft > 0 ? sizeSqft / 10.7639 : 0,
+                sqm: sizeSqm,
                 sqft: sizeSqft,
             };
         } else {

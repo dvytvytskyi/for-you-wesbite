@@ -56,6 +56,9 @@ export async function generateMetadata({ params }: AreaDetailPageProps): Promise
 export default async function AreaDetailPage({ params }: AreaDetailPageProps) {
   const { slug, locale } = await params;
   unstable_setRequestLocale(locale);
+  const areaName = decodeURIComponent((slug || '').toString())
+    .replace(/[-_]+/g, ' ')
+    .trim() || (locale === 'ru' ? 'Район' : 'Area');
 
   // Structured Data (JSON-LD)
   const jsonLd = {
@@ -77,7 +80,7 @@ export default async function AreaDetailPage({ params }: AreaDetailPageProps) {
       {
         "@type": "ListItem",
         "position": 3,
-        "name": slug,
+          "name": areaName,
         "item": `https://foryou-realestate.com/${locale}/areas/${slug}`
       }
     ]

@@ -37,6 +37,10 @@ interface UnitLandingProps {
 export default function UnitLanding({ unit, locale, canonicalUrl }: UnitLandingProps) {
   const isEn = locale === 'en';
   const isRu = locale === 'ru';
+   const safeLocation = (unit.location || '').trim() || (isRu ? 'Район Дубая' : 'Dubai Area');
+   const safeProjectName = (unit.projectName || '').trim() || (isRu ? 'Проект' : 'Project');
+   const safeUnitType = (unit.type || '').trim() || (isRu ? 'Юнит' : 'Unit');
+   const areaSegment = encodeURIComponent(safeLocation.toLowerCase().replace(/\s+/g, '-'));
   
   // Advanced JSON-LD for Real Estate Listing (Enhanced)
   const schemaMarkup = {
@@ -76,9 +80,9 @@ export default function UnitLanding({ unit, locale, canonicalUrl }: UnitLandingP
     "@type": "BreadcrumbList",
     "itemListElement": [
       { "@type": "ListItem", "position": 1, "name": "Dubai", "item": `https://foryou-realestate.com/${locale}/properties` },
-      { "@type": "ListItem", "position": 2, "name": unit.location, "item": `https://foryou-realestate.com/${locale}/areas/${unit.location.toLowerCase()}` },
-      { "@type": "ListItem", "position": 3, "name": unit.projectName, "item": `https://foryou-realestate.com/${locale}/properties/${unit.projectId}` },
-      { "@type": "ListItem", "position": 4, "name": unit.type, "item": canonicalUrl }
+         { "@type": "ListItem", "position": 2, "name": safeLocation, "item": `https://foryou-realestate.com/${locale}/areas/${areaSegment}` },
+         { "@type": "ListItem", "position": 3, "name": safeProjectName, "item": `https://foryou-realestate.com/${locale}/properties/${unit.projectId}` },
+         { "@type": "ListItem", "position": 4, "name": safeUnitType, "item": canonicalUrl }
     ]
   };
 

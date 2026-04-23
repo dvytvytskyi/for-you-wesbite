@@ -6,7 +6,7 @@ import { unstable_setRequestLocale, getTranslations } from 'next-intl/server';
 export async function generateMetadata({ params: { locale, id } }: { params: { locale: string, id: string } }) {
     const t = await getTranslations({ locale, namespace: 'metadata' });
     const baseUrl = 'https://foryou-realestate.com';
-    const canonical = `${baseUrl}/${locale}/developers/${id}`;
+    const canonical = locale === 'en' ? `${baseUrl}/developers/${id}` : `${baseUrl}/ru/developers/${id}`;
     const description = locale === 'ru'
         ? 'Профиль застройщика в Дубае: проекты, направление, рыночное позиционирование и возможности для инвестиций.'
         : 'Dubai developer profile with projects, market positioning, and investment opportunities across off-plan and ready properties.';
@@ -16,6 +16,11 @@ export async function generateMetadata({ params: { locale, id } }: { params: { l
         description: description,
         alternates: {
             canonical: canonical,
+            languages: {
+                'en': `${baseUrl}/developers/${id}`,
+                'ru': `${baseUrl}/ru/developers/${id}`,
+                'x-default': `${baseUrl}/developers/${id}`,
+            },
         },
         openGraph: {
             title: t('developers'),

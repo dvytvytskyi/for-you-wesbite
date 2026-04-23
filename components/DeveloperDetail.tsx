@@ -128,11 +128,15 @@ export default function DeveloperDetail({ id }: DeveloperDetailProps) {
             }
             if (currentFilters.sizeFrom) {
                 const val = parseFloat(currentFilters.sizeFrom);
-                apiFilters.sizeMin = locale === 'ru' ? Math.round(val * 10.7639) : val;
+                apiFilters.sizeMin = currentFilters.type === 'new'
+                    ? val
+                    : (locale === 'ru' ? Math.round(val * 10.7639) : val);
             }
             if (currentFilters.sizeTo) {
                 const val = parseFloat(currentFilters.sizeTo);
-                apiFilters.sizeMax = locale === 'ru' ? Math.round(val * 10.7639) : val;
+                apiFilters.sizeMax = currentFilters.type === 'new'
+                    ? val
+                    : (locale === 'ru' ? Math.round(val * 10.7639) : val);
             }
 
             const result = await getProperties(apiFilters, true);
@@ -181,13 +185,13 @@ export default function DeveloperDetail({ id }: DeveloperDetailProps) {
         const pTo = filters.priceTo ? parseInt(filters.priceTo, 10) : Infinity;
         if (price < pFrom || (pTo !== Infinity && price > pTo)) return false;
 
-        // Size filtering (sqft)
+        // Size filtering
         const size = prop.propertyType === 'off-plan'
-            ? (prop.sizeFromSqft || prop.sizeFrom || 0)
+            ? (locale === 'ru' ? (prop.sizeFrom || 0) : (prop.sizeFromSqft || 0))
             : (prop.sizeSqft || prop.size || 0);
 
-        const sFrom = filters.sizeFrom ? (locale === 'ru' ? parseFloat(filters.sizeFrom) * 10.7639 : parseFloat(filters.sizeFrom)) : 0;
-        const sTo = filters.sizeTo ? (locale === 'ru' ? parseFloat(filters.sizeTo) * 10.7639 : parseFloat(filters.sizeTo)) : Infinity;
+        const sFrom = filters.sizeFrom ? parseFloat(filters.sizeFrom) : 0;
+        const sTo = filters.sizeTo ? parseFloat(filters.sizeTo) : Infinity;
         if (size < sFrom || (sTo !== Infinity && size > sTo)) return false;
 
         return true;

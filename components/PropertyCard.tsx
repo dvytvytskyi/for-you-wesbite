@@ -6,7 +6,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Property } from '@/lib/api';
 import { getOptimizedImageUrl } from '@/lib/images';
-import { formatNumber, getDisplayPrice, getDisplaySize, sqftToSqm, AED_USD_RATE, SQFT_SQM_RATE } from '@/lib/utils';
+import { formatNumber, getDisplayPrice, getDisplaySize, sqftToSqm, AED_USD_RATE } from '@/lib/utils';
 import { saveScrollState } from '@/lib/scrollRestoration';
 import { useFavorites } from '@/lib/favoritesContext';
 import styles from './PropertyCard.module.css';
@@ -35,39 +35,7 @@ function PropertyCard({ property, currentPage = 1, index = 10, isSelected = fals
     return locale === 'en' ? path : `/${locale}${path}`;
   };
 
-  const getName = () => {
-    if (property.propertyType === 'off-plan') {
-      if (property.name && property.name !== 'Property') {
-        return property.name;
-      }
-      
-      if (property.slug) {
-        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(property.slug);
-        if (!isUuid) {
-          const parts = property.slug.split('-');
-          if (parts.length > 2) {
-            const namePart = parts.slice(1, -1).join(' ');
-            return namePart.charAt(0).toUpperCase() + namePart.slice(1);
-          }
-        }
-      }
-      
-      const areaName = getLocation();
-      if (areaName) {
-        const base = locale === 'ru' ? 'Проект в' : 'Project in';
-        return `${base} ${areaName}`;
-      }
-      
-      return property.developer?.name || (locale === 'ru' ? 'Новостройка' : 'New Project');
-    } else {
-      const type = locale === 'ru' ? 'Апартаменты' : 'Apartment';
-      const areaName = getLocation();
-      if (areaName) {
-        return locale === 'ru' ? `${type} в ${areaName}` : `${type} in ${areaName}`;
-      }
-      return type;
-    }
-  };
+  const getName = () => property.name;
 
   const getLocation = () => {
     if (property.area === null || property.area === undefined) {
@@ -162,11 +130,11 @@ function PropertyCard({ property, currentPage = 1, index = 10, isSelected = fals
 
   const getSize = () => {
     if (property.propertyType === 'off-plan') {
-      // Backend sends: size/sizeFrom in sq.m, sizeSqft/sizeFromSqft in sq.ft
-      const fromSqm = property.sizeFrom || property.size || 0;
+      // Backend sends off-plan size fields in both units: sqm and sqft.
+      const fromSqm = property.sizeFrom || 0;
       const toSqm = property.sizeTo || 0;
-      const fromSqft = property.sizeFromSqft || property.sizeSqft || (fromSqm > 0 ? Math.round(fromSqm * SQFT_SQM_RATE) : 0);
-      const toSqft = property.sizeToSqft || (toSqm > 0 ? Math.round(toSqm * SQFT_SQM_RATE) : 0);
+      const fromSqft = property.sizeFromSqft || 0;
+      const toSqft = property.sizeToSqft || 0;
 
       if (locale === 'ru') {
         if (fromSqm > 0) {
@@ -174,13 +142,6 @@ function PropertyCard({ property, currentPage = 1, index = 10, isSelected = fals
             return `${formatNumber(Math.round(fromSqm))} - ${formatNumber(Math.round(toSqm))} м²`;
           }
           return `${formatNumber(Math.round(fromSqm))} м²`;
-        }
-        if (fromSqft > 0) {
-          const convertedFromSqm = Math.round(fromSqft / SQFT_SQM_RATE);
-          if (toSqft > 0 && toSqft !== fromSqft) {
-            return `${formatNumber(convertedFromSqm)} - ${formatNumber(Math.round(toSqft / SQFT_SQM_RATE))} м²`;
-          }
-          return `${formatNumber(convertedFromSqm)} м²`;
         }
         return '';
       }
@@ -191,13 +152,6 @@ function PropertyCard({ property, currentPage = 1, index = 10, isSelected = fals
           return `${formatNumber(Math.round(fromSqft))} - ${formatNumber(Math.round(toSqft))} sq.ft`;
         }
         return `${formatNumber(Math.round(fromSqft))} sq.ft`;
-      }
-      if (fromSqm > 0) {
-        const convertedFromSqft = Math.round(fromSqm * SQFT_SQM_RATE);
-        if (toSqm > 0 && toSqm !== fromSqm) {
-          return `${formatNumber(convertedFromSqft)} - ${formatNumber(Math.round(toSqm * SQFT_SQM_RATE))} sq.ft`;
-        }
-        return `${formatNumber(convertedFromSqft)} sq.ft`;
       }
       return '';
     } else {
@@ -224,8 +178,7 @@ function PropertyCard({ property, currentPage = 1, index = 10, isSelected = fals
 
     let sizeSqft: number;
     if (property.propertyType === 'off-plan') {
-      const sizeSqm = property.sizeFrom || property.size || 0;
-      sizeSqft = property.sizeFromSqft || property.sizeSqft || (sizeSqm > 0 ? sizeSqm * SQFT_SQM_RATE : 0);
+      sizeSqft = property.sizeFromSqft || 0;
     } else {
       sizeSqft = property.sizeSqft || property.size || 0;
     }
@@ -233,7 +186,10 @@ function PropertyCard({ property, currentPage = 1, index = 10, isSelected = fals
 
     if (locale === 'ru') {
       const priceUSD = price / 3.6725;
-      const sizeSqm = sizeSqft / 10.7639;
+      const sizeSqm = property.propertyType === 'off-plan'
+        ? (property.sizeFrom || 0)
+        : (sizeSqft / 10.7639);
+      if (!sizeSqm || sizeSqm === 0) return 'N/A';
       const pricePerSqm = priceUSD / sizeSqm;
       return `${formatNumber(Math.round(pricePerSqm))} USD/м²`;
     } else {

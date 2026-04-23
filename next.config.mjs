@@ -149,6 +149,16 @@ const nextConfig = {
         permanent: true,
       },
       {
+          source: '/projects',
+          destination: '/properties',
+          permanent: true,
+        },
+        {
+          source: '/ru/projects',
+          destination: '/ru/properties',
+          permanent: true,
+        },
+        {
         source: '/projects/:slug*',
         destination: '/properties',
         permanent: true,
@@ -238,6 +248,16 @@ const nextConfig = {
         destination: '/news',
         permanent: false,
       },
+        {
+          source: '/:slug/feed',
+          destination: '/news',
+          permanent: false,
+        },
+        {
+          source: '/ru/:slug/feed',
+          destination: '/ru/news',
+          permanent: false,
+        },
       {
         source: '/ru/policy',
         destination: '/ru/privacy',

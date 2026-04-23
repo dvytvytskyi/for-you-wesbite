@@ -125,7 +125,7 @@ export default function PropertyPopup({ property, onClose, onRequestCallback }: 
     }, 300);
   };
 
-  const getName = () => locale === 'ru' ? property.nameRu : property.name;
+  const getName = () => property.name;
   const getLocation = () => {
     const area = locale === 'ru' ? property.location.areaRu : property.location.area;
     const city = locale === 'ru' ? property.location.cityRu : property.location.city;

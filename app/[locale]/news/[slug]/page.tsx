@@ -3,6 +3,7 @@ import Footer from '@/components/Footer';
 import NewsDetail from '@/components/NewsDetail';
 import { unstable_setRequestLocale } from 'next-intl/server';
 import { getNewsBySlug } from '@/lib/api';
+import { notFound } from 'next/navigation';
 import { Metadata } from 'next';
 import { getTranslations } from 'next-intl/server';
 
@@ -79,6 +80,8 @@ const NEWS_SEO_OVERRIDES: Record<string, { title: string; description: string }>
 export async function generateMetadata({ params }: NewsDetailPageProps): Promise<Metadata> {
   const { slug, locale } = await params;
   const t = await getTranslations({ locale });
+  const baseUrl = 'https://foryou-realestate.com';
+  const canonical = locale === 'en' ? `${baseUrl}/news/${slug}` : `${baseUrl}/ru/news/${slug}`;
   try {
     const news = await getNewsBySlug(slug);
     if (!news) throw new Error('News not found');
@@ -105,11 +108,11 @@ export async function generateMetadata({ params }: NewsDetailPageProps): Promise
         authors: ['Ruslan K.'],
       },
       alternates: {
-        canonical: `https://foryou-realestate.com/${locale}/news/${slug}`,
+        canonical: canonical,
         languages: {
-          'en': `https://foryou-realestate.com/news/${slug}`,
-          'ru': `https://foryou-realestate.com/ru/news/${slug}`,
-          'x-default': `https://foryou-realestate.com/news/${slug}`,
+          'en': `${baseUrl}/news/${slug}`,
+          'ru': `${baseUrl}/ru/news/${slug}`,
+          'x-default': `${baseUrl}/news/${slug}`,
         },
       }
     };
@@ -126,7 +129,9 @@ export default async function NewsDetailPage({ params }: NewsDetailPageProps) {
 
   const news = await getNewsBySlug(slug);
 
-  if (!news) return null;
+  if (!news) notFound();
+
+  const articleName = ((locale === 'ru' ? news.titleRu : news.title) || '').trim() || (locale === 'ru' ? 'Статья' : 'Article');
 
   const articleLd = {
     "@context": "https://schema.org",
@@ -164,7 +169,7 @@ export default async function NewsDetailPage({ params }: NewsDetailPageProps) {
       {
         "@type": "ListItem",
         "position": 2,
-        "name": locale === 'ru' ? news.titleRu : news.title,
+          "name": articleName,
         "item": `https://foryou-realestate.com/${locale}/news/${slug}`
       }
     ]

@@ -14,7 +14,12 @@ type Props = {
 export async function generateMetadata({ params: { locale }, searchParams }: Props) {
   const t = await getTranslations({ locale, namespace: 'metadata' });
   const baseUrl = 'https://foryou-realestate.com';
-  const fallbackCanonical = `${baseUrl}/properties`;
+  const fallbackCanonical = locale === 'en' ? `${baseUrl}/properties` : `${baseUrl}/ru/properties`;
+
+  const hasQueryParams = Object.values(searchParams || {}).some((value) => {
+    if (Array.isArray(value)) return value.length > 0;
+    return typeof value === 'string' ? value.trim().length > 0 : false;
+  });
 
   let canonical = fallbackCanonical;
   try {
@@ -27,6 +32,7 @@ export async function generateMetadata({ params: { locale }, searchParams }: Pro
   return {
     title: t('properties'),
     description: t('propertiesDescription'),
+      robots: hasQueryParams ? { index: false, follow: true } : { index: true, follow: true },
     alternates: {
       canonical: canonical,
       languages: {

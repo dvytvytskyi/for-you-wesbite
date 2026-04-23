@@ -1,4 +1,5 @@
 import os, urllib.request, json, datetime, xml.sax.saxutils as sax
+from pathlib import Path
 
 headers = {
     'x-api-key': 'fyr_7084daf35cf6427f60e06bccd675f133b8a19ce4866cf941156bb4f38fba4016',
@@ -86,22 +87,6 @@ for prop in properties:
     lastmod = fmtdate(prop.get('updatedAt') or prop.get('updated_at') or prop.get('createdAt') or prop.get('created_at')) or datetime.date.today().isoformat()
     for locale in locales:
         projects_urls.append(make_url(f'{base}/{locale}/properties/{slug}', lastmod, 'daily', 0.9))
-        projects_urls.append(make_url(f'{base}/{locale}/landing/{areaSlug}/{slug}', lastmod, 'daily', 0.8))
-        projects_urls.append(make_url(f'{base}/{locale}/landing/{areaSlug}/{slug}/premium', lastmod, 'daily', 0.8))
-
-unit_urls = []
-for prop in properties:
-    slug = prop.get('slug')
-    if not slug:
-        continue
-    area = prop.get('area')
-    areaSlug = area.get('slug') if isinstance(area, dict) else area or 'dubai'
-    if not areaSlug:
-        areaSlug = 'dubai'
-    lastmod = fmtdate(prop.get('updatedAt') or prop.get('updated_at') or prop.get('createdAt') or prop.get('created_at')) or datetime.date.today().isoformat()
-    for locale in locales:
-        unit_urls.append(make_url(f'{base}/{locale}/landing/{areaSlug}/{slug}/1-bedroom-apartment', lastmod, 'weekly', 0.7))
-        unit_urls.append(make_url(f'{base}/{locale}/landing/{areaSlug}/{slug}/luxury-residence', lastmod, 'weekly', 0.7))
 
 news_urls = []
 for item in news:
@@ -129,9 +114,13 @@ for idx in range(0, len(projects_urls), max_urls):
     file_name = f'public/sitemap-projects-{len(project_files) + 1}.xml'
     write_sitemap(file_name, chunk)
     project_files.append(file_name)
-
-write_sitemap('public/sitemap-units.xml', unit_urls)
 write_sitemap('public/sitemap-news.xml', news_urls)
+
+# Remove units sitemap because it only contained non-canonical landing URLs.
+units_path = 'public/sitemap-units.xml'
+if os.path.exists(units_path):
+    os.remove(units_path)
+    print('removed stale', units_path)
 
 # Remove legacy combined project sitemap if it exists, to avoid stale invalid output.
 legacy_path = 'public/sitemap-projects.xml'
@@ -141,7 +130,7 @@ if os.path.exists(legacy_path):
 
 index = '<?xml version="1.0" encoding="UTF-8"?>\n'
 index += '<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
-for name in ['sitemap-main.xml'] + [Path(p).name for p in project_files] + ['sitemap-units.xml', 'sitemap-news.xml']:
+for name in ['sitemap-main.xml'] + [Path(p).name for p in project_files] + ['sitemap-news.xml']:
     index += '  <sitemap>\n'
     index += f'    <loc>{base}/{name}</loc>\n'
     index += f'    <lastmod>{datetime.date.today().isoformat()}</lastmod>\n'

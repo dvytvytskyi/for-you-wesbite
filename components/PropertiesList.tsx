@@ -18,6 +18,99 @@ import { getProperties, Property, PropertyFilters as ApiPropertyFilters, getDeve
 
 const ITEMS_PER_PAGE = 36;
 
+const ALLOWED_SORT = new Set(['price-desc', 'price-asc', 'size-desc', 'size-asc', 'newest', 'random']);
+const ALLOWED_STATUS = new Set(['under-construction', 'ready', 'on-sale', 'sold-out', 'presale']);
+const TOKEN_RE = /^[a-zA-Z0-9_-]+$/;
+
+const parseTokenList = (value: string | null, maxItems = 25): string[] => {
+  if (!value) return [];
+  return value
+    .split(',')
+    .map((v) => v.trim())
+    .filter((v) => v.length > 0 && TOKEN_RE.test(v))
+    .slice(0, maxItems);
+};
+
+const parseBedroomList = (value: string | null): number[] => {
+  if (!value) return [];
+  const nums = value
+    .split(',')
+    .map((v) => parseInt(v, 10))
+    .filter((n) => Number.isFinite(n) && n >= 0 && n <= 10);
+  return Array.from(new Set(nums));
+};
+
+const sanitizeNumericInput = (value: string | null, max = 1000000000): string => {
+  if (!value) return '';
+  const cleaned = value.replace(/,/g, '').trim();
+  if (!cleaned) return '';
+  const num = Number(cleaned);
+  if (!Number.isFinite(num) || num < 0 || num > max) return '';
+  return cleaned;
+};
+
+const sanitizeSearchInput = (value: string | null): string => {
+  if (!value) return '';
+  return value.trim().slice(0, 120);
+};
+
+const sanitizeUrlSearchParams = (rawParams: URLSearchParams): URLSearchParams => {
+  const params = new URLSearchParams();
+
+  const typeRaw = rawParams.get('type');
+  const type = typeRaw === 'secondary' ? 'secondary' : (typeRaw === 'all' ? 'all' : 'new');
+  if (type !== 'new') params.set('type', type);
+
+  const search = sanitizeSearchInput(rawParams.get('search'));
+  if (search) params.set('search', search);
+
+  const location = parseTokenList(rawParams.get('location'));
+  if (location.length > 0) params.set('location', location.join(','));
+
+  const bedrooms = parseBedroomList(rawParams.get('bedrooms'));
+  if (bedrooms.length > 0) params.set('bedrooms', bedrooms.join(','));
+
+  const sizeFrom = sanitizeNumericInput(rawParams.get('sizeFrom'));
+  if (sizeFrom) params.set('sizeFrom', sizeFrom);
+
+  const sizeTo = sanitizeNumericInput(rawParams.get('sizeTo'));
+  if (sizeTo) params.set('sizeTo', sizeTo);
+
+  const priceFrom = sanitizeNumericInput(rawParams.get('priceFrom'));
+  if (priceFrom) params.set('priceFrom', priceFrom);
+
+  const priceTo = sanitizeNumericInput(rawParams.get('priceTo'));
+  if (priceTo) params.set('priceTo', priceTo);
+
+  const sort = rawParams.get('sort') || (type === 'secondary' ? 'random' : 'newest');
+  if (ALLOWED_SORT.has(sort) && !(sort === 'newest' || (sort === 'random' && type === 'secondary'))) {
+    params.set('sort', sort);
+  }
+
+  const developerId = rawParams.get('developerId');
+  if (developerId && TOKEN_RE.test(developerId)) params.set('developerId', developerId);
+
+  const cityId = rawParams.get('cityId');
+  if (cityId && TOKEN_RE.test(cityId)) params.set('cityId', cityId);
+
+  const status = rawParams.get('status');
+  if (type === 'new' && status && ALLOWED_STATUS.has(status)) {
+    params.set('status', status);
+  }
+
+  const amenities = parseTokenList(rawParams.get('amenities'));
+  if (type === 'new' && amenities.length > 0) {
+    params.set('amenities', amenities.join(','));
+  }
+
+  const page = parseInt(rawParams.get('page') || '1', 10);
+  if (Number.isFinite(page) && page > 1) {
+    params.set('page', String(page));
+  }
+
+  return params;
+};
+
 const formatNumberWithCommas = (num: number) => {
   return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 };
@@ -70,14 +163,18 @@ const convertFiltersToApi = (filters: Filters, page: number, locale: string, see
   
   if (filters.bedrooms.length > 0) apiFilters.bedrooms = filters.bedrooms.join(',');
   
-  // Size filtering (Backend expects SQFT, so convert SQM inputs from RU UI)
+  // Size filtering: off-plan uses backend default units, secondary keeps RU->SQFT conversion.
   if (filters.sizeFrom) {
     const val = parseFloat(filters.sizeFrom.replace(/,/g, '')) || 0;
-    apiFilters.sizeFrom = locale === 'ru' ? Math.round(val * 10.7639) : val;
+    apiFilters.sizeFrom = propertyType === 'off-plan'
+      ? val
+      : (locale === 'ru' ? Math.round(val * 10.7639) : val);
   }
   if (filters.sizeTo) {
     const val = parseFloat(filters.sizeTo.replace(/,/g, '')) || 0;
-    apiFilters.sizeTo = locale === 'ru' ? Math.round(val * 10.7639) : val;
+    apiFilters.sizeTo = propertyType === 'off-plan'
+      ? val
+      : (locale === 'ru' ? Math.round(val * 10.7639) : val);
   }
   
   // Price filtering (Backend expects AED, so convert USD inputs from RU UI)
@@ -218,6 +315,7 @@ export default function PropertiesList() {
   
   // Seed for stable random sorting
   const [sessionSeed] = useState(() => Math.floor(Math.random() * 1000000));
+  const hasRecoveredFromBadQueryRef = useRef(false);
 
   // Load areas for title mapping and check for mobile
   useEffect(() => {
@@ -285,8 +383,18 @@ export default function PropertiesList() {
 
   // Watch searchParams for changes (navigation)
   useEffect(() => {
-    const urlFilters = urlParamsToFilters(new URLSearchParams(searchParams.toString()));
-    const urlPage = searchParams.get('page') ? parseInt(searchParams.get('page')!, 10) : 1;
+    const rawParams = new URLSearchParams(searchParams.toString());
+    const cleanParams = sanitizeUrlSearchParams(rawParams);
+
+    if (rawParams.toString() !== cleanParams.toString()) {
+      const cleanQuery = cleanParams.toString();
+      const cleanUrl = cleanQuery ? `${pathname}?${cleanQuery}` : pathname;
+      router.replace(cleanUrl, { scroll: false });
+      return;
+    }
+
+    const urlFilters = urlParamsToFilters(cleanParams);
+    const urlPage = cleanParams.get('page') ? parseInt(cleanParams.get('page')!, 10) : 1;
 
     setFilters(prev => {
       if (JSON.stringify(prev) !== JSON.stringify(urlFilters)) return urlFilters;
@@ -296,7 +404,7 @@ export default function PropertiesList() {
       if (prev !== urlPage) return urlPage;
       return prev;
     });
-  }, [searchParams]);
+  }, [searchParams, pathname, router]);
 
   // Handle scroll to deselect property in map view
   useEffect(() => {
@@ -397,11 +505,39 @@ export default function PropertiesList() {
       setTotalProperties(total);
       setProperties(loadedProperties);
     } catch (err: any) {
+      const message = String(err?.message || '').toLowerCase();
+      const status = err?.status || err?.response?.status;
+      const isLikelyBadFilterError = status === 404 || message.includes('404') || message.includes('invalid') || message.includes('bad request');
+
+      if (isLikelyBadFilterError && !hasRecoveredFromBadQueryRef.current) {
+        hasRecoveredFromBadQueryRef.current = true;
+        const fallbackFilters: Filters = {
+          type: 'new',
+          search: '',
+          location: [],
+          bedrooms: [],
+          sizeFrom: '',
+          sizeTo: '',
+          priceFrom: '',
+          priceTo: '',
+          sort: 'newest',
+          developerId: undefined,
+          cityId: undefined,
+          projectStatus: undefined,
+          amenities: [],
+        };
+        setFilters(fallbackFilters);
+        setCurrentPage(1);
+        const fallbackParams = filtersToUrlParams(fallbackFilters, 1).toString();
+        router.replace(fallbackParams ? `${pathname}?${fallbackParams}` : pathname, { scroll: false });
+        return;
+      }
+
       setError(err.message || t('errorLoading') || 'Error loading properties');
     } finally {
       setLoading(false);
     }
-  }, [filters, currentPage, debouncedSearch, sessionSeed, t, balanceByArea, shuffleWithSeed]);
+  }, [filters, currentPage, debouncedSearch, sessionSeed, t, balanceByArea, shuffleWithSeed, pathname, router]);
 
   useEffect(() => {
     loadProperties();

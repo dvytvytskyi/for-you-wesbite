@@ -17,16 +17,6 @@ function asDate(value?: string): Date {
   return Number.isNaN(date.getTime()) ? DEFAULT_LAST_MODIFIED : date;
 }
 
-function toSlug(value: string): string {
-  return value
-    .toLowerCase()
-    .trim()
-    .replace(/\s+/g, '-')
-    .replace(/[^a-z0-9-]/g, '')
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '');
-}
-
 /**
  * Generate multiple sitemaps to handle 10k+ pages and avoid GC limits
  * Each sitemap segment will contain up to ~5000 URLs
@@ -108,10 +98,6 @@ export default async function sitemap({ id }: { id: string }): Promise<MetadataR
 
         props.forEach((prop) => {
           if (!prop?.slug) return;
-
-          const areaSlugFromObject = typeof prop.area === 'object' ? prop.area?.slug : '';
-          const areaSlugFromString = typeof prop.area === 'string' ? toSlug(prop.area.split(',')[0] || 'dubai') : '';
-          const areaSlug = areaSlugFromObject || areaSlugFromString || 'dubai';
           const modified = asDate((prop as any).updatedAt || (prop as any).createdAt);
 
           locales.forEach((locale) => {
@@ -120,14 +106,6 @@ export default async function sitemap({ id }: { id: string }): Promise<MetadataR
               lastModified: modified,
               changeFrequency: 'daily',
               priority: 0.9,
-            });
-
-            // Keep only canonical project landing URL variant.
-            sitemap.push({
-              url: withLocale(`/landing/${areaSlug}/${prop.slug}`, locale),
-              lastModified: modified,
-              changeFrequency: 'weekly',
-              priority: 0.7,
             });
           });
         });

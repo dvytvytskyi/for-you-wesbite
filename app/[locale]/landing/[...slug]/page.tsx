@@ -44,10 +44,22 @@ export async function generateMetadata({
   const { locale, slug } = params;
   const cleanSlug = resolveProjectSlug(slug);
   const unitSlug = slug[2] || '';
+  const baseUrl = 'https://foryou-realestate.com';
+  const canonicalPropertyUrl = locale === 'ru'
+    ? `${baseUrl}/ru/properties/${cleanSlug}`
+    : `${baseUrl}/properties/${cleanSlug}`;
 
   try {
     const property = await getPropertyBySlug(cleanSlug);
-    if (!property) return { title: 'Not Found' };
+    if (!property) {
+      return {
+        title: 'Not Found',
+        robots: {
+          index: false,
+          follow: false,
+        },
+      };
+    }
 
     const isRu = locale === 'ru';
     const name = property.name;
@@ -67,27 +79,29 @@ export async function generateMetadata({
       ? `Эксклюзивная подборка апартаментов в ${name}, Дубай. Актуальные цены, планировки и планы оплаты.`
       : `Exclusive collection of apartments in ${name}, Dubai. Real-time prices, floor plans, and payment plans.`;
 
-    const path = `landing/${slug.join('/')}`;
-
     return {
       title,
       description,
+      robots: {
+        index: false,
+        follow: true,
+      },
       alternates: {
-        canonical: `https://foryou-realestate.com/${locale}/${path}`,
+        canonical: canonicalPropertyUrl,
         languages: {
-          en: `https://foryou-realestate.com/en/${path}`,
-          ru: `https://foryou-realestate.com/ru/${path}`,
-          'x-default': `https://foryou-realestate.com/en/${path}`,
+          en: `${baseUrl}/properties/${cleanSlug}`,
+          ru: `${baseUrl}/ru/properties/${cleanSlug}`,
+          'x-default': `${baseUrl}/properties/${cleanSlug}`,
         },
       },
       openGraph: {
         title,
         description,
-        url: `https://foryou-realestate.com/${locale}/${path}`,
+        url: canonicalPropertyUrl,
         siteName: 'For You Real Estate',
         images: [
           {
-            url: property.photos?.[0] || 'https://foryou-realestate.com/og-default.jpg',
+            url: property.photos?.[0] || `${baseUrl}/og-default.jpg`,
             width: 1200,
             height: 630,
             alt: name,
@@ -98,7 +112,13 @@ export async function generateMetadata({
       },
     };
   } catch {
-    return { title: 'Landing Page' };
+    return {
+      title: 'Landing Page',
+      robots: {
+        index: false,
+        follow: false,
+      },
+    };
   }
 }
 
@@ -132,7 +152,9 @@ export default async function LandingDispatchPage({
     ? (isRu ? areaObj.nameRu : areaObj.nameEn) || 'Dubai'
     : property.area || 'Dubai';
 
-  const canonicalUrl = `https://foryou-realestate.com/${locale}/landing/${slug.join('/')}`;
+  const canonicalUrl = locale === 'ru'
+    ? `https://foryou-realestate.com/ru/properties/${cleanSlug}`
+    : `https://foryou-realestate.com/properties/${cleanSlug}`;
 
   // ── Shared project data (used across multiple templates)
   const projectData = {

@@ -39,8 +39,7 @@ export function getFloorSize(property: Property) {
   const sqft = property.sizeToSqft
     || property.sizeSqft
     || property.sizeFromSqft
-    || (property.size ? Math.round(Number(property.size) * 10.7639) : undefined)
-    || (property.sizeFrom ? Math.round(Number(property.sizeFrom) * 10.7639) : undefined);
+    || undefined;
 
   if (sqft && !Number.isNaN(sqft) && sqft > 0) {
     return {
@@ -132,15 +131,27 @@ export function createRealEstateListingSchema(
   return schema;
 }
 
-export function createBreadcrumbSchema(items: Array<{ position: number; name: string; item: string }>) {
+export function createBreadcrumbSchema(items: Array<{ position?: number; name?: string | null; item: string; fallbackName?: string }>) {
+  const normalizedItems = items
+    .map((entry, index) => {
+      const name = cleanText(entry.name);
+      const fallbackName = cleanText(entry.fallbackName) || 'Item';
+      const item = cleanText(entry.item);
+
+      if (!item) return null;
+
+      return {
+        '@type': 'ListItem',
+        position: index + 1,
+        name: name || fallbackName,
+        item,
+      };
+    })
+    .filter((entry): entry is { '@type': 'ListItem'; position: number; name: string; item: string } => entry !== null);
+
   return {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
-    itemListElement: items.map((entry) => ({
-      '@type': 'ListItem',
-      position: entry.position,
-      name: entry.name,
-      item: entry.item,
-    })),
+    itemListElement: normalizedItems,
   };
 }

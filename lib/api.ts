@@ -1418,6 +1418,7 @@ export function normalizeProperty(property: any): Property {
         property.sizeToSqft = property.sizeTo;
       }
     }
+
   } else {
     // For secondary properties, calculate priceAED if missing but price exists
     if ((property.priceAED === null || property.priceAED === undefined || property.priceAED === 0) &&
@@ -1495,7 +1496,7 @@ export function normalizeProperty(property: any): Property {
     // Map 'size' -> 'sizeFrom' and 'sizeSqft' -> 'sizeFromSqft'
     if (property.size && !property.sizeFrom) property.sizeFrom = property.size;
     if (property.sizeSqft && !property.sizeFromSqft) property.sizeFromSqft = property.sizeSqft;
-    
+
     // Also map 'priceAED' to 'priceFromAED' if missing
     if (property.priceAED && !property.priceFromAED) {
       property.priceFromAED = property.priceAED;
@@ -2849,15 +2850,16 @@ export async function getNewsBySlug(slug: string): Promise<NewsDetail | null> {
 
     return news;
   } catch (error) {
-
     if (axios.isAxiosError(error)) {
       const axiosError = error as AxiosError<ApiError>;
-      if (axiosError.response?.status === 404) {
-        return null;
+      if (axiosError.response?.status !== 404) {
+        console.error('[API] getNewsBySlug non-404 error:', axiosError.response?.status, axiosError.response?.data?.message || axiosError.message);
       }
-      throw new Error(axiosError.response?.data?.message || 'Failed to fetch news article');
+      return null;
     }
-    throw error;
+
+    console.error('[API] getNewsBySlug unexpected error:', error);
+    return null;
   }
 }
 

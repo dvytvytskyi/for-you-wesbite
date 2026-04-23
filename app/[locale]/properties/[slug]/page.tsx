@@ -101,7 +101,10 @@ export async function generateMetadata({ params }: PropertyDetailPageProps): Pro
       ? property.photos[0]
       : 'https://foryou-realestate.com/images/main-preview.jpg';
 
-    const canonical = (property as any).canonicalUrl || `https://foryou-realestate.com/properties/${slug}`;
+    const fallbackCanonical = locale === 'en'
+      ? `https://foryou-realestate.com/properties/${slug}`
+      : `https://foryou-realestate.com/ru/properties/${slug}`;
+    const canonical = (property as any).canonicalUrl || fallbackCanonical;
 
     return {
       title: title,
@@ -178,7 +181,8 @@ export default async function PropertyDetailPage({ params }: PropertyDetailPageP
     },
     {
       position: 3,
-      name: property.name,
+      name: (property.name || '').trim(),
+      fallbackName: locale === 'ru' ? 'Объект' : 'Property',
       item: `https://foryou-realestate.com/${locale}/properties/${slug}`,
     },
   ]);

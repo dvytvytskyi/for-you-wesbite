@@ -650,17 +650,7 @@ export default function PropertyDetail({ propertyId, initialProperty = null }: P
     return locale === 'en' ? path : `/${locale}${path}`;
   };
 
-  const getName = () => {
-    if (property.propertyType === 'secondary') {
-      const type = locale === 'ru' ? 'Апартаменты' : 'Apartment';
-      const areaName = getLocation();
-      if (areaName) {
-        return locale === 'ru' ? `${type} в ${areaName}` : `${type} in ${areaName}`;
-      }
-      return type;
-    }
-    return property.name;
-  };
+  const getName = () => property.name;
   
   const getDescription = () => {
     const desc = (locale === 'ru' && property.descriptionRu) 

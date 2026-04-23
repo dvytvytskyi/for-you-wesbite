@@ -29,20 +29,12 @@ export function generateStaticParams() {
 
 export async function generateMetadata({ params: { locale } }: { params: { locale: string } }) {
   const t = await getTranslations({ locale, namespace: 'hero' });
-  const baseUrl = 'https://www.foryou-realestate.com';
+  const baseUrl = 'https://foryou-realestate.com';
   
   return {
     metadataBase: new URL(baseUrl),
     title: 'For You Real Estate | Dubai Properties',
     description: t('subtitle'),
-    alternates: {
-      canonical: `/${locale}`,
-      languages: {
-        'en': '/en',
-        'ru': '/ru',
-        'x-default': '/en',
-      },
-    },
   };
 }
 
