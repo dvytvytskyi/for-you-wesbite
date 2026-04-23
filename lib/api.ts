@@ -2586,6 +2586,12 @@ const SLUG_CACHE_DURATION = 10 * 60 * 1000; // 10 minutes
 // Map to collapse duplicate pending requests for the same slug
 const pendingSlugRequests = new Map<string, Promise<Property>>();
 
+function extractLegacyShortId(slug: string): string | null {
+  if (!slug) return null;
+  const match = slug.match(/-([a-f0-9]{8})$/i);
+  return match ? match[1].toLowerCase() : null;
+}
+
 /**
  * Get property by slug
  */
@@ -2601,15 +2607,28 @@ export async function getPropertyBySlug(slug: string): Promise<Property> {
       console.log(`[DIAGNOSTIC] getPropertyBySlug START for: ${slug}`);
     }
 
-    // Call getProperty which hits /public/properties/${slug}
-    // and has its own logging for the network request
-    const property = await getProperty(slug);
-
-    const totalTime = Date.now() - startTime;
-    if (typeof window === 'undefined') {
-      console.log(`[DIAGNOSTIC] getPropertyBySlug TOTAL for ${slug}: ${totalTime}ms`);
+    const candidates = [slug];
+    const shortId = extractLegacyShortId(slug);
+    if (shortId && !slug.startsWith('property-')) {
+      candidates.push(`property-${shortId}`);
     }
-    return property;
+
+    let lastError: any = null;
+    for (const candidate of candidates) {
+      try {
+        // Call getProperty which hits /public/properties/${candidate}
+        const property = await getProperty(candidate);
+        const totalTime = Date.now() - startTime;
+        if (typeof window === 'undefined') {
+          console.log(`[DIAGNOSTIC] getPropertyBySlug TOTAL for ${slug} (resolved as ${candidate}): ${totalTime}ms`);
+        }
+        return property;
+      } catch (candidateError: any) {
+        lastError = candidateError;
+      }
+    }
+
+    throw lastError || new Error(`Property not found for slug: ${slug}`);
   } catch (err: any) {
     if (typeof window === 'undefined') {
       console.error(`[DIAGNOSTIC] getPropertyBySlug ERROR for ${slug} after ${Date.now() - startTime}ms:`, err.message);

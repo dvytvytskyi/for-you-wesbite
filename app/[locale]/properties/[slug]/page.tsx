@@ -152,17 +152,25 @@ export default async function PropertyDetailPage({ params }: PropertyDetailPageP
     console.log(`[PAGE] Fetching property for slug: ${slug}`);
     property = await getPropertyBySlug(slug);
     console.log(`[PAGE] Property fetch took ${Date.now() - startTime}ms`);
-  } catch (error) {
+  } catch (error: any) {
     console.error(`[PAGE] Property fetch failed after ${Date.now() - startTime}ms`, error);
-    // If property not found, show 404
-    notFound();
+    const statusCode = error?.response?.status;
+    const isNotFound = statusCode === 404 || /404|not found/i.test(String(error?.message || ''));
+
+    // Only render 404 for true not found. Temporary backend errors should surface as 5xx.
+    if (isNotFound) {
+      notFound();
+    }
+    throw error;
   }
+
+  const localizedBasePath = locale === 'ru' ? 'ru/properties' : 'properties';
 
   // Structured Data (JSON-LD) - RealEstateListing
   const jsonLd = createRealEstateListingSchema(
     property as Property,
     locale,
-    `https://foryou-realestate.com/${locale}/properties/${slug}`
+    `https://foryou-realestate.com/${localizedBasePath}/${slug}`
   );
 
   // Structured Data (JSON-LD) - BreadcrumbList
@@ -170,20 +178,20 @@ export default async function PropertyDetailPage({ params }: PropertyDetailPageP
     {
       position: 1,
       name: locale === 'ru' ? 'Недвижимость' : 'Properties',
-      item: `https://foryou-realestate.com/${locale}/properties`,
+      item: `https://foryou-realestate.com/${localizedBasePath}`,
     },
     {
       position: 2,
       name: property.propertyType === 'off-plan'
         ? (locale === 'ru' ? 'Off-plan' : 'Off-plan')
         : (locale === 'ru' ? 'Вторичная' : 'Secondary'),
-      item: `https://foryou-realestate.com/${locale}/properties?type=${property.propertyType === 'off-plan' ? 'offPlan' : 'secondary'}`,
+      item: `https://foryou-realestate.com/${localizedBasePath}?type=${property.propertyType === 'off-plan' ? 'offPlan' : 'secondary'}`,
     },
     {
       position: 3,
       name: (property.name || '').trim(),
       fallbackName: locale === 'ru' ? 'Объект' : 'Property',
-      item: `https://foryou-realestate.com/${locale}/properties/${slug}`,
+      item: `https://foryou-realestate.com/${localizedBasePath}/${slug}`,
     },
   ]);
 
