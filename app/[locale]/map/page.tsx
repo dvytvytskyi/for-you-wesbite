@@ -4,13 +4,18 @@ import MapPageContent from '@/components/MapPageContent';
 export async function generateMetadata({ params: { locale } }: { params: { locale: string } }) {
   const t = await getTranslations({ locale, namespace: 'metadata' });
   const baseUrl = 'https://foryou-realestate.com';
-  const canonical = `${baseUrl}/${locale}/map`;
+  const canonical = locale === 'en' ? `${baseUrl}/map` : `${baseUrl}/ru/map`;
 
   return {
     title: t('map'),
     description: t('mapDescription'),
     alternates: {
       canonical: canonical,
+      languages: {
+        'en': `${baseUrl}/map`,
+        'ru': `${baseUrl}/ru/map`,
+        'x-default': `${baseUrl}/map`,
+      },
     },
     openGraph: {
       title: t('map'),

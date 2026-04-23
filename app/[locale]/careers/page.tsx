@@ -4,13 +4,18 @@ import CareersPageContent from '@/components/CareersPageContent';
 export async function generateMetadata({ params: { locale } }: { params: { locale: string } }) {
     const t = await getTranslations({ locale, namespace: 'metadata' });
     const baseUrl = 'https://foryou-realestate.com';
-    const canonical = `${baseUrl}/${locale}/careers`;
+    const canonical = locale === 'en' ? `${baseUrl}/careers` : `${baseUrl}/ru/careers`;
 
     return {
         title: t('careers'),
         description: t('careersDescription'),
         alternates: {
             canonical: canonical,
+            languages: {
+                'en': `${baseUrl}/careers`,
+                'ru': `${baseUrl}/ru/careers`,
+                'x-default': `${baseUrl}/careers`,
+            },
         },
         openGraph: {
             title: t('careers'),
