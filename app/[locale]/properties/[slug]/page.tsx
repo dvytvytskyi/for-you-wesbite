@@ -109,6 +109,14 @@ export async function generateMetadata({ params }: PropertyDetailPageProps): Pro
     return {
       title: title,
       description: description,
+      robots: {
+        index: true,
+        follow: true,
+        googleBot: {
+          index: true,
+          follow: true,
+        },
+      },
       openGraph: {
         title: title,
         description: description,
@@ -133,10 +141,16 @@ export async function generateMetadata({ params }: PropertyDetailPageProps): Pro
         },
       }
     };
-  } catch (error) {
+  } catch (error: any) {
+    console.error(`[METADATA-ERROR] Property metadata generation failed for ${slug}:`, error?.message || error);
+    // Return indexable fallback for error cases to prevent false noindex
     return {
       title: t('properties'),
       description: t('propertiesDescription'),
+      robots: {
+        index: true,
+        follow: true,
+      },
     };
   }
 }
@@ -213,4 +227,8 @@ export default async function PropertyDetailPage({ params }: PropertyDetailPageP
     </>
   );
 }
+
+// Force dynamic rendering to ensure property data is fetched at request time,
+// preventing stale/fallback metadata from being served
+export const dynamic = 'force-dynamic';
 
