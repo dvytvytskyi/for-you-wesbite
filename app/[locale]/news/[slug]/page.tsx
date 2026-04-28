@@ -15,6 +15,110 @@ interface NewsDetailPageProps {
   }>;
 }
 
+type FAQPair = {
+  q: string;
+  a: string;
+};
+
+function stripHtml(input: string): string {
+  return input
+    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function parseFaqFromArray(raw: unknown, locale: string): FAQPair[] {
+  if (!Array.isArray(raw)) return [];
+
+  const pairs = raw
+    .map((item) => {
+      if (!item || typeof item !== 'object') return null;
+
+      const row = item as Record<string, unknown>;
+      const q = (locale === 'ru' ? row.qRu : row.q) || row.q;
+      const a = (locale === 'ru' ? row.aRu : row.a) || row.a;
+
+      if (typeof q !== 'string' || typeof a !== 'string') return null;
+
+      return {
+        q: stripHtml(q),
+        a: stripHtml(a),
+      };
+    })
+    .filter((pair): pair is FAQPair => !!pair && !!pair.q && !!pair.a);
+
+  return pairs;
+}
+
+function parseFaqFromText(raw: unknown): FAQPair[] {
+  if (typeof raw !== 'string' || !raw.trim()) return [];
+
+  const text = stripHtml(raw.replace(/&nbsp;/gi, ' '));
+  if (!text) return [];
+
+  const lines = text
+    .split(/\n+/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  const pairs: FAQPair[] = [];
+  let currentQuestion = '';
+  let currentAnswer: string[] = [];
+
+  const flushPair = () => {
+    if (currentQuestion && currentAnswer.length > 0) {
+      pairs.push({
+        q: currentQuestion,
+        a: currentAnswer.join(' ').replace(/\s+/g, ' ').trim(),
+      });
+    }
+    currentQuestion = '';
+    currentAnswer = [];
+  };
+
+  for (const line of lines) {
+    const normalized = line.replace(/^Q[:\-]\s*/i, '').replace(/^A[:\-]\s*/i, '').trim();
+    const isQuestion = /\?$/.test(line) || /^Q[:\-]/i.test(line);
+
+    if (isQuestion) {
+      flushPair();
+      currentQuestion = normalized;
+      continue;
+    }
+
+    if (currentQuestion) {
+      currentAnswer.push(normalized);
+    }
+  }
+
+  flushPair();
+  return pairs;
+}
+
+function extractFaqPairs(raw: unknown, locale: string): FAQPair[] {
+  if (Array.isArray(raw)) {
+    return parseFaqFromArray(raw, locale);
+  }
+
+  if (typeof raw === 'string') {
+    const trimmed = raw.trim();
+    if (trimmed.startsWith('[')) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        const fromArray = parseFaqFromArray(parsed, locale);
+        if (fromArray.length > 0) return fromArray;
+      } catch {
+        // Fall through to text parsing.
+      }
+    }
+  }
+
+  return parseFaqFromText(raw);
+}
+
 const NEWS_SEO_OVERRIDES: Record<string, { title: string; description: string }> = {
   'assignment-of-rights-for-off-plan-real-estate-in-the-uae-how-the-transaction-works': {
     title: 'Assignment of Off-Plan Rights in UAE: How the Deal Works',
@@ -217,6 +321,24 @@ export default async function NewsDetailPage({ params }: NewsDetailPageProps) {
     ]
   };
 
+  const faqBlock = (news.contents || []).find((block) => block?.type === 'faq');
+  const faqRaw = locale === 'ru' ? (faqBlock as any)?.descriptionRu ?? faqBlock?.description : faqBlock?.description;
+  const faqPairs = extractFaqPairs(faqRaw, locale);
+  const faqLd = faqPairs.length > 0
+    ? {
+        '@context': 'https://schema.org',
+        '@type': 'FAQPage',
+        mainEntity: faqPairs.map(({ q, a }) => ({
+          '@type': 'Question',
+          name: q,
+          acceptedAnswer: {
+            '@type': 'Answer',
+            text: a,
+          },
+        })),
+      }
+    : null;
+
   const initialNewsJson = JSON.stringify({
     id: news.id,
     slug: news.slug,
@@ -245,6 +367,12 @@ export default async function NewsDetailPage({ params }: NewsDetailPageProps) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }}
       />
+      {faqLd && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(faqLd) }}
+        />
+      )}
       {/* SSR article content for search engine crawlers */}
       <div
         id="ssr-article-content"
