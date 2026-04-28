@@ -230,6 +230,10 @@ export default async function NewsDetailPage({ params }: NewsDetailPageProps) {
     author: news.author || null,
   });
 
+  const articleTitle = locale === 'ru' ? (news.titleRu || news.title) : news.title;
+  const articleDesc = locale === 'ru' ? (news.descriptionRu || news.description) : news.description;
+  const sortedContents = [...(news.contents || [])].sort((a, b) => a.order - b.order);
+
   return (
     <>
       <script
@@ -240,6 +244,30 @@ export default async function NewsDetailPage({ params }: NewsDetailPageProps) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }}
       />
+      {/* SSR article content for search engine crawlers */}
+      <div
+        id="ssr-article-content"
+        style={{
+          position: 'absolute',
+          width: '1px',
+          height: '1px',
+          overflow: 'hidden',
+          clip: 'rect(0,0,0,0)',
+          whiteSpace: 'nowrap',
+        }}
+        aria-hidden="true"
+      >
+        <h1>{articleTitle}</h1>
+        {articleDesc && <p>{articleDesc}</p>}
+        {sortedContents.map((block) => (
+          <div key={block.id}>
+            {block.title && <h2>{block.title}</h2>}
+            {block.description && (
+              <div dangerouslySetInnerHTML={{ __html: block.description }} />
+            )}
+          </div>
+        ))}
+      </div>
       <Header />
       <NewsDetail
         slug={slug}
