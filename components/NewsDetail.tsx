@@ -2,7 +2,7 @@
 
 import { useTranslations, useLocale } from 'next-intl';
 import Image from 'next/image';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { generateWhatsAppLink } from '@/lib/utils';
 import CallbackModal from './CallbackModal';
 import PropertyCard from './PropertyCard';
@@ -24,7 +24,7 @@ interface NewsDetailData {
 
 interface NewsDetailProps {
   slug: string;
-  initialNews?: NewsDetailData;
+  initialNewsJson?: string;
 }
 
 const NEWS_FALLBACK_IMAGE = 'https://res.cloudinary.com/dgv0rxd60/image/upload/f_auto,q_auto,w_1200/v1768389720/new_logo_blue.png';
@@ -85,9 +85,34 @@ function distributeProjectsByArea(
   return result;
 }
 
-export default function NewsDetail({ slug, initialNews }: NewsDetailProps) {
+function parseInitialNews(initialNewsJson?: string): NewsDetailData | null {
+  if (!initialNewsJson) return null;
+
+  try {
+    const parsed = JSON.parse(initialNewsJson);
+    if (!parsed || typeof parsed !== 'object') return null;
+
+    return {
+      id: typeof parsed.id === 'string' ? parsed.id : '',
+      slug: typeof parsed.slug === 'string' ? parsed.slug : '',
+      title: typeof parsed.title === 'string' ? parsed.title : '',
+      titleRu: typeof parsed.titleRu === 'string' ? parsed.titleRu : '',
+      description: typeof parsed.description === 'string' ? parsed.description : undefined,
+      descriptionRu: typeof parsed.descriptionRu === 'string' ? parsed.descriptionRu : undefined,
+      imageUrl: typeof parsed.imageUrl === 'string' ? parsed.imageUrl : '',
+      publishedAt: typeof parsed.publishedAt === 'string' ? parsed.publishedAt : '',
+      contents: Array.isArray(parsed.contents) ? parsed.contents : [],
+      author: parsed.author || undefined,
+    };
+  } catch {
+    return null;
+  }
+}
+
+export default function NewsDetail({ slug, initialNewsJson }: NewsDetailProps) {
   const t = useTranslations('newsDetail');
   const locale = useLocale();
+  const initialNews = useMemo(() => parseInitialNews(initialNewsJson), [initialNewsJson]);
   const [news, setNews] = useState<NewsDetailData | null>(initialNews || null);
   const [relatedNews, setRelatedNews] = useState<NewsItem[]>([]);
   const [recommendedProjects, setRecommendedProjects] = useState<Property[]>([]);

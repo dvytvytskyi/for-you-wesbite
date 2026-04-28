@@ -216,6 +216,19 @@ export default async function NewsDetailPage({ params }: NewsDetailPageProps) {
     ]
   };
 
+  const initialNewsJson = JSON.stringify({
+    id: news.id,
+    slug: news.slug,
+    title: news.title,
+    titleRu: news.titleRu,
+    description: news.description,
+    descriptionRu: news.descriptionRu,
+    imageUrl: news.image,
+    publishedAt: news.publishedAt,
+    contents: news.contents || [],
+    author: news.author || null,
+  });
+
   return (
     <>
       <script
@@ -229,18 +242,7 @@ export default async function NewsDetailPage({ params }: NewsDetailPageProps) {
       <Header />
       <NewsDetail
         slug={slug}
-        initialNews={{
-          id: news.id,
-          slug: news.slug,
-          title: news.title,
-          titleRu: news.titleRu,
-          description: news.description,
-          descriptionRu: news.descriptionRu,
-          imageUrl: news.image,
-          publishedAt: news.publishedAt,
-          contents: news.contents || [],
-          author: news.author,
-        }}
+        initialNewsJson={initialNewsJson}
       />
       <Footer />
     </>
