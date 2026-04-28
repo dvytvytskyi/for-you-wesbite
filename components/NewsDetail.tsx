@@ -179,7 +179,7 @@ export default function NewsDetail({ slug, initialNews }: NewsDetailProps) {
     return block.description || '';
   };
 
-  if (loading) {
+  if (loading && !news) {
     return (
       <div className={styles.newsDetail}>
         <div className={styles.container}>
