@@ -2671,6 +2671,8 @@ export interface NewsItem {
   seoTitle?: string;
   seoDescription?: string;
   image: string;
+  imageAlt?: string;
+  ogImage?: string; // SEO: OG image URL (typically same as image)
   publishedAt: string; // ISO date string
   createdAt?: string;
   updatedAt?: string;
@@ -2686,6 +2688,7 @@ export interface NewsContent {
   description: string | null;
   descriptionRu?: string | null;
   imageUrl: string | null;
+  imageAlt?: string; // SEO: alt text for images
   videoUrl: string | null;
   order: number;
 }
@@ -3014,6 +3017,39 @@ export interface MeetingPayload {
  */
 export async function scheduleMeeting(payload: MeetingPayload): Promise<ApiResponse<any>> {
   const response = await apiClient.post<ApiResponse<any>>('/meetings', payload);
+  return response.data;
+}
+
+/**
+ * Upload response from news image upload endpoint
+ */
+export interface UploadImageResponse {
+  url: string;
+  fileName: string;
+}
+
+/**
+ * Upload image for news article
+ * @param file - File to upload
+ * @param slug - News article slug
+ * @param suffix - Optional suffix for naming (e.g., 1, 2, 3 for multiple images)
+ * @returns Upload response with URL and filename
+ */
+export async function uploadNewsImage(file: File, slug: string, suffix?: number): Promise<UploadImageResponse> {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  let url = `/upload/news-image?slug=${encodeURIComponent(slug)}`;
+  if (suffix !== undefined) {
+    url += `&suffix=${suffix}`;
+  }
+
+  const response = await apiClient.post<UploadImageResponse>(url, formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
+
   return response.data;
 }
 

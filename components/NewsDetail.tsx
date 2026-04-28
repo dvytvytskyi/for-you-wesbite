@@ -17,6 +17,7 @@ interface NewsDetailData {
   description?: string;
   descriptionRu?: string;
   imageUrl: string;
+  imageAlt?: string;
   publishedAt: string;
   contents: NewsContent[];
   author?: any;
@@ -100,6 +101,7 @@ function parseInitialNews(initialNewsJson?: string): NewsDetailData | null {
       description: typeof parsed.description === 'string' ? parsed.description : undefined,
       descriptionRu: typeof parsed.descriptionRu === 'string' ? parsed.descriptionRu : undefined,
       imageUrl: typeof parsed.imageUrl === 'string' ? parsed.imageUrl : '',
+      imageAlt: typeof parsed.imageAlt === 'string' ? parsed.imageAlt : undefined,
       publishedAt: typeof parsed.publishedAt === 'string' ? parsed.publishedAt : '',
       contents: Array.isArray(parsed.contents) ? parsed.contents : [],
       author: parsed.author || undefined,
@@ -259,7 +261,7 @@ export default function NewsDetail({ slug, initialNewsJson }: NewsDetailProps) {
             <div className={styles.mainImageContainer}>
               <Image
                 src={safeImageSrc(news.imageUrl)}
-                alt={getTitle()}
+                alt={news.imageAlt || getTitle()}
                 fill
                 className={styles.mainImage}
                 priority
@@ -347,7 +349,7 @@ export default function NewsDetail({ slug, initialNewsJson }: NewsDetailProps) {
                       <div className={styles.contentImageContainer}>
                         <Image
                           src={block.imageUrl}
-                          alt={getContentTitle(block) || ''}
+                          alt={block.imageAlt || getContentTitle(block) || ''}
                           fill
                           className={styles.contentImage}
                           sizes="(max-width: 900px) 100vw, 800px"
