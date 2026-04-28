@@ -231,24 +231,19 @@ export default function NewsDetail({ slug, initialNewsJson }: NewsDetailProps) {
   const sortedContents = [...news.contents].sort((a, b) => a.order - b.order);
 
   /**
-   * Auto-linking logic to convert project names in text to links
+   * Guard: if text contains leaked CSS class names or injected HTML link markup,
+   * strip all tags and return plain text to avoid rendering garbage.
    */
-  const renderTextWithLinks = (text: string) => {
+  const safeText = (text: string): string => {
     if (!text) return '';
-    let processedText = text;
-
-    recommendedProjects.forEach((proj) => {
-      const projName = proj.name;
-      if (!projName || projName.length < 5) return; // Skip short/generic names
-
-      const escapedName = projName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const regex = new RegExp(`(?<!href="[^"]*")(?<!>)${escapedName}(?!<\/a>)`, 'gi');
-      
-      const linkHtml = `<a href="/${locale}/properties/${proj.slug}" class="${styles.inlineLink}">${projName}</a>`;
-      processedText = processedText.replace(regex, linkHtml);
-    });
-
-    return processedText;
+    const hasInjection =
+      text.includes('NewsDetail_inlineLink') ||
+      text.includes('class="NewsDetail') ||
+      /Property[^\s]*class=/i.test(text);
+    if (hasInjection) {
+      return text.replace(/<[^>]*>/g, '');
+    }
+    return text;
   };
 
   return (
@@ -339,7 +334,7 @@ export default function NewsDetail({ slug, initialNewsJson }: NewsDetailProps) {
                       {getContentTitle(block) && <h2 className={styles.contentTitle}>{getContentTitle(block)}</h2>}
                       <div
                         className={styles.contentDescription}
-                        dangerouslySetInnerHTML={{ __html: renderTextWithLinks(getContentDescription(block)) }}
+                        dangerouslySetInnerHTML={{ __html: safeText(getContentDescription(block)) }}
                       />
                     </div>
                   )}
