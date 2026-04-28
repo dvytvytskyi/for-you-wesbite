@@ -1,3 +1,4 @@
+// SSR fix: initial news payload passed to client component for Googlebot visibility
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import NewsDetail from '@/components/NewsDetail';
