@@ -17,13 +17,14 @@ interface NewsDetailData {
   description?: string;
   descriptionRu?: string;
   imageUrl: string;
-  publishedAt: Date;
+  publishedAt: string;
   contents: NewsContent[];
   author?: any;
 }
 
 interface NewsDetailProps {
   slug: string;
+  initialNews?: NewsDetailData;
 }
 
 const NEWS_FALLBACK_IMAGE = 'https://res.cloudinary.com/dgv0rxd60/image/upload/f_auto,q_auto,w_1200/v1768389720/new_logo_blue.png';
@@ -84,13 +85,13 @@ function distributeProjectsByArea(
   return result;
 }
 
-export default function NewsDetail({ slug }: NewsDetailProps) {
+export default function NewsDetail({ slug, initialNews }: NewsDetailProps) {
   const t = useTranslations('newsDetail');
   const locale = useLocale();
-  const [news, setNews] = useState<NewsDetailData | null>(null);
+  const [news, setNews] = useState<NewsDetailData | null>(initialNews || null);
   const [relatedNews, setRelatedNews] = useState<NewsItem[]>([]);
   const [recommendedProjects, setRecommendedProjects] = useState<Property[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!initialNews);
   const [error, setError] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [sidebarName, setSidebarName] = useState('');
@@ -102,31 +103,38 @@ export default function NewsDetail({ slug }: NewsDetailProps) {
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
     
     const loadData = async () => {
-      setLoading(true);
+      const shouldFetchMainNews = !initialNews || initialNews.slug !== slug;
+
+      if (shouldFetchMainNews) {
+        setLoading(true);
+      }
       setError(null);
+
       try {
-        const apiNews = await getNewsBySlug(slug);
+        if (shouldFetchMainNews) {
+          const apiNews = await getNewsBySlug(slug);
 
-        if (!apiNews) {
-          setError('News article not found');
-          setLoading(false);
-          return;
+          if (!apiNews) {
+            setError('News article not found');
+            setLoading(false);
+            return;
+          }
+
+          const newsData: NewsDetailData = {
+            id: apiNews.id,
+            slug: apiNews.slug,
+            title: apiNews.title,
+            titleRu: apiNews.titleRu,
+            description: apiNews.description,
+            descriptionRu: apiNews.descriptionRu,
+            imageUrl: apiNews.image,
+            publishedAt: apiNews.publishedAt,
+            contents: apiNews.contents || [],
+            author: apiNews.author,
+          };
+
+          setNews(newsData);
         }
-
-        const newsData: NewsDetailData = {
-          id: apiNews.id,
-          slug: apiNews.slug,
-          title: apiNews.title,
-          titleRu: apiNews.titleRu,
-          description: apiNews.description,
-          descriptionRu: apiNews.descriptionRu,
-          imageUrl: apiNews.image,
-          publishedAt: new Date(apiNews.publishedAt),
-          contents: apiNews.contents || [],
-          author: apiNews.author,
-        };
-
-        setNews(newsData);
 
         const { news: latest } = await getNews(1, 10);
         setRelatedNews(latest.filter(item => item.slug !== slug));
@@ -143,12 +151,14 @@ export default function NewsDetail({ slug }: NewsDetailProps) {
       } catch (err) {
         setError('Failed to load news article.');
       } finally {
-        setLoading(false);
+        if (shouldFetchMainNews) {
+          setLoading(false);
+        }
       }
     };
 
     loadData();
-  }, [slug]);
+  }, [slug, initialNews]);
 
   const getTitle = () => {
     if (!news) return '';

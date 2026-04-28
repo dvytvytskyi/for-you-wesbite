@@ -15,6 +15,16 @@ interface NewsDetailPageProps {
 }
 
 const NEWS_SEO_OVERRIDES: Record<string, { title: string; description: string }> = {
+  'assignment-of-rights-for-off-plan-real-estate-in-the-uae-how-the-transaction-works': {
+    title: 'Assignment of Off-Plan Rights in UAE: How the Deal Works',
+    description:
+      'Understand assignment of rights for UAE off-plan property: NOC requirements, fees, buyer-seller steps, and transfer timeline in clear language.',
+  },
+  'in-dubai-twin-towers-will-be-built': {
+    title: 'New Twin Towers in Dubai: Project Overview for Buyers',
+    description:
+      'Key facts about the new Dubai twin towers: location, concept, expected launch details, and what this project may mean for investors and end users.',
+  },
   'dispute-building-rating-dubai-rental-index': {
     title: 'Disputing Dubai Rental Index Ratings: RERA Action Guide',
     description:
@@ -79,53 +89,84 @@ const NEWS_SEO_OVERRIDES: Record<string, { title: string; description: string }>
 
 export async function generateMetadata({ params }: NewsDetailPageProps): Promise<Metadata> {
   const { slug, locale } = await params;
-  const t = await getTranslations({ locale });
   const baseUrl = 'https://foryou-realestate.com';
   const canonical = locale === 'en' ? `${baseUrl}/news/${slug}` : `${baseUrl}/ru/news/${slug}`;
-  try {
-    const news = await getNewsBySlug(slug);
-    if (!news) throw new Error('News not found');
+  const enUrl = `${baseUrl}/news/${slug}`;
+  const ruUrl = `${baseUrl}/ru/news/${slug}`;
 
-    const titleText = locale === 'ru' ? news.titleRu : news.title;
-    const seoOverride = locale === 'ru' ? undefined : NEWS_SEO_OVERRIDES[slug];
-    const title = (seoOverride?.title || news.seoTitle || `${titleText} | ForYou Real Estate`).substring(0, 60);
-    const description = (
-      seoOverride?.description ||
-      news.seoDescription ||
-      (locale === 'ru' ? news.descriptionRu : news.description) ||
-      titleText
-    ).substring(0, 155);
+  const news = await getNewsBySlug(slug);
+
+  if (!news) {
+    const fallbackTitle = locale === 'ru' ? 'Новости недвижимости Дубая | ForYou' : 'Dubai Real Estate News | ForYou';
+    const fallbackDescription = locale === 'ru'
+      ? 'Свежие новости рынка недвижимости Дубая, аналитика и инвестиционные обзоры от ForYou Real Estate.'
+      : 'Latest Dubai real estate news, market insights, and investment updates from ForYou Real Estate.';
 
     return {
-      title: title,
-      description: description,
-      openGraph: {
-        title: title,
-        description: description,
-        images: [news.image],
-        type: 'article',
-        publishedTime: news.publishedAt,
-        authors: ['Ruslan K.'],
+      title: fallbackTitle,
+      description: fallbackDescription,
+      robots: {
+        index: true,
+        follow: true,
       },
       alternates: {
         canonical: canonical,
         languages: {
-          'en': `${baseUrl}/news/${slug}`,
-          'ru': `${baseUrl}/ru/news/${slug}`,
-          'x-default': `${baseUrl}/news/${slug}`,
+          'en': enUrl,
+          'ru': ruUrl,
+          'x-default': enUrl,
         },
-      }
-    };
-  } catch (error) {
-    return {
-      title: 'News | ForYou Real Estate',
+      },
+      openGraph: {
+        title: fallbackTitle,
+        description: fallbackDescription,
+        url: canonical,
+        type: 'website',
+      },
     };
   }
+
+  const titleText = (locale === 'ru' ? news.titleRu : news.title) || '';
+  const seoOverride = locale === 'ru' ? undefined : NEWS_SEO_OVERRIDES[slug];
+  const title = (seoOverride?.title || news.seoTitle || `${titleText} | ForYou Real Estate`).substring(0, 60);
+  const description = (
+    seoOverride?.description ||
+    news.seoDescription ||
+    (locale === 'ru' ? news.descriptionRu : news.description) ||
+    titleText
+  ).substring(0, 155);
+
+  return {
+    title: title,
+    description: description,
+    robots: {
+      index: true,
+      follow: true,
+    },
+    openGraph: {
+      title: title,
+      description: description,
+      url: canonical,
+      images: news.image ? [news.image] : [],
+      type: 'article',
+      publishedTime: news.publishedAt,
+      authors: ['Ruslan K.'],
+    },
+    alternates: {
+      canonical: canonical,
+      languages: {
+        'en': enUrl,
+        'ru': ruUrl,
+        'x-default': enUrl,
+      },
+    }
+  };
 }
 
 export default async function NewsDetailPage({ params }: NewsDetailPageProps) {
   const { slug, locale } = await params;
   unstable_setRequestLocale(locale);
+  const localizedBasePath = locale === 'ru' ? 'ru/news' : 'news';
 
   const news = await getNewsBySlug(slug);
 
@@ -144,7 +185,7 @@ export default async function NewsDetailPage({ params }: NewsDetailPageProps) {
       "@type": "Person",
       "name": "Ruslan K.",
       "jobTitle": "Real Estate Expert",
-      "url": `https://foryou-realestate.com/${locale}/about`
+      "url": locale === 'ru' ? 'https://foryou-realestate.com/ru/about' : 'https://foryou-realestate.com/about'
     }],
     "publisher": {
       "@type": "Organization",
@@ -164,13 +205,13 @@ export default async function NewsDetailPage({ params }: NewsDetailPageProps) {
         "@type": "ListItem",
         "position": 1,
         "name": locale === 'ru' ? "Новости" : "News",
-        "item": `https://foryou-realestate.com/${locale}/news`
+        "item": `https://foryou-realestate.com/${localizedBasePath}`
       },
       {
         "@type": "ListItem",
         "position": 2,
           "name": articleName,
-        "item": `https://foryou-realestate.com/${locale}/news/${slug}`
+        "item": `https://foryou-realestate.com/${localizedBasePath}/${slug}`
       }
     ]
   };
@@ -186,7 +227,21 @@ export default async function NewsDetailPage({ params }: NewsDetailPageProps) {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }}
       />
       <Header />
-      <NewsDetail slug={slug} />
+      <NewsDetail
+        slug={slug}
+        initialNews={{
+          id: news.id,
+          slug: news.slug,
+          title: news.title,
+          titleRu: news.titleRu,
+          description: news.description,
+          descriptionRu: news.descriptionRu,
+          imageUrl: news.image,
+          publishedAt: news.publishedAt,
+          contents: news.contents || [],
+          author: news.author,
+        }}
+      />
       <Footer />
     </>
   );
